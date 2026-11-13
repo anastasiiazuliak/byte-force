@@ -1,4 +1,4 @@
-namespace ByteForce.Horizons;
+namespace ByteForce.Models;
 
 /// <summary>
 /// Airless apparent positions of the target centers relative to the ideal local horizon.

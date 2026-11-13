@@ -9,19 +9,25 @@
 Приклад запуску й перевірки — окремі програми, які підключають цю бібліотеку:
 
 ```text
-src/ByteForce.Horizons/            ← класи для роботи з Horizons API
+src/ByteForce.Models/             ← спільні моделі LunarObserver і LunarObservation
+src/ByteForce.Horizons/           ← клієнт, інтерфейс та винятки Horizons API
 samples/Horizons.Sample/           ← програма для реального запиту до NASA
 tests/ByteForce.Horizons.Tests/    ← перевірки без звернення до NASA
 docs/horizons.md                   ← документація
-ByteForce.slnx                    ← рішення, яке об'єднує три C#-проєкти
+ByteForce.slnx                    ← рішення, яке об'єднує чотири C#-проєкти
 ```
 
-Модуль LOLA ще не додано; для нього передбачаємо окрему папку `src/ByteForce.Lola`.
+Спільні моделі розташовані в окремій бібліотеці `ByteForce.Models`, а клієнт, інтерфейс і винятки — у `ByteForce.Horizons`.
+`ByteForce.Horizons` підключає `ByteForce.Models` через `ProjectReference`. Майбутні модулі рельєфу й аналізу також можуть підключати цю бібліотеку без залежності від клієнта Horizons.
+`ByteForce.Models` не залежить від інших проєктів і містить лише моделі даних та їхню валідацію.
+`LunarObserver` описує вхідне місце спостереження, `LunarObservation` — результат для одного моменту.
+Модуль LOLA ще не додано.
 
 ## Використання
 
 ```csharp
 using ByteForce.Horizons;
+using ByteForce.Models;
 
 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
 IHorizonsClient horizons = new HorizonsClient(http);

@@ -12,6 +12,15 @@
 | NASA JPL Horizons API | Положення Сонця й Землі |
 | LOLA DEM | Дані висот місячної поверхні |
 
+## Структура бібліотек
+
+- `src/ByteForce.Models` — спільні моделі даних для Horizons, рельєфу й аналізу; не залежить від інших проєктів.
+- `src/ByteForce.Horizons` — клієнт NASA JPL Horizons; використовує `ByteForce.Models`.
+- `samples/Horizons.Sample` — приклад використання клієнта.
+- `tests/ByteForce.Horizons.Tests` — тести клієнта та наявних моделей.
+
+Для моделей використовуйте `using ByteForce.Models;`. Деталі інтеграції — у [документації Horizons](docs/horizons.md).
+
 ## Вимоги
 
 Установіть [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) версії `10.0.x`.

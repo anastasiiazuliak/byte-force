@@ -1,4 +1,4 @@
-namespace ByteForce.Horizons;
+namespace ByteForce.Models;
 
 /// <summary>A site in the Moon's mean-Earth reference frame, not terrestrial WGS84.</summary>
 public sealed record LunarObserver

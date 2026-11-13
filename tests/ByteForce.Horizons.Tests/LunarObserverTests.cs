@@ -1,3 +1,4 @@
+using ByteForce.Models;
 using Xunit;
 
 namespace ByteForce.Horizons.Tests;

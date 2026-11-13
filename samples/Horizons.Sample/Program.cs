@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ByteForce.Horizons;
+using ByteForce.Models;
 
 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
 IHorizonsClient horizons = new HorizonsClient(http);

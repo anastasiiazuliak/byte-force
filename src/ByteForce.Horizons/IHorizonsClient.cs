@@ -1,3 +1,5 @@
+using ByteForce.Models;
+
 namespace ByteForce.Horizons;
 
 public interface IHorizonsClient

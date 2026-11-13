@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="src/ByteForce.Models/ByteForce.Models.csproj" />
   <Project Path="src/ByteForce.Horizons/ByteForce.Horizons.csproj" />
   <Project Path="samples/Horizons.Sample/Horizons.Sample.csproj" />
   <Project Path="tests/ByteForce.Horizons.Tests/ByteForce.Horizons.Tests.csproj" />
