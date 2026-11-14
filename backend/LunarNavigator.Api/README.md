@@ -1,7 +1,13 @@
 # API — backend lane 3
 
+<<<<<<< HEAD
 .NET 8; усі проєкти — в `backend/LunarNavigator.sln`. HTTP base: `/api/v1`, JSON camelCase,
 час — UTC ISO-8601 із `Z`. Наукові числа у production надходять тільки з Horizons і підключених перевірених data providers.
+=======
+ASP.NET Core API на .NET 8 у спільному `backend/LunarNavigator.sln`.
+Код — `backend/LunarNavigator.Api`, тести — `backend/tests/LunarNavigator.Api.Tests`.
+Ці маршрути працюють без інтернету, ключів NASA або DEM.
+>>>>>>> 69b0eae (moona)
 
 | Задача | Endpoint | Поточна поведінка |
 |---|---|---|
