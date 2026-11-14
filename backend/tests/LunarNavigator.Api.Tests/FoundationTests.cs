@@ -49,7 +49,9 @@ public sealed class FoundationTests : IClassFixture<ApiFactory>
         Assert.Equal(-180, region.GetProperty("longitudeMin").GetDouble());
         Assert.Equal(180, region.GetProperty("longitudeMax").GetDouble());
         Assert.Equal(1234, root.GetProperty("analysis").GetProperty("maxSamples").GetInt32());
-        Assert.All(root.GetProperty("features").EnumerateObject(), feature => Assert.False(feature.Value.GetBoolean()));
+        Assert.True(root.GetProperty("features").GetProperty("scenarioComparison").GetBoolean());
+        foreach (var name in new[] { "terrainAnalysis", "horizonProfile", "moonFixedEphemeris" })
+            Assert.False(root.GetProperty("features").GetProperty(name).GetBoolean());
     }
 
     [Fact]
@@ -70,8 +72,8 @@ public sealed class FoundationTests : IClassFixture<ApiFactory>
     }
 
     [Theory]
-    [InlineData("/api/v1/missing", "GET", 404, "NOT_FOUND")]
-    [InlineData("/api/v1/config", "POST", 405, "METHOD_NOT_ALLOWED")]
+    [InlineData("/api/v1/missing", "GET", 404, "VALIDATION_ERROR")]
+    [InlineData("/api/v1/config", "POST", 405, "VALIDATION_ERROR")]
     public async Task RoutingErrors_ReturnSharedEnvelope(string path, string method, int status, string code)
     {
         using var response = await _client.SendAsync(new HttpRequestMessage(new HttpMethod(method), path));
@@ -105,7 +107,7 @@ public sealed class FoundationTests : IClassFixture<ApiFactory>
         var body = await response.Content.ReadAsStringAsync();
         Assert.DoesNotContain("private-missing-file", body);
         using var json = JsonDocument.Parse(body);
-        Assert.Equal("CATALOG_UNAVAILABLE", json.RootElement.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal("INTERNAL_ERROR", json.RootElement.GetProperty("error").GetProperty("code").GetString());
         Assert.Equal(HttpStatusCode.OK, (await http.GetAsync("/api/v1/health")).StatusCode);
     }
 

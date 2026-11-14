@@ -14,13 +14,16 @@ public sealed class ApiSettings : IValidatableObject
     [Range(2, 100000)]
     public int MaxSamples { get; set; } = 2000;
 
-    [Range(1, 2)]
+    [Range(2, 2)]
     public int MaxScenarios { get; set; } = 2;
 
     [Required]
     public string CatalogPath { get; set; } = "Data/landing-sites.json";
 
     public string[] AllowedOrigins { get; set; } = [];
+
+    [Range(1, 600)]
+    public int RequestTimeoutSeconds { get; set; } = 120;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
