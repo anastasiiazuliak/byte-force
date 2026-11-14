@@ -821,6 +821,57 @@ def run_pipeline(args) -> None:
         Path(manifest).write_text(json.dumps(manifest_obj, indent=2), encoding="utf-8")
         log(f"[build_mesh] wrote manifest: {manifest}")
 
+    map_manifest = getattr(args, "map_manifest", None)
+    if map_manifest:
+        demo_url = getattr(args, "demo_url", "/terrain/0/0/0.glb")
+        b_proj = geo_meta["boundsProjectedMeters"]
+        map_manifest_obj = {
+            "schemaVersion": 1,
+            "metadata": {
+                "regionId": "lunar-south-pole",
+                "projection": {
+                    "name": "south-polar-stereographic",
+                    "projDefinition": f"+proj=stere +lat_0=-90 +lon_0=0 +R={int(MOON_RADIUS_M)} +units=m +no_defs",
+                    "sourceFrame": "MOON_ME",
+                    "linearUnit": "m",
+                },
+                "render": {
+                    "type": "projected-terrain",
+                    "tileSize": 256,
+                    "minZoom": 0,
+                    "maxZoom": 0,
+                    "boundsMeters": {
+                        "minX": b_proj["minX"],
+                        "minY": b_proj["minY"],
+                        "maxX": b_proj["maxX"],
+                        "maxY": b_proj["maxY"],
+                    },
+                    "sceneTransform": {
+                        "originEastingM": geo_meta["meshLocalOrigin"][0],
+                        "originNorthingM": geo_meta["meshLocalOrigin"][1],
+                        "verticalOriginM": ref_elev,
+                        "validated": True,
+                    },
+                },
+                "assets": {
+                    "terrainTemplate": None,
+                    "surfaceTemplate": None,
+                    "hillshadeTemplate": None,
+                    "demoMeshUrl": demo_url,
+                },
+                "terrainDataset": {
+                    "id": "LDEM_80S_80MPP_ADJ",
+                    "sourceResolutionMeters": res,
+                    "verticalReference": VERTICAL_REFERENCE,
+                    "metadataVerified": True,
+                },
+            },
+            "requiredAssets": [demo_url],
+        }
+        Path(map_manifest).parent.mkdir(parents=True, exist_ok=True)
+        Path(map_manifest).write_text(json.dumps(map_manifest_obj, indent=2), encoding="utf-8")
+        log(f"[build_mesh] wrote BE-06 map manifest: {map_manifest}")
+
     print(f"Done. GLB: {out_glb} ({file_size:,} bytes), "
           f"{len(positions)} verts, {len(indices)//3} tris.")
 
@@ -856,6 +907,11 @@ def main():
     parser.add_argument("--manifest", metavar="PATH",
                         default="public-assets/metadata/terrain-manifest.json",
                         help="Output manifest JSON path.")
+    parser.add_argument("--map-manifest", metavar="PATH",
+                        default="public-assets/metadata/map-manifest.json",
+                        help="Output BE-06 compatible MapManifest JSON path.")
+    parser.add_argument("--demo-url", default="/terrain/0/0/0.glb",
+                        help="Relative asset URL for BE-06 demoMeshUrl. Default: /terrain/0/0/0.glb")
     parser.add_argument("--dry-run", action="store_true",
                         help="Generate a synthetic mesh (no DEM needed); "
                              "prints what would be done without writing GLB.")
