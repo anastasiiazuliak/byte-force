@@ -12,7 +12,7 @@
 
 ## Ownership
 
-`data-pipeline/**`, `public-assets/**`, `backend/LunarNavigator.Core/{Terrain,Horizon}/**`, `backend/LunarNavigator.Tests/Terrain/**`, `docs/science/**`. Не редагуй API controllers/Program.cs, frontend і frozen contracts.
+`data-pipeline/**`, `public-assets/**`, `backend/LunarNavigator.Core/{Terrain,Horizon}/**`, `backend/tests/LunarNavigator.Core.Tests/Terrain/**`, `docs/science/**`. Не редагуй API controllers/Program.cs, frontend і frozen contracts.
 
 Якщо старий Issue називає файл поза цією зоною, погодь зміну з власником. Не перенось межі самовільно. Спільну документацію змінюйте координовано.
 

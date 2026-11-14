@@ -122,7 +122,7 @@ lunar-navigator/
 ├── backend/                  # ASP.NET Core, Services, DTO, tests
 │   ├── LunarNavigator.Api/
 │   ├── LunarNavigator.Core/
-│   └── LunarNavigator.Tests/
+│   └── LunarNavigator.Api.Tests/
 ├── data-pipeline/            # офлайн-скрипти DEM -> тайли/mesh
 ├── contracts/                # OpenAPI, sample JSON, fixtures
 ├── infra/                    # Nginx / deployment

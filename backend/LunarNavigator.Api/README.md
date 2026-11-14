@@ -1,7 +1,7 @@
 # LunarNavigator.Api — BE-01
 
 ASP.NET Core API на .NET 8 у спільному `backend/LunarNavigator.sln`.
-Код — `backend/LunarNavigator.Api`, тести — `backend/LunarNavigator.Tests`.
+Код — `backend/LunarNavigator.Api`, тести — `backend/tests/LunarNavigator.Api.Tests`.
 Ці маршрути працюють без інтернету, ключів NASA або DEM.
 
 ## Запуск із кореня репозиторію

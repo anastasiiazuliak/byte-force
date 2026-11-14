@@ -1,54 +1,70 @@
-# Backend scaffold (.NET 8)
+# Lunar Navigator backend (.NET 8)
 
-From this directory:
+Один solution: `backend/LunarNavigator.sln`. Назва проєкту, assembly, папки та базового namespace
+збігається; усі вони починаються з `LunarNavigator`.
 
-```sh
-dotnet restore LunarNavigator.sln
-dotnet build LunarNavigator.sln --no-restore
-dotnet test LunarNavigator.sln --no-build
-dotnet run --project LunarNavigator.Api --urls http://localhost:5080
+```text
+backend/
+  LunarNavigator.Api/                 HTTP endpoints, config, catalog, public DTOs
+  LunarNavigator.Core/                Analysis, terrain/horizon interfaces and unavailable providers
+  LunarNavigator.Horizons/            NASA JPL Horizons HTTP client
+  LunarNavigator.Models/              Shared lunar observer/observation models
+  tests/
+    LunarNavigator.Api.Tests/         HTTP, CORS, catalog and provider DI tests
+    LunarNavigator.Core.Tests/        Coordinate control points and data-lane tests
+    LunarNavigator.Horizons.Tests/    Horizons requests, responses and cancellation
+    LunarNavigator.Models.Tests/      Model validation
+  samples/
+    LunarNavigator.Horizons.Sample/   Explicit live NASA request
+  LunarNavigator.sln
+  global.json
 ```
 
-From the repository root:
+## Запуск із кореня репозиторію
 
 ```sh
 dotnet restore backend/LunarNavigator.sln
 dotnet build backend/LunarNavigator.sln --no-restore
-dotnet test backend/LunarNavigator.sln --no-build --no-restore
+dotnet test backend/LunarNavigator.sln --no-build
 dotnet run --project backend/LunarNavigator.Api --urls http://localhost:5080
 ```
 
-`backend/LunarNavigator.sln` is the canonical solution; the former root `ByteForce.slnx` has been removed. Root `global.json` and `backend/global.json` select stable .NET 8 SDKs with the same `8.0.100` / `latestFeature` policy.
-
-`GET http://localhost:5080/api/v1/health` returns liveness JSON; it does not certify scientific provider readiness. BE-01 also provides config and landing-sites with explicitly labelled DEMO entries; analysis, comparison, ephemeris and map business logic remain pending.
-
-## Preserved Horizons projects
-
-- `backend/ByteForce.Horizons/`: standalone Horizons HTTP client, not wired into the API.
-- `backend/ByteForce.Horizons.Tests/`: existing offline protocol and parser tests.
-- `backend/samples/Horizons.Sample/`: standalone live NASA sample.
-
-All projects target `net8.0` and are included alongside the API, Core, and scaffold tests in the canonical solution. Existing Horizons C# source files are preserved byte-for-byte; only project metadata and references changed.
-
-Run the offline client tests or live sample from the repository root:
+Для одного модуля:
 
 ```sh
-dotnet test backend/ByteForce.Horizons.Tests --no-build --no-restore
-dotnet run --project backend/samples/Horizons.Sample
+dotnet test backend/tests/LunarNavigator.Api.Tests
+dotnet test backend/tests/LunarNavigator.Core.Tests
+dotnet test backend/tests/LunarNavigator.Horizons.Tests
+dotnet test backend/tests/LunarNavigator.Models.Tests
 ```
 
-Only the sample contacts NASA. It requires network access and is not part of offline tests. The API does not register or invoke `IHorizonsClient`; default terrain/horizon providers remain explicitly unavailable. No scientific service implementation was added.
+Потрібен .NET 8 SDK; root і backend `global.json` вибирають `8.0.100` з `latestFeature`.
+Усі проєкти мають target `net8.0`. У solution тести зібрані в окремій папці `tests`.
 
-Existing scientific caveats remain in [docs/horizons.md](../docs/horizons.md). That parent-owned document is unchanged and its legacy paths/framework/solution commands await the parent documentation update; use the paths and .NET 8 commands above.
+BE-01 реалізує health, config і landing-sites; деталі — у [README API](LunarNavigator.Api/README.md).
+Каталог містить явно позначені DEMO-точки. Health перевіряє тільки вебсервер.
+Horizons клієнт ще не підключений до analyze/compare. Наукові алгоритми під час перейменування не змінювалися.
 
-## Lane 4 provider handoff
+## Terrain / Horizon handoff
 
-Implement `LunarNavigator.Core.Analysis.ITerrainHeightProvider.GetHeightAsync` and `IHorizonProfileProvider.GetProfileAsync` in the lane-owned `Terrain/` and `Horizon/` directories. Both take `TerrainLocation` (latitude/longitude degrees) and a cancellation token. Signatures and result records are in `LunarNavigator.Core/Analysis/TerrainProviders.cs`; these are internal C# boundaries, not changes to frozen HTTP contracts.
+`LunarNavigator.Core.Analysis.ITerrainHeightProvider` і `IHorizonProfileProvider` приймають координати
+та CancellationToken. Типи лишаються в `LunarNavigator.Core/Analysis/TerrainProviders.cs`.
+Реалізації слід додавати в `LunarNavigator.Core/Terrain/` і `Horizon/`, тести — у
+`tests/LunarNavigator.Core.Tests/Terrain/`. Контракт HTTP не змінювався.
 
-Height results carry nullable meters, source, vertical reference, resolution, datum verification, and warnings. Horizon results carry azimuth/elevation points in degrees, `TerrainApplied`, source, resolution, and warnings. Unknown heights must remain null; unavailable horizons must not become a fabricated flat horizon. Default providers return null/empty data, false verification/application flags, and explicit warnings. No visibility determination occurs here. Dataset metadata and alignment must be verified before providers report reliable terrain application. Final integration replaces DI defaults in Program.cs with real implementations; data lane need not edit the entry point.
+API реєструє unavailable-провайдери через TryAddSingleton: unknown elevation — null, профіль порожній,
+terrainApplied/datumVerified — false, з попередженнями. Реальні дані мають пройти перевірку датуму й покриття.
+Тест реєстрації провайдерів у DI залишається в Api.Tests, окремо від перевірок їхньої геометрії.
 
-`LunarNavigator.Tests/Api/` is API-owned; `LunarNavigator.Tests/Terrain/` is data-owned. Both compile under one xUnit project. Coordinate shared project dependency changes rather than editing it concurrently.
+Coordinate fixture копіюється з `contracts/fixtures/coordinate-control-points.json` до вихідної
+папки Core.Tests; тест не залежить від кількості батьківських папок. Тести не звертаються до NASA.
 
-CI also requires the parent-owned frontend lockfile and `build`, `test`, and `test:contracts` npm scripts; backend scaffolding does not create these.
+## Live sample
 
-Shared LunarObserver and LunarObservation records live in `ByteForce.Models/`, referenced by Horizons. BE-01 API routes, validation, CORS configuration and catalog documentation are in [API README](LunarNavigator.Api/README.md). The combined API/Data test project also contains 20 BE-01 cases under `LunarNavigator.Tests/`.
+Лише після явного дозволу на живий зовнішній запит:
+
+```sh
+dotnet run --project backend/samples/LunarNavigator.Horizons.Sample
+```
+
+Наукові обмеження клієнта — у [Horizons guide](../docs/horizons.md).

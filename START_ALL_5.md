@@ -28,7 +28,7 @@ implementations are absent. P0 first; do not create 37 agents editing one checko
 
 ## Preserve existing contributions
 
-- Horizons already exists in `backend/ByteForce.Horizons/`, with offline tests and a
+- Horizons already exists in `backend/LunarNavigator.Horizons/`, with offline tests and a
   live opt-in sample; see [Horizons](docs/horizons.md). Reuse it, do not rewrite it from a task prompt.
 - **HUM-02 already merged in PR #4**, commit `c960326`, merge `92de0e8`. Existing
   `data/scripts/` and `data/README.md` stay at their legacy paths. Do not redo the PR

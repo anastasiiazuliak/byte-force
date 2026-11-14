@@ -8,7 +8,7 @@
 **Співпраця/review:** залучайте інших учасників для shared контрактів; власник PR — №4
 **Пріоритет:** P0  
 **Залежності:** HUM-02, ARC-03  
-**Область файлів:** `backend/LunarNavigator.Core/Terrain/`, `backend/LunarNavigator.Api/Infrastructure/Terrain/`, `backend/LunarNavigator.Tests/Terrain/`
+**Область файлів:** `backend/LunarNavigator.Core/Terrain/`, `backend/LunarNavigator.Api/Infrastructure/Terrain/`, `backend/tests/LunarNavigator.Core.Tests/Terrain/`
 
 ## Мета
 

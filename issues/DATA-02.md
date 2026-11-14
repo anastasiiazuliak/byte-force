@@ -8,7 +8,7 @@
 **Співпраця/review:** залучайте інших учасників для shared контрактів; власник PR — №4
 **Пріоритет:** P0  
 **Залежності:** DATA-01, ARC-03  
-**Область файлів:** `backend/LunarNavigator.Core/Horizon/`, `backend/LunarNavigator.Tests/Horizon/`, `docs/SCIENCE_METHOD.md`
+**Область файлів:** `backend/LunarNavigator.Core/Horizon/`, `backend/tests/LunarNavigator.Api.Tests/Horizon/`, `docs/SCIENCE_METHOD.md`
 
 ## Мета
 

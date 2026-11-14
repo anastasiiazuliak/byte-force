@@ -1,27 +1,28 @@
 # NASA JPL Horizons — C#
 
-Бібліотека `backend/ByteForce.Horizons` для .NET 8 не потребує сторонніх пакетів або API-ключа.
+Бібліотека `backend/LunarNavigator.Horizons` для .NET 8 не потребує сторонніх пакетів або API-ключа.
 Вона отримує положення центрів Сонця та Землі для точки на Місяці в один момент часу.
 
 ## Де лежить код
 
-Усі класи інтеграції з API вже відокремлені в папці `backend/ByteForce.Horizons`.
+Усі класи інтеграції з API вже відокремлені в папці `backend/LunarNavigator.Horizons`.
 Приклад запуску й перевірки — окремі програми, які підключають цю бібліотеку:
 
 ```text
-backend/ByteForce.Horizons/            ← класи для роботи з Horizons API
-backend/samples/Horizons.Sample/           ← програма для реального запиту до NASA
-backend/ByteForce.Horizons.Tests/    ← перевірки без звернення до NASA
+backend/LunarNavigator.Horizons/            ← класи для роботи з Horizons API
+backend/samples/LunarNavigator.Horizons.Sample/           ← програма для реального запиту до NASA
+backend/tests/LunarNavigator.Horizons.Tests/    ← перевірки без звернення до NASA
 docs/horizons.md                   ← документація
-backend/LunarNavigator.sln         ← рішення для всіх семи C#-проєктів
+backend/LunarNavigator.sln         ← єдине рішення для дев'яти C#-проєктів
 ```
 
-LOLA/Terrain/Horizon реалізується окремо у `backend/LunarNavigator.Core/{Terrain,Horizon}/` за [frozen contract](../PARALLEL_CONTRACT.md). Scientific `.cs` існуючого Horizons внеску збережено без змін; змінено layout і project metadata для `net8.0`. `backend/LunarNavigator.sln` — єдине активне рішення; старе root `.slnx` прибрано.
+LOLA/Terrain/Horizon реалізується окремо у `backend/LunarNavigator.Core/{Terrain,Horizon}/` за [frozen contract](../PARALLEL_CONTRACT.md). Усі namespaces мають префікс `LunarNavigator`; алгоритми Horizons не змінювалися. Усі проєкти використовують `net8.0` і входять до одного `backend/LunarNavigator.sln`.
 
 ## Використання
 
 ```csharp
-using ByteForce.Horizons;
+using LunarNavigator.Horizons;
+using LunarNavigator.Models;
 
 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
 IHorizonsClient horizons = new HorizonsClient(http);
@@ -89,16 +90,16 @@ dotnet build backend/LunarNavigator.sln
 dotnet test backend/LunarNavigator.sln
 
 # LIVE OPT-IN: лише після явного дозволу; викликає NASA через інтернет.
-dotnet run --project backend/samples/Horizons.Sample
+dotnet run --project backend/samples/LunarNavigator.Horizons.Sample
 ```
 
-24 offline Horizons test cases, 20 BE-01 cases та 2 scaffold health/provider cases не є живою перевіркою NASA. Команди вище — інструкції, не звіт про запуск у цій документаційній зміні; фактичні результати див. у [parent validation](integration/bootstrap-validation.md).
+У solution є 19 Horizons, 5 Models, 8 Core/coordinates та 22 API cases. Ці офлайн-перевірки не є живою перевіркою NASA. Команди вище — інструкції; історичні результати bootstrap наведено у [parent validation](integration/bootstrap-validation.md).
 
 Тести використовують xUnit і підставний HTTP handler; лише sample викликає NASA через інтернет.
-Тестові класи розділені за призначенням: `LunarObserverTests`, `HorizonsClientRequestTests`, `HorizonsClientResponseTests`.
+`HorizonsClientRequestTests` і `HorizonsClientResponseTests` розташовані в `LunarNavigator.Horizons.Tests`, `LunarObserverTests` — у `LunarNavigator.Models.Tests`, а `LunarCoordinatesTests` — у `LunarNavigator.Core.Tests.Coordinates`. Усі тестові проєкти зібрані в `backend/tests/`.
 Допоміжні HTTP-відповіді й handler розташовані в `TestSupport`. Пакети для тестів завантажуються з NuGet під час першої збірки.
 
 Джерела: [Horizons API](https://ssd-api.jpl.nasa.gov/doc/horizons.html),
 [системи координат і значення observer quantities](https://ssd.jpl.nasa.gov/horizons/manual.html).
 
-Спільні типи `LunarObserver` і `LunarObservation` розташовані в `backend/ByteForce.Models/` (namespace `ByteForce.Models`); Horizons підключає їх через ProjectReference.
+Спільні типи `LunarObserver` і `LunarObservation` розташовані в `backend/LunarNavigator.Models/` (namespace `LunarNavigator.Models`); Horizons підключає їх через ProjectReference.

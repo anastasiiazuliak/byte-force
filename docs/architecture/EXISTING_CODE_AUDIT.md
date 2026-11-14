@@ -14,8 +14,8 @@
 
 ## 2. Що реально існувало на GitHub
 
-- `src/ByteForce.Horizons/`: компактний IHorizonsClient/HttpClient, lunar observer, airless apparent Sun/Earth center azimuth/elevation для одного UTC instant, strict CSV-in-JSON parser, cancellation, process-local sequential request gate.
-- `tests/ByteForce.Horizons.Tests/`: 24 offline protocol/parser/observer tests, stub HttpMessageHandler, synthetic response fixtures. Baseline build/test пройшли на SDK 10.0.113 (NuGet audit у baseline не виконано).
+- `src/LunarNavigator.Horizons/`: компактний IHorizonsClient/HttpClient, lunar observer, airless apparent Sun/Earth center azimuth/elevation для одного UTC instant, strict CSV-in-JSON parser, cancellation, process-local sequential request gate.
+- `tests/LunarNavigator.Horizons.Tests/`: 24 offline protocol/parser/observer tests, stub HttpMessageHandler, synthetic response fixtures. Baseline build/test пройшли на SDK 10.0.113 (NuGet audit у baseline не виконано).
 - `samples/Horizons.Sample/` та `docs/horizons.md`: окремий live sample і документація. Live NASA sample не запускався.
 - `ByteForce.slnx`: лише три net10.0 проєкти; active Web API, React frontend, CI та runtime shared contracts відсутні.
 - HUM-02: `data/README.md`, `data/scripts/download_data.py`, `.ps1`, `data/raw/.gitkeep`, `docs/DATA_SOURCES.md` і ignore rules. Зберігаємо їхню реалізацію, не повторюємо задачу.

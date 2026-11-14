@@ -453,7 +453,7 @@
 **Виконавець:** Backend/API  
 **Пріоритет:** P0  
 **Залежності:** ARC-01, ARC-02  
-**Область файлів:** `backend/LunarNavigator.Api/Controllers/`, `backend/LunarNavigator.Api/Program.cs`, `backend/LunarNavigator.Core/`, `backend/LunarNavigator.Tests/`
+**Область файлів:** `backend/LunarNavigator.Api/Controllers/`, `backend/LunarNavigator.Api/Program.cs`, `backend/LunarNavigator.Core/`, `backend/tests/LunarNavigator.Api.Tests/`
 
 ## Мета
 
@@ -500,7 +500,7 @@
 **Виконавець:** Backend/Astronomy  
 **Пріоритет:** P0  
 **Залежності:** ARC-02  
-**Область файлів:** `backend/LunarNavigator.Core/Ephemeris/`, `backend/LunarNavigator.Api/Infrastructure/Horizons/`, `backend/LunarNavigator.Tests/Ephemeris/`
+**Область файлів:** `backend/LunarNavigator.Core/Ephemeris/`, `backend/LunarNavigator.Api/Infrastructure/Horizons/`, `backend/tests/LunarNavigator.Api.Tests/Ephemeris/`
 
 ## Мета
 
@@ -547,7 +547,7 @@
 **Виконавець:** Backend/Astronomy  
 **Пріоритет:** P0  
 **Залежності:** BE-02, DATA-02, ARC-02  
-**Область файлів:** `backend/LunarNavigator.Core/Analysis/`, `backend/LunarNavigator.Api/Controllers/AnalysisController.cs`, `backend/LunarNavigator.Tests/Analysis/`
+**Область файлів:** `backend/LunarNavigator.Core/Analysis/`, `backend/LunarNavigator.Api/Controllers/AnalysisController.cs`, `backend/tests/LunarNavigator.Api.Tests/Analysis/`
 
 ## Мета
 
@@ -595,7 +595,7 @@
 **Виконавець:** Backend/API  
 **Пріоритет:** P0  
 **Залежності:** BE-03, ARC-02  
-**Область файлів:** `backend/LunarNavigator.Core/Comparison/`, `backend/LunarNavigator.Api/Controllers/ComparisonController.cs`, `backend/LunarNavigator.Tests/Comparison/`
+**Область файлів:** `backend/LunarNavigator.Core/Comparison/`, `backend/LunarNavigator.Api/Controllers/ComparisonController.cs`, `backend/tests/LunarNavigator.Api.Tests/Comparison/`
 
 ## Мета
 
@@ -642,7 +642,7 @@
 **Виконавець:** Backend/Astronomy  
 **Пріоритет:** P1  
 **Залежності:** BE-02, ARC-03  
-**Область файлів:** `backend/LunarNavigator.Core/Ephemeris/MoonFixed/`, `backend/LunarNavigator.Api/Controllers/EphemerisController.cs`, `backend/LunarNavigator.Tests/Ephemeris/`
+**Область файлів:** `backend/LunarNavigator.Core/Ephemeris/MoonFixed/`, `backend/LunarNavigator.Api/Controllers/EphemerisController.cs`, `backend/tests/LunarNavigator.Api.Tests/Ephemeris/`
 
 ## Мета
 
@@ -688,7 +688,7 @@
 **Виконавець:** Backend/API + Data review  
 **Пріоритет:** P0  
 **Залежності:** ARC-02, ARC-03, DATA-03  
-**Область файлів:** `backend/LunarNavigator.Api/Controllers/MapController.cs`, `backend/LunarNavigator.Core/Map/`, `backend/LunarNavigator.Tests/Map/`
+**Область файлів:** `backend/LunarNavigator.Api/Controllers/MapController.cs`, `backend/LunarNavigator.Core/Map/`, `backend/tests/LunarNavigator.Api.Tests/Map/`
 
 ## Мета
 
@@ -735,7 +735,7 @@
 **Виконавець:** Backend/Data  
 **Пріоритет:** P0  
 **Залежності:** HUM-02, ARC-03  
-**Область файлів:** `backend/LunarNavigator.Core/Terrain/`, `backend/LunarNavigator.Api/Infrastructure/Terrain/`, `backend/LunarNavigator.Tests/Terrain/`
+**Область файлів:** `backend/LunarNavigator.Core/Terrain/`, `backend/LunarNavigator.Api/Infrastructure/Terrain/`, `backend/tests/LunarNavigator.Core.Tests/Terrain/`
 
 ## Мета
 
@@ -782,7 +782,7 @@
 **Виконавець:** Backend/Data  
 **Пріоритет:** P0  
 **Залежності:** DATA-01, ARC-03  
-**Область файлів:** `backend/LunarNavigator.Core/Horizon/`, `backend/LunarNavigator.Tests/Horizon/`, `docs/SCIENCE_METHOD.md`
+**Область файлів:** `backend/LunarNavigator.Core/Horizon/`, `backend/tests/LunarNavigator.Api.Tests/Horizon/`, `docs/SCIENCE_METHOD.md`
 
 ## Мета
 
@@ -926,7 +926,7 @@
 **Виконавець:** Data/Science + QA  
 **Пріоритет:** P0  
 **Залежності:** DATA-02, BE-02  
-**Область файлів:** `docs/VALIDATION_REPORT.md`, `backend/LunarNavigator.Tests/Scientific/`, `contracts/fixtures/science-checks/`
+**Область файлів:** `docs/VALIDATION_REPORT.md`, `backend/tests/LunarNavigator.Api.Tests/Scientific/`, `contracts/fixtures/science-checks/`
 
 ## Мета
 

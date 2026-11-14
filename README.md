@@ -30,8 +30,8 @@
 ## Структура
 
 - `frontend/` — React + TypeScript + Vite, R3F/Three.js; UI і сцена мають окремих власників.
-- `backend/LunarNavigator.sln` — **єдине активне .NET 8 solution**: API/Core/scaffold tests та збережені ByteForce.Horizons, Horizons tests і live sample. Старе root `.slnx` прибрано.
-- `backend/ByteForce.Horizons/`, `backend/ByteForce.Horizons.Tests/`, `backend/samples/Horizons.Sample/` — попередній Horizons внесок; scientific `.cs` не переписано, project metadata retargeted на `net8.0`.
+- `backend/LunarNavigator.sln` — **єдине активне .NET 8 solution**: API/Core/scaffold tests та збережені LunarNavigator.Horizons, Horizons tests і live sample. Старе root `.slnx` прибрано.
+- `backend/LunarNavigator.Horizons/`, `backend/tests/LunarNavigator.Horizons.Tests/`, `backend/samples/LunarNavigator.Horizons.Sample/` — попередній Horizons внесок; scientific `.cs` не переписано, project metadata retargeted на `net8.0`.
 - `contracts/` — frozen API/scene контракти та fixtures; не дублюйте DTO.
 - `people/`, `prompts/`, `issues/` — вихідні персональні беклоги й детальні завдання.
 - `docs/agents/`, `docs/integration/` — актуальні інструкції роботи та передачі результатів.
@@ -96,12 +96,12 @@ API працює до `Ctrl+C`. Маршрут health за контрактом:
 
 ### Збережений Horizons внесок і live opt-in
 
-Horizons клієнт, observer validation, CSV/JSON parsing та HTTP-handler tests були внесені до architecture scaffold. Вони збережені, а не реалізовані заново; деталі й наукові обмеження — у [Horizons guide](docs/horizons.md). Тестовий набір містить **24 offline Horizons cases, 20 BE-01 cases та 2 scaffold health/provider cases**. Offline tests не звертаються до NASA; початковий restore потребує NuGet. Це опис набору, не новий звіт про успішний запуск — фактичні результати веде [parent validation](docs/integration/bootstrap-validation.md).
+Horizons клієнт, observer validation, CSV/JSON parsing та HTTP-handler tests були внесені до architecture scaffold. Вони збережені, а не реалізовані заново; деталі й наукові обмеження — у [Horizons guide](docs/horizons.md). Тестовий набір містить **19 Horizons, 5 Models, 8 Core/coordinates і 22 API cases**. Offline tests не звертаються до NASA; початковий restore потребує NuGet. Це опис набору, не новий звіт про успішний запуск — фактичні результати веде [parent validation](docs/integration/bootstrap-validation.md).
 
 Із кореня clone, **лише з явним дозволом на живий мережевий запит**:
 
 ```sh
-dotnet run --project backend/samples/Horizons.Sample
+dotnet run --project backend/samples/LunarNavigator.Horizons.Sample
 ```
 
 Sample викликає зовнішній NASA JPL Horizons; не є startup кроком, CI/offline test або доказом LOLA terrain visibility. API bootstrap ще не підключає його до analyze/compare. Клієнт не потребує API key.
@@ -158,4 +158,4 @@ const config = await api.getConfig(controller.signal);
 - Великі DEM/GLB не комітити: публікувати через погоджене static storage. Credentials, hosting, NASA submission — людські дії з явним дозволом.
 - Після merge lane ще потрібні wiring, реальний E2E, scientific validation і deploy. Цей README не засвідчує, що вони виконані.
 
-Спільні моделі LunarObserver/LunarObservation збережені в `backend/ByteForce.Models/`, окремо від Horizons. BE-01, стилі та тести зі stash інтегровані в `backend/LunarNavigator.Api/` і `backend/LunarNavigator.Tests/`. Резервний stash GitHub Desktop залишено; повторно застосовувати його не потрібно.
+Спільні моделі LunarObserver/LunarObservation збережені в `backend/LunarNavigator.Models/`, окремо від Horizons. BE-01, стилі та тести зі stash інтегровані в `backend/LunarNavigator.Api/` і `backend/tests/LunarNavigator.Api.Tests/`. Резервний stash GitHub Desktop залишено; повторно застосовувати його не потрібно.

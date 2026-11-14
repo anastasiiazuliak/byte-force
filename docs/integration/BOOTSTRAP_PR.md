@@ -36,6 +36,6 @@ ARC-01, ARC-02 audit/validators, INT-01 та OPS-01 configuration. HUM-01 settin
 
 1. Координатор повідомляє один повний main SHA; усі учасники створюють feature/lane-N зі спільної бази за README.
 2. Власник вмикає required frontend/backend/repository checks, незалежний review, no-force-push protection.
-3. Lane 3 повторно використовує backend/ByteForce.Horizons; lane 4 виправляє documented data integrity/provenance findings у своїй роботі. Contracts змінюються лише окремим погодженим review.
+3. Lane 3 повторно використовує backend/LunarNavigator.Horizons; lane 4 виправляє documented data integrity/provenance findings у своїй роботі. Contracts змінюються лише окремим погодженим review.
 
 Автоматичний merge не дозволений і не виконується.

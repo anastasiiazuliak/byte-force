@@ -117,7 +117,7 @@
 **Співпраця/review:** залучайте інших учасників для shared контрактів; власник PR — №4
 **Пріоритет:** P0  
 **Залежності:** HUM-02, ARC-03  
-**Область файлів:** `backend/LunarNavigator.Core/Terrain/`, `backend/LunarNavigator.Api/Infrastructure/Terrain/`, `backend/LunarNavigator.Tests/Terrain/`
+**Область файлів:** `backend/LunarNavigator.Core/Terrain/`, `backend/LunarNavigator.Api/Infrastructure/Terrain/`, `backend/tests/LunarNavigator.Core.Tests/Terrain/`
 
 ## Мета
 
@@ -214,7 +214,7 @@
 **Співпраця/review:** залучайте інших учасників для shared контрактів; власник PR — №4
 **Пріоритет:** P0  
 **Залежності:** DATA-01, ARC-03  
-**Область файлів:** `backend/LunarNavigator.Core/Horizon/`, `backend/LunarNavigator.Tests/Horizon/`, `docs/SCIENCE_METHOD.md`
+**Область файлів:** `backend/LunarNavigator.Core/Horizon/`, `backend/tests/LunarNavigator.Api.Tests/Horizon/`, `docs/SCIENCE_METHOD.md`
 
 ## Мета
 
@@ -263,7 +263,7 @@
 **Співпраця/review:** залучайте інших учасників для shared контрактів; власник PR — №4
 **Пріоритет:** P0  
 **Залежності:** DATA-02, BE-02  
-**Область файлів:** `docs/VALIDATION_REPORT.md`, `backend/LunarNavigator.Tests/Scientific/`, `contracts/fixtures/science-checks/`
+**Область файлів:** `docs/VALIDATION_REPORT.md`, `backend/tests/LunarNavigator.Api.Tests/Scientific/`, `contracts/fixtures/science-checks/`
 
 ## Мета
 

@@ -22,8 +22,8 @@ The exact Moon DEM's CRS, vertical datum, projected bounds, precise longitude co
 |---|---|---|
 | #1 3D | `frontend/src/features/explorer/**`, `docs/3d/**` | frontend app shell, API types, backend, contracts |
 | #2 UI | `frontend/src/features/{scenario-form,analysis,timeline,compare,methodology,export}/**`, `frontend/src/components/**`, `frontend/src/styles/**`, `frontend/src/app/**` | 3D internals, API types, backend, contracts |
-| #3 Backend | `backend/LunarNavigator.Api/**`, `backend/LunarNavigator.Core/{Ephemeris,Analysis,Comparison,Map}/**`, tests in `backend/LunarNavigator.Tests/Api/**` | Terrain/Horizon internals, contracts, frontend |
-| #4 Data | `data-pipeline/**`, `public-assets/**`, `backend/LunarNavigator.Core/{Terrain,Horizon}/**`, `backend/LunarNavigator.Tests/Terrain/**`, `docs/science/**` | API controller/Program.cs, frontend, contracts |
+| #3 Backend | `backend/LunarNavigator.Api/**`, `backend/LunarNavigator.Core/{Ephemeris,Analysis,Comparison,Map}/**`, tests in `backend/tests/LunarNavigator.Api.Tests/**` | Terrain/Horizon internals, contracts, frontend |
+| #4 Data | `data-pipeline/**`, `public-assets/**`, `backend/LunarNavigator.Core/{Terrain,Horizon}/**`, `backend/tests/LunarNavigator.Core.Tests/Terrain/**`, `docs/science/**` | API controller/Program.cs, frontend, contracts |
 | #5 Integrator | `frontend/src/api/**`, `frontend/src/mocks/**`, `frontend/src/integration/**`, `frontend/e2e/**`, `infra/**`, `.github/**`, `scripts/**`, `docs/integration/**` | FEUI app shell, 3D internals, backend services, frozen contracts |
 
 Each lane starts in its own **git worktree/branch** from the same scaffold commit. No common working directory and no simultaneous edits to the same files. A branch may include *interface adapters/stubs in its owned zone*, but must not modify frozen shared contracts in its first wave. Put proposed contract corrections in `docs/<lane>/contract-change-request.md`, then merge only after review.

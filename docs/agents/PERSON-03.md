@@ -12,7 +12,7 @@
 
 ## Ownership
 
-`backend/LunarNavigator.Api/**`, `backend/LunarNavigator.Core/{Ephemeris,Analysis,Comparison,Map}/**`, `backend/LunarNavigator.Tests/Api/**`. Не редагуй Terrain/Horizon, frontend і frozen contracts.
+`backend/LunarNavigator.Api/**`, `backend/LunarNavigator.Core/{Ephemeris,Analysis,Comparison,Map}/**`, `backend/tests/LunarNavigator.Api.Tests/**`. Не редагуй Terrain/Horizon, frontend і frozen contracts.
 
 Якщо старий Issue називає файл поза цією зоною, погодь зміну з власником. Не перенось межі самовільно. Спільну документацію змінюйте координовано.
 

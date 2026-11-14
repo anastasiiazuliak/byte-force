@@ -39,7 +39,7 @@ git rev-parse HEAD
 
 ## Уже інтегровані внески
 
-Horizons збережено в `backend/ByteForce.Horizons/`; 24 offline cases не перевіряють
+Horizons збережено в `backend/LunarNavigator.Horizons/`; 24 offline cases не перевіряють
 живий NASA сервіс. Використовуйте [готову бібліотеку](../horizons.md), а не новий клієнт.
 HUM-02 merged PR #4 (`c960326`, merge `92de0e8`): legacy `data/**` збережено,
 [зауваження аудиту](../DATA_SOURCES.md#audit-caveat) відкриті. Не повторюйте придбання
@@ -52,8 +52,8 @@ HUM-02 merged PR #4 (`c960326`, merge `92de0e8`): legacy `data/**` збереж�
 |---|---|
 | 1 | `frontend/src/features/explorer/**`, `docs/3d/**` |
 | 2 | `frontend/src/features/{scenario-form,analysis,timeline,compare,methodology,export}/**`, `frontend/src/{components,styles,app}/**` |
-| 3 | `backend/LunarNavigator.Api/**`, `backend/LunarNavigator.Core/{Ephemeris,Analysis,Comparison,Map}/**`, `backend/LunarNavigator.Tests/Api/**` |
-| 4 | `data-pipeline/**`, `public-assets/**`, `backend/LunarNavigator.Core/{Terrain,Horizon}/**`, `backend/LunarNavigator.Tests/Terrain/**`, `docs/science/**` |
+| 3 | `backend/LunarNavigator.Api/**`, `backend/LunarNavigator.Core/{Ephemeris,Analysis,Comparison,Map}/**`, `backend/tests/LunarNavigator.Api.Tests/**` |
+| 4 | `data-pipeline/**`, `public-assets/**`, `backend/LunarNavigator.Core/{Terrain,Horizon}/**`, `backend/tests/LunarNavigator.Core.Tests/Terrain/**`, `docs/science/**` |
 | 5 | `frontend/src/{api,mocks,integration}/**`, `frontend/e2e/**`, `infra/**`, `.github/**`, `scripts/**`, `docs/integration/**` |
 
 README і `docs/agents/**` — координована документація; не редагувати одночасно з іншими авторами. Якщо старий Issue пропонує файл поза актуальною ownership-матрицею, погодьте передачу з власником, не розширюйте свою зону самовільно. Особливо: №4 не править `Program.cs`, №5 не переписує app shell №2, №1 не імпортує UI internals.

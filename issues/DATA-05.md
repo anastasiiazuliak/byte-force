@@ -8,7 +8,7 @@
 **Співпраця/review:** залучайте інших учасників для shared контрактів; власник PR — №4
 **Пріоритет:** P0  
 **Залежності:** DATA-02, BE-02  
-**Область файлів:** `docs/VALIDATION_REPORT.md`, `backend/LunarNavigator.Tests/Scientific/`, `contracts/fixtures/science-checks/`
+**Область файлів:** `docs/VALIDATION_REPORT.md`, `backend/tests/LunarNavigator.Api.Tests/Scientific/`, `contracts/fixtures/science-checks/`
 
 ## Мета
 
