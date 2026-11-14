@@ -55,3 +55,15 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Raw GIS / DEM Data and Large Assets
+data/raw/*
+!data/raw/.gitkeep
+*.tif
+*.tiff
+*.TIF
+*.TIFF
+*.grd
+*.bin
+public-assets/terrain/**/*.glb
+
