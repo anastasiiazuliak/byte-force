@@ -1,33 +1,27 @@
 # NASA JPL Horizons — C#
 
-Бібліотека `src/ByteForce.Horizons` для .NET 10 не потребує сторонніх пакетів або API-ключа.
+Бібліотека `backend/ByteForce.Horizons` для .NET 8 не потребує сторонніх пакетів або API-ключа.
 Вона отримує положення центрів Сонця та Землі для точки на Місяці в один момент часу.
 
 ## Де лежить код
 
-Усі класи інтеграції з API вже відокремлені в папці `src/ByteForce.Horizons`.
+Усі класи інтеграції з API вже відокремлені в папці `backend/ByteForce.Horizons`.
 Приклад запуску й перевірки — окремі програми, які підключають цю бібліотеку:
 
 ```text
-src/ByteForce.Models/             ← спільні моделі LunarObserver і LunarObservation
-src/ByteForce.Horizons/           ← клієнт, інтерфейс та винятки Horizons API
-samples/Horizons.Sample/           ← програма для реального запиту до NASA
-tests/ByteForce.Horizons.Tests/    ← перевірки без звернення до NASA
+backend/ByteForce.Horizons/            ← класи для роботи з Horizons API
+backend/samples/Horizons.Sample/           ← програма для реального запиту до NASA
+backend/ByteForce.Horizons.Tests/    ← перевірки без звернення до NASA
 docs/horizons.md                   ← документація
-ByteForce.slnx                    ← рішення, яке об'єднує чотири C#-проєкти
+backend/LunarNavigator.sln         ← рішення для всіх семи C#-проєктів
 ```
 
-Спільні моделі розташовані в окремій бібліотеці `ByteForce.Models`, а клієнт, інтерфейс і винятки — у `ByteForce.Horizons`.
-`ByteForce.Horizons` підключає `ByteForce.Models` через `ProjectReference`. Майбутні модулі рельєфу й аналізу також можуть підключати цю бібліотеку без залежності від клієнта Horizons.
-`ByteForce.Models` не залежить від інших проєктів і містить лише моделі даних та їхню валідацію.
-`LunarObserver` описує вхідне місце спостереження, `LunarObservation` — результат для одного моменту.
-Модуль LOLA ще не додано.
+LOLA/Terrain/Horizon реалізується окремо у `backend/LunarNavigator.Core/{Terrain,Horizon}/` за [frozen contract](../PARALLEL_CONTRACT.md). Scientific `.cs` існуючого Horizons внеску збережено без змін; змінено layout і project metadata для `net8.0`. `backend/LunarNavigator.sln` — єдине активне рішення; старе root `.slnx` прибрано.
 
 ## Використання
 
 ```csharp
 using ByteForce.Horizons;
-using ByteForce.Models;
 
 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
 IHorizonsClient horizons = new HorizonsClient(http);
@@ -89,14 +83,16 @@ LOLA DEM, GDAL і розрахунок профілю місцевого гор�
 
 ```powershell
 # Зібрати бібліотеку, приклад і перевірки.
-dotnet build ByteForce.slnx
+dotnet build backend/LunarNavigator.sln
 
 # Перевірити клієнт без інтернету.
-dotnet test ByteForce.slnx
+dotnet test backend/LunarNavigator.sln
 
-# Викликати Horizons API та вивести результат від NASA.
-dotnet run --project samples/Horizons.Sample
+# LIVE OPT-IN: лише після явного дозволу; викликає NASA через інтернет.
+dotnet run --project backend/samples/Horizons.Sample
 ```
+
+24 offline Horizons test cases, 20 BE-01 cases та 2 scaffold health/provider cases не є живою перевіркою NASA. Команди вище — інструкції, не звіт про запуск у цій документаційній зміні; фактичні результати див. у [parent validation](integration/bootstrap-validation.md).
 
 Тести використовують xUnit і підставний HTTP handler; лише sample викликає NASA через інтернет.
 Тестові класи розділені за призначенням: `LunarObserverTests`, `HorizonsClientRequestTests`, `HorizonsClientResponseTests`.
@@ -104,3 +100,5 @@ dotnet run --project samples/Horizons.Sample
 
 Джерела: [Horizons API](https://ssd-api.jpl.nasa.gov/doc/horizons.html),
 [системи координат і значення observer quantities](https://ssd.jpl.nasa.gov/horizons/manual.html).
+
+Спільні типи `LunarObserver` і `LunarObservation` розташовані в `backend/ByteForce.Models/` (namespace `ByteForce.Models`); Horizons підключає їх через ProjectReference.

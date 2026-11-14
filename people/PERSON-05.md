@@ -1,0 +1,30 @@
+# Людина №5 — Інтегратор / CI / QA
+
+> **Current start rule:** Start lane implementation only AFTER the architecture PR is merged into `main`, from the same coordinator-recorded full `origin/main` SHA in all five clones. Repository: `git@github.com:anastasiiazuliak/byte-force.git`. Do not use `57f0aee` or rerun historical bootstrap instructions. After that gate, lane dependencies do not block independent work.  See [current workflow](../docs/integration/team-workflow.md) and [data caveat](../docs/DATA_SOURCES.md#audit-caveat); this notice supersedes historical instructions below.
+
+**Твій старт:** Старт відразу: HUM-01 → ARC-01 → ARC-02. Тоді решта команди отримує репозиторій і контракти.
+
+**З ким узгоджувати:** Всі учасники: shared API/coordinate decisions, PR integration, CI та деплой; №5 координує HUM-04, але презентують усі.
+
+## Твій персональний беклог
+
+| Порядок | ID | Пріоритет | Назва | Блокується до виконання |
+|---:|---|---|---|---|
+| 1 | [HUM-01](../issues/HUM-01.md) | **P0** | Створити GitHub-репозиторій, доступи та правила паралельної роботи | немає |
+| 2 | [ARC-01](../issues/ARC-01.md) | **P0** | Підняти монорепозиторій: React, .NET 8, data-pipeline, contracts | HUM-01 |
+| 3 | [ARC-02](../issues/ARC-02.md) | **P0** | Зафіксувати OpenAPI, TypeScript DTO та реалістичні тестові fixtures | ARC-01 |
+| 4 | [HUM-03](../issues/HUM-03.md) | **P0** | Обрати й підготувати демо-хостинг, домен та секрети | HUM-01 |
+| 5 | [INT-01](../issues/INT-01.md) | **P0** | Підготувати frontend API client, mocks та contract tests | ARC-02, ARC-01 |
+| 6 | [OPS-01](../issues/OPS-01.md) | **P0** | Налаштувати CI: build, lint, test, OpenAPI validation і PR-checks | ARC-01, ARC-02 |
+| 7 | [INT-02](../issues/INT-02.md) | **P0** | Підключити реальний API до 3D та UI для end-to-end сценарію | INT-01, BE-03, FE3D-03, FEUI-03 |
+| 8 | [OPS-02](../issues/OPS-02.md) | **P0** | Задеплоїти API, UI та static 3D/imagery assets одним публічним URL | HUM-03, INT-02, OPS-01, DATA-03 |
+| 9 | [QA-01](../issues/QA-01.md) | **P0** | Зробити наскрізні тести: вибір місця, дата, аналіз, compare, збої | INT-02, BE-04, FEUI-05 |
+| 10 | [HUM-04](../issues/HUM-04.md) | **P0** | Підготувати презентацію, демонстраційний сценарій і подачу NASA | QA-01, OPS-02 |
+
+## Як виконувати
+
+1. Обери першу доступну P0-таску зі списку, відкрий Markdown за посиланням та перевір «Залежності».
+2. Працюй у своїй гілці `feature/TASK-ID-short-name` і передавай Codex **одне** чітке завдання за раз.
+3. Не змінюй чужі каталоги й спільні контракти без погодженого PR; використовуй тимчасові fixtures лише як DEMO.
+4. У Pull Request прикріпи результати тестів та короткий звіт, у GitHub Issue постав свій акаунт в `Assignees`.
+5. Коли задача Done — бери наступну доступну P0. До P1/P2 переходьте після робочого основного сценарію.

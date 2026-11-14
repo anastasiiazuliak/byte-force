@@ -1,9 +1,0 @@
-# 3D scene transform — contract, NOT invented lunar coordinates
-
-- Coordinates sent to the backend are `latitude`/`longitude` in **degrees**, as verified from the DEM datum. Do not use Earth WGS84 or Web Mercator.
-- A dataset-derived **south polar stereographic** CRS performs `lat/lon <-> projected easting/northing (meters)`. The exact PROJ definition must be read from source metadata and validated by person #4. A raycast without verified CRS MUST NOT claim scientifically correct lunar coordinates.
-- The agreed **render axis convention** for projected tile scene: `scene.x = eastingM - originEastingM`, `scene.y = heightM - verticalOriginM`, `scene.z = -(northingM - originNorthingM)`. Scene x/z are projected-grid axes, NOT automatically global lunar east/north at every point.
-- `sceneTransform` comes from `/api/v1/map/metadata`, with `validated=true` only after crosschecking control points; its origins use the *same unit, source CRS and vertical reference* as the generated mesh. The texture/mesh origin is authored in local tile coordinates; the loader positions each tile using manifest bounds.
-- Lighting: a Moon-fixed ephemeris vector cannot be assigned directly to the projected scene axes without a **validated rotation/transform**. Until available, use plainly labeled illustrative art lighting and keep it separate from verified visibility data. Sunset/earthset computed by backend.
-- For first iteration, FE3D works with a clearly labeled demo mesh and a fake camera target; raycast allows interaction but does not emit science-backed coordinates until verified transform/manifest arrives. Person #4 validates origin, tile alignment and coordinates without touching FE code.
-- Geometric height for observer and DEM need an explicit common reference. Return `null`/warnings when the vertical datum isn't verified, not made-up conversions.

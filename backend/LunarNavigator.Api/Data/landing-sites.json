@@ -1,0 +1,20 @@
+{
+  "sites": [
+    {
+      "id": "demo-a",
+      "name": "DEMO Site A",
+      "description": "DEMO: synthetic selection point; not a verified landing site or NASA measurement.",
+      "latitude": -89.5,
+      "longitude": 25,
+      "sourceUrl": null
+    },
+    {
+      "id": "demo-b",
+      "name": "DEMO Site B",
+      "description": "DEMO: synthetic comparison point; not a verified landing site or NASA measurement.",
+      "latitude": -88.7,
+      "longitude": 42,
+      "sourceUrl": null
+    }
+  ]
+}
