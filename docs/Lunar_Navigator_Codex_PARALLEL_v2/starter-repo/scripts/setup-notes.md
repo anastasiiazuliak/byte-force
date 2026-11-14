@@ -1,1 +1,0 @@
-Local setup from the package root: `bash scripts/bootstrap.sh` creates a disposable git-ready working root at target path. Then `bash scripts/start-worktrees.sh TARGET_REPO` creates five worktrees from the shared initial commit. IMPORTANT: avoid auto-push; humans choose remote and permissions.
