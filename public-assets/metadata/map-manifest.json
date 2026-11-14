@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "regionId": "lunar-south-pole",
+    "projection": {
+      "name": "south-polar-stereographic",
+      "projDefinition": "+proj=stere +lat_0=-90 +lon_0=0 +R=1737400 +units=m +no_defs",
+      "sourceFrame": "MOON_ME",
+      "linearUnit": "m"
+    },
+    "render": {
+      "type": "projected-terrain",
+      "tileSize": 256,
+      "minZoom": 0,
+      "maxZoom": 0,
+      "boundsMeters": {
+        "minX": -16320.0,
+        "minY": -17280.0,
+        "maxX": -6240.0,
+        "maxY": -7200.0
+      },
+      "sceneTransform": {
+        "originEastingM": -11308.18777098865,
+        "originNorthingM": -12258.857997599333,
+        "verticalOriginM": 1926.098388671875,
+        "validated": true
+      }
+    },
+    "assets": {
+      "terrainTemplate": null,
+      "surfaceTemplate": null,
+      "hillshadeTemplate": null,
+      "demoMeshUrl": "/terrain/0/0/0.glb"
+    },
+    "terrainDataset": {
+      "id": "LDEM_80S_80MPP_ADJ",
+      "sourceResolutionMeters": 80.0,
+      "verticalReference": "Moon (2015) Sphere R=1737400m",
+      "metadataVerified": true
+    }
+  },
+  "requiredAssets": [
+    "/terrain/0/0/0.glb"
+  ]
+}
