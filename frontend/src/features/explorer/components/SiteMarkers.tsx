@@ -3,11 +3,12 @@ import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import type { Coordinates } from '../../../api/types';
 import type { SiteSlot } from '../types';
-import { geographicToScene } from '../scene/projection';
+import { geographicToScene, type SceneTransformOrigin } from '../scene/projection';
 import { formatLunarCoordinates } from '../selection/selectionManager';
 import styles from '../styles/explorer.module.css';
 
 export interface SiteMarkersProps {
+  origin?: SceneTransformOrigin;
   selectedA?: Coordinates | null;
   selectedB?: Coordinates | null;
   activeSlot?: SiteSlot;
@@ -15,6 +16,7 @@ export interface SiteMarkersProps {
 }
 
 interface SingleMarkerProps {
+  origin?: SceneTransformOrigin;
   slot: SiteSlot;
   coords: Coordinates;
   isActive: boolean;
@@ -24,6 +26,7 @@ interface SingleMarkerProps {
 }
 
 const SingleMarker: React.FC<SingleMarkerProps> = ({
+  origin,
   slot,
   coords,
   isActive,
@@ -34,9 +37,9 @@ const SingleMarker: React.FC<SingleMarkerProps> = ({
   const [hovered, setHovered] = useState(false);
 
   const scenePos = useMemo(() => {
-    const pt = geographicToScene(coords, 0);
+    const pt = geographicToScene(coords, 0, origin);
     return new THREE.Vector3(pt.x, pt.y, pt.z);
-  }, [coords]);
+  }, [coords, origin]);
 
   const beaconHeight = 2200;
   const orbRadius = hovered ? 450 : 350;
@@ -121,6 +124,7 @@ const SingleMarker: React.FC<SingleMarkerProps> = ({
 };
 
 export const SiteMarkers: React.FC<SiteMarkersProps> = ({
+  origin,
   selectedA,
   selectedB,
   activeSlot = 'A',
@@ -130,6 +134,7 @@ export const SiteMarkers: React.FC<SiteMarkersProps> = ({
     <group name="site-markers">
       {selectedA && (
         <SingleMarker
+          origin={origin}
           slot="A"
           coords={selectedA}
           isActive={activeSlot === 'A'}
@@ -141,6 +146,7 @@ export const SiteMarkers: React.FC<SiteMarkersProps> = ({
 
       {selectedB && (
         <SingleMarker
+          origin={origin}
           slot="B"
           coords={selectedB}
           isActive={activeSlot === 'B'}

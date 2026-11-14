@@ -27,16 +27,16 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
     switch (status) {
       case 'ready':
         return (
-          <span className={`${styles.statusBadge} ${styles.statusReady}`} title="Verified DEM mesh loaded">
+          <span className={`${styles.statusBadge} ${styles.statusReady}`} title="GLB asset loaded; coordinate verification depends on runtime metadata">
             <span className={styles.statusDot} />
             Terrain: Ready (GLB)
           </span>
         );
       case 'demo-only':
         return (
-          <span className={`${styles.statusBadge} ${styles.statusDemo}`} title="Dev-only 3D polar relief diorama (DATA-03 pending)">
+          <span className={`${styles.statusBadge} ${styles.statusDemo}`} title="Synthetic procedural relief; not NASA terrain or verified geography">
             <span className={styles.statusDot} />
-            3D Diorama (LOLA Polar)
+            Synthetic terrain · fallback
           </span>
         );
       case 'loading':
@@ -67,11 +67,11 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
             }`}
             title={
               isHorizonsLighting
-                ? 'Solar vector driven by verified JPL Horizons ephemeris'
+                ? 'Supplied Moon-fixed vector; graphical lighting remains illustrative'
                 : 'Preview lighting (Polar low grazing angle ~2.5°); not an official eclipse calculation'
             }
           >
-            {isHorizonsLighting ? '☀ Sun: Horizons Vector' : '☀ Sun: Preview Grazing (2.5°)'}
+            {isHorizonsLighting ? '☀ Supplied solar vector · illustrative' : '☀ Artistic lighting · not ephemeris'}
           </span>
         </div>
 
@@ -108,7 +108,7 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
             <li><kbd>R</kbd>: Reset to South Pole oblique view</li>
             <li><kbd>T</kbd>: Top-down nadir view</li>
             <li><kbd>F</kbd>: Fit region to view</li>
-            <li><kbd>1</kbd> / <kbd>2</kbd>: Camera presets (South Pole / Shackleton)</li>
+            <li><kbd>1</kbd> / <kbd>2</kbd>: Camera presets (overview / close-up)</li>
           </ul>
         </div>
       )}
@@ -137,7 +137,7 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
             type="button"
             className={`${styles.controlButton} ${currentPreset?.id === 'fitRegion' ? styles.activeButton : ''}`}
             onClick={onFitRegion}
-            title="Fit entire 80°S-90°S region (Shortcut: F)"
+            title="Wide illustrative camera view (Shortcut: F)"
           >
             Fit Region (F)
           </button>
@@ -148,9 +148,9 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
             type="button"
             className={`${styles.controlButton} ${currentPreset?.id === 'shackleton' ? styles.activeButton : ''}`}
             onClick={() => onSelectPreset('shackleton')}
-            title="Close-up inspection of Shackleton crater rim (Shortcut: 2)"
+            title="Illustrative close-up camera preset (Shortcut: 2)"
           >
-            Shackleton Rim (2)
+            Close-up (2)
           </button>
         </div>
       </div>

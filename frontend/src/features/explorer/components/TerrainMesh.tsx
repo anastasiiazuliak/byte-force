@@ -21,7 +21,8 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
   const [isLoadingGltf, setIsLoadingGltf] = useState(false);
   const meshRef = useRef<THREE.Mesh>(null);
 
-  const demoMeshUrl = metadata?.assets?.demoMeshUrl;
+  // Display-only contributed asset; geographic picking still requires verified metadata.
+  const demoMeshUrl = metadata?.assets?.demoMeshUrl ?? '/terrain/0/0/0.glb';
 
   const proceduralGeometry = useMemo(() => {
     return createSouthPoleDioramaGeometry({
@@ -51,6 +52,7 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
       return;
     }
 
+    setLoadedGltfScene(null);
     setIsLoadingGltf(true);
     onStatus?.('loading');
 

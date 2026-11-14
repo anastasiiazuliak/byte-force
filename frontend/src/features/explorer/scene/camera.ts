@@ -7,15 +7,15 @@ export const CAMERA_PRESETS: Record<string, CameraPreset> = {
   oblique: {
     id: 'oblique',
     name: 'South Pole Overview (Oblique)',
-    description: '35° perspective overlooking Shackleton Crater and Connecting Ridge',
+    description: 'Illustrative overview camera; geographic context depends on verified assets',
     position: [0, 28000, 42000],
     target: [0, 0, 0],
     fov: 48,
   },
   shackleton: {
     id: 'shackleton',
-    name: 'Shackleton Rim (Close-up)',
-    description: 'Low-angle inspection of Shackleton crater rim and candidate landing sites',
+    name: 'Illustrative Close-up',
+    description: 'Close-up camera preset; not a verified landing site',
     position: [-3500, 6500, 9500],
     target: [0, 1280, 0],
     fov: 45,

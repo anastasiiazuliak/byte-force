@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useMemo } from 'react';
+import React, { useRef, useCallback, useMemo, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Lighting } from './Lighting';
@@ -10,6 +10,7 @@ import type { CameraAnimationState } from '../scene/camera';
 import type { CameraPreset, SceneStatus, SceneSelectedSite, SiteSlot } from '../types';
 import { sceneToGeographic, geographicToScene } from '../scene/projection';
 import { validateLunarCoordinates } from '../selection/selectionManager';
+import { canUseGeographicTerrain } from '../scene/metadata';
 import { DragDetector } from '../selection/dragDetector';
 import type { MapMetadataResponse, Coordinates, IsoUtc } from '../../../api/types';
 
@@ -44,6 +45,9 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
   animationStateRef,
   controlsRef,
 }) => {
+  const [meshStatus, setMeshStatus] = useState<SceneStatus>('loading');
+  const geographicReady = meshStatus === 'ready' && canUseGeographicTerrain(metadata);
+  const handleStatus = useCallback((status: SceneStatus) => { setMeshStatus(status); onStatus?.(status); }, [onStatus]);
   const dragDetector = useMemo(() => new DragDetector({ maxMoveDistancePixels: 6 }), []);
   const isPointerDownValidClick = useRef(true);
 
@@ -65,6 +69,7 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
   const handleMeshClick = useCallback(
     (intersection: THREE.Intersection) => {
       if (!isPointerDownValidClick.current) return;
+      if (!geographicReady) { onOutOfBounds?.('Geographic picking unavailable: mesh or coordinate metadata is unverified. Enter coordinates manually.'); return; }
 
       const point = intersection.point;
       if (!point || !onSelectSite) return;
@@ -77,6 +82,10 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
           }
         : undefined;
 
+      const bounds = metadata?.render.boundsMeters;
+      if (bounds && origin && (point.x + origin.originEastingM < bounds.minX || point.x + origin.originEastingM > bounds.maxX || -point.z + origin.originNorthingM < bounds.minY || -point.z + origin.originNorthingM > bounds.maxY)) {
+        onOutOfBounds?.('Pick is outside the published terrain bounds.'); return;
+      }
       const geo = sceneToGeographic({ x: point.x, y: point.y, z: point.z }, origin);
 
       const validation = validateLunarCoordinates(geo.latitude, geo.longitude);
@@ -101,7 +110,7 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
         elevationM: geo.elevationM != null ? Math.round(geo.elevationM) : null,
       });
     },
-    [metadata, onSelectSite, onOutOfBounds, activeSlot]
+    [metadata, geographicReady, onSelectSite, onOutOfBounds, activeSlot]
   );
 
   return (
@@ -130,16 +139,17 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
 
       <TerrainMesh
         metadata={metadata}
-        onStatus={onStatus}
+        onStatus={handleStatus}
         onMeshClick={handleMeshClick}
       />
 
-      <SiteMarkers
+      {geographicReady && <SiteMarkers
+        origin={metadata?.render.sceneTransform ?? undefined}
         selectedA={selectedA}
         selectedB={selectedB}
         activeSlot={activeSlot}
         onMarkerClick={(_slot, coords) => {
-          const targetPt = geographicToScene(coords, 0);
+          const targetPt = geographicToScene(coords, 0, metadata?.render.sceneTransform ?? undefined);
           const controls = controlsRef.current;
           if (controls) {
             animationStateRef.current = {
@@ -154,7 +164,7 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
             };
           }
         }}
-      />
+      />}
 
       <SceneControls
         enableKeyboard={enableKeyboard}

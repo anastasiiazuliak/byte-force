@@ -18,6 +18,7 @@ import { ViewerOverlay } from './ViewerOverlay';
 import { SiteSlotSelector } from './SiteSlotSelector';
 import { WebGLFallback } from './WebGLFallback';
 import { LoadingSkeleton } from './LoadingSkeleton';
+import { canUseGeographicTerrain } from '../scene/metadata';
 import { checkWebGLSupport } from '../scene/webgl';
 import {
   CAMERA_PRESETS,
@@ -156,10 +157,13 @@ export const LunarTerrainViewer = forwardRef<
 
   const flyTo = useCallback(
     (location: { latitude: number; longitude: number }, elevationM: number = 0) => {
+      if (!canUseGeographicTerrain(metadata)) return;
       const transform = getFlyToTransform(location, elevationM);
-      triggerAnimationTo(transform.position, transform.target, 1200);
+      const origin = metadata!.render.sceneTransform!;
+      const translate = ([x, y, z]: [number, number, number]): [number, number, number] => [x - origin.originEastingM, y - origin.verticalOriginM, z + origin.originNorthingM];
+      triggerAnimationTo(translate(transform.position), translate(transform.target), 1200);
     },
-    [triggerAnimationTo]
+    [triggerAnimationTo, metadata]
   );
 
   useImperativeHandle(
