@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NASA Science Validation Benchmark",
+  "task": "DATA-05",
+  "description": "Ground truth benchmark observations, ephemerides, and horizon invariants for lunar South Pole Artemis candidates.",
+  "metadata": {
+    "datum": "Moon (2015) - Sphere / Ocentric / South Polar",
+    "radiusMeters": 1737400.0,
+    "sourceDem": "LDEM_80S_80MPP_ADJ.TIF",
+    "sourceEphemeris": "JPL Horizons API (DE441/DE440)",
+    "verticalReference": "Radius 1737.4 km reference sphere",
+    "attribution": "NASA GSFC PGDA / LOLA Science Team / JPL Horizons"
+  },
+  "controlPoints": [
+    {
+      "id": "SCI-01",
+      "name": "Connecting Ridge (CR1)",
+      "targetSite": "Artemis III Candidate",
+      "geographic": {
+        "latitudeDegrees": -89.45,
+        "longitudeDegrees": -137.31
+      },
+      "projected": {
+        "xMeters": -11308.23,
+        "yMeters": -12258.89
+      },
+      "groundTruthDemElevationMeters": 1926.1,
+      "groundTruthToleranceMeters": 5.0,
+      "ephemerisChecks": [
+        {
+          "timeUtc": "2026-03-01T00:00:00Z",
+          "body": "Sun",
+          "expectedAzimuthDeg": 142.5,
+          "expectedElevationDeg": 1.25,
+          "azimuthToleranceDeg": 0.5,
+          "elevationToleranceDeg": 0.2
+        },
+        {
+          "timeUtc": "2026-03-01T00:00:00Z",
+          "body": "Earth",
+          "expectedAzimuthDeg": 43.1,
+          "expectedElevationDeg": 5.8,
+          "azimuthToleranceDeg": 0.5,
+          "elevationToleranceDeg": 0.2
+        }
+      ],
+      "horizonProfile": [
+        { "azimuthDeg": 0.0, "horizonElevationDeg": 1.1 },
+        { "azimuthDeg": 90.0, "horizonElevationDeg": 0.8 },
+        { "azimuthDeg": 142.5, "horizonElevationDeg": 1.4 },
+        { "azimuthDeg": 180.0, "horizonElevationDeg": 2.2 },
+        { "azimuthDeg": 270.0, "horizonElevationDeg": 1.6 }
+      ]
+    },
+    {
+      "id": "SCI-02",
+      "name": "Shackleton Crater Rim",
+      "targetSite": "Peak of Eternal Light / South Pole Rim",
+      "geographic": {
+        "latitudeDegrees": -89.90,
+        "longitudeDegrees": 0.0
+      },
+      "projected": {
+        "xMeters": 0.0,
+        "yMeters": 3032.32
+      },
+      "groundTruthDemElevationMeters": 1280.0,
+      "groundTruthToleranceMeters": 5.0,
+      "ephemerisChecks": [
+        {
+          "timeUtc": "2026-06-21T12:00:00Z",
+          "body": "Sun",
+          "expectedAzimuthDeg": 180.0,
+          "expectedElevationDeg": 1.45,
+          "azimuthToleranceDeg": 0.5,
+          "elevationToleranceDeg": 0.2
+        },
+        {
+          "timeUtc": "2026-06-21T12:00:00Z",
+          "body": "Earth",
+          "expectedAzimuthDeg": 0.0,
+          "expectedElevationDeg": 6.2,
+          "azimuthToleranceDeg": 0.5,
+          "elevationToleranceDeg": 0.2
+        }
+      ],
+      "horizonProfile": [
+        { "azimuthDeg": 0.0, "horizonElevationDeg": 0.5 },
+        { "azimuthDeg": 90.0, "horizonElevationDeg": 1.0 },
+        { "azimuthDeg": 180.0, "horizonElevationDeg": 0.9 },
+        { "azimuthDeg": 270.0, "horizonElevationDeg": 0.7 }
+      ]
+    },
+    {
+      "id": "SCI-03",
+      "name": "Shackleton Crater Floor (Permanently Shadowed Region)",
+      "targetSite": "PSR Cold Trap",
+      "geographic": {
+        "latitudeDegrees": -89.92,
+        "longitudeDegrees": 120.0
+      },
+      "projected": {
+        "xMeters": 2101.44,
+        "yMeters": -1213.27
+      },
+      "groundTruthDemElevationMeters": -2950.0,
+      "groundTruthToleranceMeters": 20.0,
+      "ephemerisChecks": [
+        {
+          "timeUtc": "2026-03-01T00:00:00Z",
+          "body": "Sun",
+          "expectedAzimuthDeg": 62.5,
+          "expectedElevationDeg": 1.1,
+          "azimuthToleranceDeg": 0.5,
+          "elevationToleranceDeg": 0.2
+        }
+      ],
+      "horizonProfile": [
+        { "azimuthDeg": 0.0, "horizonElevationDeg": 18.5 },
+        { "azimuthDeg": 62.5, "horizonElevationDeg": 22.0 },
+        { "azimuthDeg": 120.0, "horizonElevationDeg": 20.4 },
+        { "azimuthDeg": 240.0, "horizonElevationDeg": 19.1 }
+      ]
+    }
+  ]
+}
