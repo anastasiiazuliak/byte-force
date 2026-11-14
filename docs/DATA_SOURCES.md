@@ -185,3 +185,17 @@
   [10.60903/gsfcpgda-lola-spole](https://doi.org/10.60903/gsfcpgda-lola-spole)
 * **Куратор архіву:**  
   Dr. Erwan Mazarico, Planetary Geology, Geophysics and Geochemistry Laboratory, NASA Goddard Space Flight Center.
+
+---
+
+## 7. Високодетальний DEM 5 м/піксель для локальної зони (P2-03)
+
+Для деталізації вибраного посадкового майданчика (наприклад, **Connecting Ridge CR1**) використовується офіційний високодетальний продукт NASA PGDA:
+
+* **Продукт:** `LDEM_875S_5MPP` (South Pole 5 m/pixel Polar Stereographic LOLA DEM, $87.5^\circ\text{S} - 90^\circ\text{S}$).
+* **Джерело:** [NASA GSFC PGDA](https://pgda.gsfc.nasa.gov/products/78) (Barker et al. / LOLA Science Team, Public Domain).
+* **CRS та датум:** `Moon (2015) - Sphere / Ocentric / South Polar`, $R = 1,737,400.0\text{ м}$, крок $5.0\text{ м/px}$.
+* **Нормалізація та перехід LOD (`data-pipeline/highres/build_highres_tiles.py`):**
+  * Всі high-res тайли (`/terrain/highres/{z}/{x}/{y}.glb`) приводяться до **тієї ж самої** висотної бази (`referenceElevationMeters`) та `meshLocalOrigin`, що й базовий $80\text{ м/px}$ DEM (`lod-tileset.json`), що гарантує відсутність вертикальних стрибків при зумі.
+  * Покриття обмежене лише локальним вікном (`fullSouthPoleCoverage: false`). Поза межами покриття або при `enabled: false` система безпечно використовує базовий $80\text{ м/px}$ DEM без поломки MVP.
+  * Маніфест [public-assets/metadata/highres-manifest.json](../public-assets/metadata/highres-manifest.json) містить явне provenance (`"High-resolution local DEM"`) та застереження, що науковий горизонт продовжує використовувати $80\text{ м/px}$ DEM, доки не підключено high-res horizon.

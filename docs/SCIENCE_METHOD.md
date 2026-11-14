@@ -68,3 +68,17 @@ At the lunar South Pole where solar elevation rarely exceeds $1.5^\circ$, omitti
   - Respects `MaxComputeMilliseconds`, returning a `TerrainApplied = false` partial result with a clear warning if exceeded.
 - **Caching:**
   - Profiles are cached in-memory by `(datasetKey, lat, lon, azStep, maxRange, rayStep, observerOffset)` with bounded FIFO eviction.
+
+---
+
+## 5. Scientific Illumination Raster Masks (P2-01)
+
+Visual Three.js directional shadow maps depend on GPU shadow bias, frustum size, and camera distance, and **do not account for lunar spherical curvature**. For scientific illumination overlays, `data-pipeline/illumination/build_illumination.py` precomputes physically accurate visibility masks:
+
+- **Method:** For each pixel $(x, y)$ in the LOLA DEM tile, a ray is marched along the Sun's JPL Horizons azimuth $(\alpha_\odot)$ up to `maxRayRangeMeters` (default $5\text{–}20\text{ km}$) with spherical curvature ($R = 1,737,400\text{ m}$), matching `LolaHorizonService`.
+- **Outputs:** RGBA WebP masks at `/illumination/{timeKey}/{z}/{x}/{y}.webp` and `public-assets/illumination/illumination-manifest.json`.
+  - Lit pixel: warm translucent highlight (`#FFE680`, $\alpha \approx 0.31$).
+  - Shadowed pixel: deep blue-black scientific shadow (`#080C18`, $\alpha \approx 0.71$).
+  - NoData pixel: fully transparent (`alpha = 0`).
+- **Performance & Cost:** On a $64 \times 64$ tile at $80\text{ m}$ ray step, offline generation takes **~170–220 ms per timestamp** in pure Python stdlib.
+- **Frontend Integration Proposal:** Overlay as an optional toggleable layer with an opacity slider, display the UTC timestamp and quality warning (`80 m/px DEM, point-source Sun`), and hide gracefully on HTTP 404 when no mask is precomputed for a tile.
