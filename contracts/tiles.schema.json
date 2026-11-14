@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://byteforce.space/schemas/tiles.schema.json",
+  "title": "LunarTileMapMetadata",
+  "description": "Schema for Lunar 3D meshes (GLB), raster textures (WebP), LOD hierarchy, and spatial transforms.",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "datasetId",
+    "crs",
+    "boundsProjectedMeters",
+    "boundsGeographic",
+    "rootTileExtentsMeters",
+    "minZoom",
+    "maxZoom",
+    "tileGridScheme",
+    "sceneTransform",
+    "layers"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "string",
+      "example": "1.0"
+    },
+    "datasetId": {
+      "type": "string",
+      "example": "LOLA_80S_80MPP"
+    },
+    "attribution": {
+      "type": "string",
+      "example": "NASA GSFC / LOLA Science Team (Barker et al., 2023)"
+    },
+    "crs": {
+      "type": "object",
+      "required": ["name", "projection", "datum", "radiusMeters", "standardParallel", "centralMeridian"],
+      "properties": {
+        "name": { "type": "string", "example": "Moon (2015) - Sphere / Ocentric / South Polar" },
+        "projection": { "type": "string", "example": "South Polar Stereographic" },
+        "datum": { "type": "string", "example": "Moon (2015) - Sphere" },
+        "radiusMeters": { "type": "number", "example": 1737400.0 },
+        "standardParallel": { "type": "number", "example": -90.0 },
+        "centralMeridian": { "type": "number", "example": 0.0 },
+        "falseEasting": { "type": "number", "example": 0.0 },
+        "falseNorthing": { "type": "number", "example": 0.0 }
+      }
+    },
+    "boundsProjectedMeters": {
+      "type": "object",
+      "required": ["minX", "maxX", "minY", "maxY"],
+      "properties": {
+        "minX": { "type": "number", "example": -304000.0 },
+        "maxX": { "type": "number", "example": 304000.0 },
+        "minY": { "type": "number", "example": -304000.0 },
+        "maxY": { "type": "number", "example": 304000.0 }
+      }
+    },
+    "boundsGeographic": {
+      "type": "object",
+      "required": ["minLatitude", "maxLatitude", "minLongitude", "maxLongitude"],
+      "properties": {
+        "minLatitude": { "type": "number", "example": -90.0 },
+        "maxLatitude": { "type": "number", "example": -80.0 },
+        "minLongitude": { "type": "number", "example": -180.0 },
+        "maxLongitude": { "type": "number", "example": 180.0 }
+      }
+    },
+    "rootTileExtentsMeters": {
+      "type": "number",
+      "description": "Width and height in meters of a zoom level 0 tile",
+      "example": 608000.0
+    },
+    "minZoom": {
+      "type": "integer",
+      "minimum": 0,
+      "example": 0
+    },
+    "maxZoom": {
+      "type": "integer",
+      "minimum": 0,
+      "example": 4
+    },
+    "tileGridScheme": {
+      "type": "string",
+      "enum": ["XYZ", "TMS"],
+      "description": "Tile naming convention: XYZ (top-to-bottom Y) or TMS (bottom-to-top Y)",
+      "example": "XYZ"
+    },
+    "sceneTransform": {
+      "type": "object",
+      "description": "Rules for converting projected coordinates (meters) to 3D scene (Three.js)",
+      "required": [
+        "axisMapping",
+        "verticalScale",
+        "referenceElevationMeters",
+        "meshLocalOrigin"
+      ],
+      "properties": {
+        "axisMapping": {
+          "type": "object",
+          "properties": {
+            "sceneX": { "type": "string", "example": "projectedX" },
+            "sceneY": { "type": "string", "example": "elevationMeters - referenceElevationMeters" },
+            "sceneZ": { "type": "string", "example": "-projectedY" }
+          }
+        },
+        "verticalScale": {
+          "type": "number",
+          "default": 1.0,
+          "description": "Vertical exaggeration factor (1.0 = true physical scale)",
+          "example": 1.0
+        },
+        "referenceElevationMeters": {
+          "type": "number",
+          "description": "Subtracted from physical elevation for floating-point 32-bit precision rebasing",
+          "example": 0.0
+        },
+        "meshLocalOrigin": {
+          "type": "string",
+          "enum": ["center", "southWestCorner"],
+          "example": "center"
+        }
+      }
+    },
+    "layers": {
+      "type": "object",
+      "properties": {
+        "terrainMesh": {
+          "type": "object",
+          "properties": {
+            "urlTemplate": { "type": "string", "example": "/terrain/{z}/{x}/{y}.glb" },
+            "format": { "type": "string", "example": "glb" },
+            "hasSkirts": { "type": "boolean", "default": true }
+          }
+        },
+        "hillshade": {
+          "type": "object",
+          "properties": {
+            "urlTemplate": { "type": "string", "example": "/tiles/hillshade/{z}/{x}/{y}.webp" },
+            "format": { "type": "string", "example": "image/webp" }
+          }
+        },
+        "imagery": {
+          "type": "object",
+          "properties": {
+            "urlTemplate": { "type": "string", "example": "/tiles/imagery/{z}/{x}/{y}.webp" },
+            "format": { "type": "string", "example": "image/webp" }
+          }
+        }
+      }
+    }
+  }
+}
