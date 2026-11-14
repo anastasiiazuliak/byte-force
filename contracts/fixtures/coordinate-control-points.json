@@ -1,0 +1,262 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LunarCoordinateControlPoints",
+  "description": "Standard ground truth reference points for lunar polar stereographic coordinate transformations and precision verification (ARC-03).",
+  "datum": {
+    "body": "Moon",
+    "referenceEllipsoid": "Sphere",
+    "radiusMeters": 1737400.0,
+    "projection": "South Polar Stereographic (Snyder / Moon 2015 Sphere)",
+    "standardParallelDegrees": -90.0,
+    "centralMeridianDegrees": 0.0,
+    "scaleFactor": 1.0,
+    "falseEastingMeters": 0.0,
+    "falseNorthingMeters": 0.0,
+    "rasterBoundsMeters": {
+      "minX": -304000.0,
+      "maxX": 304000.0,
+      "minY": -304000.0,
+      "maxY": 304000.0
+    },
+    "pixelScaleMeters": 80.0,
+    "rasterDimensions": {
+      "widthPixels": 7600,
+      "heightPixels": 7600
+    }
+  },
+  "controlPoints": [
+    {
+      "id": "CP-01",
+      "name": "Connecting Ridge (CR1)",
+      "siteType": "Artemis III Candidate Region",
+      "geographic": {
+        "latitudeDegrees": -89.45,
+        "longitudeDegrees": -137.31,
+        "longitude360Degrees": 222.69
+      },
+      "projected": {
+        "xMeters": -11308.23,
+        "yMeters": -12258.89
+      },
+      "rasterPixel": {
+        "column": 3658.65,
+        "row": 3953.24
+      },
+      "threeScene": {
+        "units": "meters",
+        "description": "X_scene = X_proj, Y_scene = elevation, Z_scene = -Y_proj (Right-Handed Y-Up)"
+      },
+      "estimatedElevationMeters": 1450.0,
+      "tolerance": {
+        "projectionMeters": 0.01,
+        "degrees": 0.000001
+      }
+    },
+    {
+      "id": "CP-02",
+      "name": "South Pole (Shackleton Rim)",
+      "siteType": "Geodetic Reference / Crater Rim",
+      "geographic": {
+        "latitudeDegrees": -89.90,
+        "longitudeDegrees": 0.0,
+        "longitude360Degrees": 0.0
+      },
+      "projected": {
+        "xMeters": 0.0,
+        "yMeters": 3032.32
+      },
+      "rasterPixel": {
+        "column": 3800.0,
+        "row": 3762.1
+      },
+      "threeScene": {
+        "units": "meters"
+      },
+      "estimatedElevationMeters": 1280.0,
+      "tolerance": {
+        "projectionMeters": 0.01,
+        "degrees": 0.000001
+      }
+    },
+    {
+      "id": "CP-03",
+      "name": "Exact Lunar South Pole",
+      "siteType": "Mathematical Singularity Test Point",
+      "geographic": {
+        "latitudeDegrees": -90.0,
+        "longitudeDegrees": 0.0,
+        "longitude360Degrees": 0.0
+      },
+      "projected": {
+        "xMeters": 0.0,
+        "yMeters": 0.0
+      },
+      "rasterPixel": {
+        "column": 3800.0,
+        "row": 3800.0
+      },
+      "threeScene": {
+        "units": "meters"
+      },
+      "estimatedElevationMeters": -1000.0,
+      "tolerance": {
+        "projectionMeters": 0.01,
+        "degrees": 0.000001
+      }
+    },
+    {
+      "id": "CP-04",
+      "name": "Malapert Mountain (Massif)",
+      "siteType": "Artemis III Candidate / Earth Direct Visibility Peak",
+      "geographic": {
+        "latitudeDegrees": -85.99,
+        "longitudeDegrees": -3.0,
+        "longitude360Degrees": 357.0
+      },
+      "projected": {
+        "xMeters": -6366.52,
+        "yMeters": 121479.59
+      },
+      "rasterPixel": {
+        "column": 3720.42,
+        "row": 2281.51
+      },
+      "threeScene": {
+        "units": "meters"
+      },
+      "estimatedElevationMeters": 5000.0,
+      "tolerance": {
+        "projectionMeters": 0.01,
+        "degrees": 0.000001
+      }
+    },
+    {
+      "id": "CP-05",
+      "name": "Faustini Rim A",
+      "siteType": "Artemis III Candidate Region",
+      "geographic": {
+        "latitudeDegrees": -87.31,
+        "longitudeDegrees": 77.02,
+        "longitude360Degrees": 77.02
+      },
+      "projected": {
+        "xMeters": 79500.19,
+        "yMeters": 18324.84
+      },
+      "rasterPixel": {
+        "column": 4793.75,
+        "row": 3570.94
+      },
+      "threeScene": {
+        "units": "meters"
+      },
+      "estimatedElevationMeters": 2100.0,
+      "tolerance": {
+        "projectionMeters": 0.01,
+        "degrees": 0.000001
+      }
+    },
+    {
+      "id": "CP-06",
+      "name": "Haworth Rim",
+      "siteType": "Artemis Candidate Region",
+      "geographic": {
+        "latitudeDegrees": -87.40,
+        "longitudeDegrees": -5.1,
+        "longitude360Degrees": 354.9
+      },
+      "projected": {
+        "xMeters": -7009.69,
+        "yMeters": 78542.06
+      },
+      "rasterPixel": {
+        "column": 3712.38,
+        "row": 2818.22
+      },
+      "threeScene": {
+        "units": "meters"
+      },
+      "estimatedElevationMeters": 1850.0,
+      "tolerance": {
+        "projectionMeters": 0.01,
+        "degrees": 0.000001
+      }
+    },
+    {
+      "id": "CP-07",
+      "name": "Amundsen Rim",
+      "siteType": "Artemis Candidate Region / Boundary Zone",
+      "geographic": {
+        "latitudeDegrees": -84.50,
+        "longitudeDegrees": 82.8,
+        "longitude360Degrees": 82.8
+      },
+      "projected": {
+        "xMeters": 165590.46,
+        "yMeters": 20918.91
+      },
+      "rasterPixel": {
+        "column": 5869.88,
+        "row": 3538.51
+      },
+      "threeScene": {
+        "units": "meters"
+      },
+      "estimatedElevationMeters": 2400.0,
+      "tolerance": {
+        "projectionMeters": 0.01,
+        "degrees": 0.000001
+      }
+    },
+    {
+      "id": "CP-08",
+      "name": "Coverage Boundary: Prime Meridian North",
+      "siteType": "Extreme Boundary Check (+Y Edge)",
+      "geographic": {
+        "latitudeDegrees": -80.0,
+        "longitudeDegrees": 0.0,
+        "longitude360Degrees": 0.0
+      },
+      "projected": {
+        "xMeters": 0.0,
+        "yMeters": 304005.61
+      },
+      "rasterPixel": {
+        "column": 3800.0,
+        "row": -0.07
+      },
+      "threeScene": {
+        "units": "meters"
+      },
+      "tolerance": {
+        "projectionMeters": 0.01,
+        "degrees": 0.000001
+      }
+    },
+    {
+      "id": "CP-09",
+      "name": "Coverage Boundary: East (+X Edge)",
+      "siteType": "Extreme Boundary Check (+X Edge)",
+      "geographic": {
+        "latitudeDegrees": -80.0,
+        "longitudeDegrees": 90.0,
+        "longitude360Degrees": 90.0
+      },
+      "projected": {
+        "xMeters": 304005.61,
+        "yMeters": 0.0
+      },
+      "rasterPixel": {
+        "column": 7600.07,
+        "row": 3800.0
+      },
+      "threeScene": {
+        "units": "meters"
+      },
+      "tolerance": {
+        "projectionMeters": 0.01,
+        "degrees": 0.000001
+      }
+    }
+  ]
+}
