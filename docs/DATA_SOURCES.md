@@ -1,9 +1,28 @@
 # NASA Data Sources & Terrain Model Specification (HUM-02)
 
+## Audit caveat
+
+> **Audit qualification, not a rewrite of the original claims below:** HUM-02 was
+> already merged in PR #4 (`c960326`, merge `92de0e8`); it has not been redone.
+> The original “complete / Ready for Review” status and metadata claims below are
+> historical contributor assertions, not new validation results. See the
+> [existing-code audit](architecture/EXISTING_CODE_AUDIT.md).
+>
+> Outstanding: checksums/content integrity; Python short-response success and
+> combined verify/download behavior; PowerShell failure exit status; environment
+> path semantics; atomic download handling; original reproducible GDAL logs;
+> source-specific terms; point-specific citations and height evidence; actual
+> imagery alignment; two-person acquisition evidence; coverage/NoData footprint
+> versus square raster bounds; DEM/Horizons frame and vertical-datum alignment.
+> HTTP byte counts and Accept-Ranges alone do not establish raster validity or COG
+> conformance. No live download, HEAD check or scientific verification was performed
+> by this documentation reconciliation. Existing acquisition code/data is unchanged.
+
+
 **Проєкт:** Lunar Landing Site Navigator — Byte Force (NASA Space Apps 2026)  
 **Відповідальний:** Людина №4 (LOLA / Data)  
 **Статус задачі:** Завершено (Ready for Review)  
-**Пов'язані задачі:** [HUM-02](file:///d:/byte-force/docs/Lunar_Navigator_TASK_BACKLOG.md#hum-02), [ARC-03](file:///d:/byte-force/docs/Lunar_Navigator_TASK_BACKLOG.md#arc-03), [DATA-01](file:///d:/byte-force/docs/Lunar_Navigator_TASK_BACKLOG.md#data-01)
+**Пов'язані задачі:** [HUM-02](Lunar_Navigator_TASK_BACKLOG.md#hum-02), [ARC-03](Lunar_Navigator_TASK_BACKLOG.md#arc-03), [DATA-01](Lunar_Navigator_TASK_BACKLOG.md#data-01)
 
 ---
 
@@ -140,8 +159,8 @@
 
 1. **`.gitignore`:** Директорію `data/raw/` та патерни `*.tif`, `*.tiff`, `*.glb` внесено до файлу ігнорування.
 2. **Автоматизований скрипт завантаження:**
-   * Python CLI: [data/scripts/download_data.py](file:///d:/byte-force/data/scripts/download_data.py)
-   * PowerShell: [data/scripts/download_data.ps1](file:///d:/byte-force/data/scripts/download_data.ps1)
+   * Python CLI: [data/scripts/download_data.py](../data/scripts/download_data.py)
+   * PowerShell: [data/scripts/download_data.ps1](../data/scripts/download_data.ps1)
 3. **Змінні середовища:**
    * `LUNAR_DEM_PATH` — прямий шлях до `.TIF` файлу.
    * `LUNAR_DATA_DIR` — каталог із набором растрових даних.

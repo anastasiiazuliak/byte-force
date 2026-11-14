@@ -1,3 +1,5 @@
+> **Historical combined backlog, preserved:** Current startup is [START_ALL_5](../START_ALL_5.md), after architecture PR merge and one common `origin/main` SHA. Existing Horizons is preserved; HUM-02 already merged in PR #4, with [audit caveats](DATA_SOURCES.md#audit-caveat) outstanding. Old prompts are not instructions to recreate these contributions.
+
 # Lunar Navigator — задачі для 5 розробників / Codex-ready backlog
 
 **Дата:** 14.11.2026 · **Статус:** пропозиція для команди, не звіт про вже готовий код.  
