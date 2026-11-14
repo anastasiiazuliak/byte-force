@@ -67,6 +67,7 @@ data/raw/*
 *.bin
 !backend/LunarNavigator.Tests/Terrain/Fixtures/*.tif
 public-assets/terrain/**/*.glb
+!public-assets/terrain/0/0/0.glb
 
 # Parallel-development frontend, local validation and secret configuration
 node_modules/
@@ -87,6 +88,7 @@ __pycache__/
 *.log
 *.tmp
 *.glb
+!public-assets/terrain/0/0/0.glb
 *.gltf
 *.webp
 *.cog
