@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "regionId": "lunar-south-pole",
+    "projection": {
+      "name": "south-polar-stereographic",
+      "projDefinition": "+proj=stere +lat_0=-90 +lon_0=0 +R=1737400 +units=m +no_defs",
+      "sourceFrame": "MOON_ME",
+      "linearUnit": "m"
+    },
+    "render": {
+      "type": "projected-terrain",
+      "tileSize": 256,
+      "minZoom": 0,
+      "maxZoom": 2,
+      "boundsMeters": {
+        "minX": -16320.0,
+        "maxX": -6240.0,
+        "minY": -17280.0,
+        "maxY": -7200.0
+      },
+      "sceneTransform": {
+        "originEastingM": -11308.18777098865,
+        "originNorthingM": -12258.857997599333,
+        "verticalOriginM": 1937.50146484375,
+        "validated": true
+      }
+    },
+    "assets": {
+      "terrainTemplate": "/terrain/{z}/{x}/{y}.glb",
+      "surfaceTemplate": null,
+      "hillshadeTemplate": "/tiles/hillshade/{z}/{x}/{y}.webp",
+      "demoMeshUrl": "/terrain/0/0/0.glb"
+    },
+    "terrainDataset": {
+      "id": "LDEM_80S_80MPP_ADJ",
+      "sourceResolutionMeters": 80.0,
+      "verticalReference": "Moon (2015) Sphere R=1737400m",
+      "metadataVerified": true
+    }
+  },
+  "requiredAssets": [
+    "/terrain/0/0/0.glb",
+    "/tiles/hillshade/0/0/0.webp",
+    "/terrain/1/0/0.glb",
+    "/tiles/hillshade/1/0/0.webp",
+    "/terrain/1/0/1.glb",
+    "/tiles/hillshade/1/0/1.webp",
+    "/terrain/1/1/0.glb",
+    "/tiles/hillshade/1/1/0.webp",
+    "/terrain/1/1/1.glb",
+    "/tiles/hillshade/1/1/1.webp",
+    "/terrain/2/0/0.glb",
+    "/tiles/hillshade/2/0/0.webp",
+    "/terrain/2/0/1.glb",
+    "/tiles/hillshade/2/0/1.webp",
+    "/terrain/2/0/2.glb",
+    "/tiles/hillshade/2/0/2.webp",
+    "/terrain/2/0/3.glb",
+    "/tiles/hillshade/2/0/3.webp",
+    "/terrain/2/1/0.glb",
+    "/tiles/hillshade/2/1/0.webp",
+    "/terrain/2/1/1.glb",
+    "/tiles/hillshade/2/1/1.webp",
+    "/terrain/2/1/2.glb",
+    "/tiles/hillshade/2/1/2.webp",
+    "/terrain/2/1/3.glb",
+    "/tiles/hillshade/2/1/3.webp",
+    "/terrain/2/2/0.glb",
+    "/tiles/hillshade/2/2/0.webp",
+    "/terrain/2/2/1.glb",
+    "/tiles/hillshade/2/2/1.webp",
+    "/terrain/2/2/2.glb",
+    "/tiles/hillshade/2/2/2.webp",
+    "/terrain/2/2/3.glb",
+    "/tiles/hillshade/2/2/3.webp",
+    "/terrain/2/3/0.glb",
+    "/tiles/hillshade/2/3/0.webp",
+    "/terrain/2/3/1.glb",
+    "/tiles/hillshade/2/3/1.webp",
+    "/terrain/2/3/2.glb",
+    "/tiles/hillshade/2/3/2.webp",
+    "/terrain/2/3/3.glb",
+    "/tiles/hillshade/2/3/3.webp"
+  ],
+  "coverageNotes": {
+    "full80S90SCoverage": false,
+    "coveredWindowMeters": {
+      "minX": -16320.0,
+      "maxX": -6240.0,
+      "minY": -17280.0,
+      "maxY": -7200.0
+    },
+    "lrocImageryCoverage": "Not bundled in demo pyramid; analytical LOLA hillshade WebP tiles provided."
+  }
+}
