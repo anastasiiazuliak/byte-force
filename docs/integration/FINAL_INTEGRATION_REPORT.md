@@ -30,7 +30,7 @@ UI source **a75d443**, автор **Khrystyna**: вибірково збереж
 | Реальний API process | Після root fix HTTP 200 partial, два JPL samples; окремо підтверджено також live browser rerun |
 | API contracts | 12 response payloads реального ASP.NET pipeline з offline synthetic science providers пройшли AJV |
 | Security guard | Hash-pinned allowance лише для наявного 100044-byte synthetic TIFF, без загального послаблення; 7 regression tests passed (1 approved fixture, 6 rejection cases) |
-| CI | Координатор додає offline Playwright job; live test explicit opt-in, skipped за замовчуванням; remote CI pass не заявляємо |
+| CI | GitHub підтвердив 8/8 successful checks для 5a6673a (push + PR): frontend/backend/repository/e2e; runs і scope у test report |
 | Local launcher | Після proxy fix bounded smoke passed, чисте завершення |
 | Deployment | Compose/config перевірено; Docker daemon permission denied, build/deploy не виконано |
 
@@ -73,3 +73,5 @@ Tracked `0/0/0.glb` (~884 kB) відрендерився, але geometry proven
 3. Перевірити mesh provenance, підготувати/ліцензувати реальні textures, налаштувати перевірений vector-to-scene adapter.
 4. Людина з Docker permissions будує/тестує контейнери; лише після дозволу hosting/TLS, storage, external/mobile smoke й rollback rehearsal.
 5. Люди перевіряють credits/licenses, записують правдиве демо та подають матеріали за чинними правилами NASA. Без цього P0 scientific/deployment DoD не закритий.
+
+Review handoff: [PR #15](https://github.com/anastasiiazuliak/byte-force/pull/15), відкритий без автоматичного merge.

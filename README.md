@@ -89,3 +89,7 @@ Playwright має власний bounded launcher; не запускайте п�
 - Командні ролі й беклоги: [TEAM_ASSIGNMENTS](TEAM_ASSIGNMENTS.md), [people](people/), [issues](issues/), [архів provenance](docs/archive/package-reconciliation.md). Не приписуємо всій команді незалежну перевірку datasets.
 
 Код: [MIT License](LICENSE), copyright © 2026 anastasiiazuliak. NASA/JPL Horizons, NASA LRO/LOLA/PGDA та LROC мають окремі джерела й умови атрибуції: [DATA_SOURCES](docs/DATA_SOURCES.md), [SCIENCE_METHOD](docs/SCIENCE_METHOD.md). Згадка LROC — заплановане джерело, не наявна imagery. Перед submission люди мають перевірити ліцензії конкретних assets, авторські кредити та актуальні правила NASA Space Apps. Це не офіційний/схвалений NASA продукт; hosting, credentials, відео й submission потребують людського рішення.
+
+## Review handoff
+
+Інтеграція подана в [PR #15](https://github.com/anastasiiazuliak/byte-force/pull/15). GitHub підтвердив усі 8 CI checks для 5a6673a; точні runs і відмінність offline/live — у [test report](docs/integration/FINAL_TEST_REPORT.md). PR не змерджено автоматично; наукові/deployment blockers вище лишаються чинними.

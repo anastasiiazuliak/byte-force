@@ -94,3 +94,14 @@ Contract changes не зроблено. Відомі v2 discrepancies в [contra
 - Авторизований GitHub CLI підтверджено через наявний keyring; inspected historical main CI failures відповідають виправленим conflict markers / synthetic-fixture policy. Поточний integration CI status перевіряється після push і наведений у фінальному handoff, не виводиться з локальних passed.
 
 Локальні сервіси після тестів зупинені. Запуск користувачем: `python3 scripts/run-local.py`; адреси frontend 5173, API 5080, static 5081. Зовнішній hosting/HTTPS, recording, license review та NASA submission не виконувались.
+
+## Remote CI evidence та review handoff
+
+Авторизований `gh pr checks 15 --watch` підтвердив **8 successful, 0 failing/pending** для commit `5a6673a4d1864d534b358c29b5e142122e679d23`:
+
+- [push run 43653378211](https://github.com/anastasiiazuliak/byte-force/actions/runs/43653378211): frontend, backend, repository, e2e — success.
+- [pull_request run 43653382231](https://github.com/anastasiiazuliak/byte-force/actions/runs/43653382231): ті самі чотири jobs — success.
+
+Це реально отриманий GitHub status, не висновок із local build. Remote E2E offline: live NASA case explicit skipped; локальний opt-in live pass задокументований окремо. Подальші documentation-only commits можуть мати нові run IDs; їхній status наведено у фінальному handoff.
+
+**PR #15:** https://github.com/anastasiiazuliak/byte-force/pull/15 — `feature/final-integration → main`. PR створено, не змерджено; source UI PR #14 і feature-гілки не видаляли/не закривали. Реальна production/scientific readiness все ще має зазначені вище blockers.
