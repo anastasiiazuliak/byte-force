@@ -65,6 +65,7 @@ data/raw/*
 *.TIFF
 *.grd
 *.bin
+!backend/LunarNavigator.Tests/Terrain/Fixtures/*.tif
 public-assets/terrain/**/*.glb
 
 # Parallel-development frontend, local validation and secret configuration
