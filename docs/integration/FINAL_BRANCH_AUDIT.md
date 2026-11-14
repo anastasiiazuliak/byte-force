@@ -4,7 +4,7 @@
 
 - Audited local refs against `origin/main` **dbdb5be80f86b7cbf03adf4d5c0ce6eb9238de50** on 2026-11-15. No fetch, merge, stage, or commit performed. This is the locally available remote-ref snapshot, not a claim about current GitHub state.
 - Git author names/emails below are attribution from commit objects, not independently verified identities or inferred team membership.
-- GitHub PR API state is **unknown** (`gh` unavailable); merge commit messages/ancestry are local evidence only. No claim that an unmerged ref has no open PR.
+- Initial agent review used Git only; parent subsequently verified authenticated GitHub CLI access. API-confirmed PR states and historical CI evidence are recorded below; branch creator identity is still not inferred from Git authors.
 - Changes in this task are confined to `frontend/**` excluding `frontend/e2e/**`, plus this document. Backend work belongs to the parent integration.
 
 ## Every origin ref
@@ -150,3 +150,25 @@ Docs (`origin/docs`, tip `bcba2a3`) is contained in main. Existing 3D scene, per
 Actual merge conflicts при вибірковому перенесенні не виникли. Знайдено **вже закомічені** conflict markers у main `TerrainFactory.cs` і API README: усунено, поєднано path/env behavior та safe unavailable cases. Rootcause runtime 500 від incomplete DEM і деталі всіх фінальних tests — у [FINAL_TEST_REPORT](FINAL_TEST_REPORT.md).
 
 Final local evidence: frontend 45 passed; backend 162 passed + 1 live skipped; separate live1 passed; browser with live opt-in4 passed; AJV12 payloads. Baseline per-branch tests окремо не вважаються passed: запускали сукупний інтегрований tree, з незмінними contracts і documented science gates.
+
+## Authenticated GitHub verification (parent)
+
+`gh auth status` verified account `izachoc` via existing keyring (no token copied to files). `gh pr list --state all` confirmed:
+
+| PR | State | Head | PR author |
+|---|---|---|---|
+| #14 | OPEN | feature/FEIU-01-UI-adapt-design- | pavlovychky |
+| #13 | MERGED | feature/P2-01-P2-03-illumination-highres | IlyaPopovych |
+| #12 | MERGED | feature/DATA-04-lod-tiles | IlyaPopovych |
+| #11 | MERGED | feature/DATA-02-horizon-and-manifest | IlyaPopovych |
+| #10 | MERGED | feature/DATA-05-science-validation | IlyaPopovych |
+| #9 | MERGED | feature/DATA-03-terrain-mesh | IlyaPopovych |
+| #8 | MERGED | origin/lfeature/lane-3-backend | anastasiiazuliak |
+| #7 | MERGED | feature/lane-4 | IlyaPopovych |
+| #6 | MERGED | feature/ARC-03-coordinates-and-tiles | IlyaPopovych |
+| #5 | MERGED | feature/bootstrap-architecture | izachoc |
+| #4 | MERGED | feature/HUM-02-data-sources | IlyaPopovych |
+
+Historical main [run 43636580355](https://github.com/anastasiiazuliak/byte-force/actions/runs/43636580355): frontend success, backend failure from `TerrainFactory.cs` conflict markers (CS8300), repository failure from the existing synthetic TIFF. These confirm the locally found root causes. No historical failures were suppressed; current fixes compile the real source and accept only one exact-path/hash-pinned synthetic fixture with rejection regression tests.
+
+PR #14 remains untouched: its useful UI source is selectively integrated with attribution in this branch. Reviewers should coordinate its disposition after final integration review, not blindly merge its old demo composition over the integrated Application. No source branch or PR was deleted/closed by the integrator. Final integration PR URL and current CI status are reported after push in the final handoff.

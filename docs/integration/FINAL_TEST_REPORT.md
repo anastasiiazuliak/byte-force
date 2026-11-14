@@ -18,6 +18,7 @@
 | Repository guard, Python AST, shell syntax, `git diff --check` | PASS; фінально повторюється після staging |
 | `docker compose config --quiet` | PASS; daemon access denied, image build/runtime НЕ пройдено |
 | `scripts/run-local.py --smoke --timeout 120` | PASS, frontend/API/static startup, direct/proxied GLB MIME/signature, чисте завершення |
+| Offline Playwright без live flag | **3 passed, 1 explicitly skipped live case**, exit 0 |
 | Live .NET Horizons opt-in | **1 passed**, два реальні UTC моменти з finite Sun/Earth angles і UTC timestamps |
 | Playwright Chromium/SwiftShader, з live opt-in | **4 passed, exit 0**, фінальний rerun 20.6 s |
 
@@ -90,6 +91,6 @@ Contract changes не зроблено. Відомі v2 discrepancies в [contra
 - Metadata endpoint консервативно 503 без review; geographic picking blocked. Tracked GLB provenance не independently reviewed. Реальні LROC/WebP textures відсутні.
 - Moon-fixed ephemeris 503; shared time drives UI samples/cursor, але verified Sun/Earth 3D direction/lighting animation не підключена. Art light fixed і не є science.
 - Docker daemon permission denied: config PASS не означає Docker build/runtime або production deployment.
-- GitHub Actions/PR API недоступні без авторизованого API; remote green status не заявляється.
+- Авторизований GitHub CLI підтверджено через наявний keyring; inspected historical main CI failures відповідають виправленим conflict markers / synthetic-fixture policy. Поточний integration CI status перевіряється після push і наведений у фінальному handoff, не виводиться з локальних passed.
 
 Локальні сервіси після тестів зупинені. Запуск користувачем: `python3 scripts/run-local.py`; адреси frontend 5173, API 5080, static 5081. Зовнішній hosting/HTTPS, recording, license review та NASA submission не виконувались.
