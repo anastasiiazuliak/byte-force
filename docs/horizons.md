@@ -1,22 +1,22 @@
 # NASA JPL Horizons — C#
 
-Бібліотека `src/ByteForce.Horizons` для .NET 10 не потребує сторонніх пакетів або API-ключа.
+Бібліотека `backend/ByteForce.Horizons` для .NET 8 не потребує сторонніх пакетів або API-ключа.
 Вона отримує положення центрів Сонця та Землі для точки на Місяці в один момент часу.
 
 ## Де лежить код
 
-Усі класи інтеграції з API вже відокремлені в папці `src/ByteForce.Horizons`.
+Усі класи інтеграції з API вже відокремлені в папці `backend/ByteForce.Horizons`.
 Приклад запуску й перевірки — окремі програми, які підключають цю бібліотеку:
 
 ```text
-src/ByteForce.Horizons/            ← класи для роботи з Horizons API
-samples/Horizons.Sample/           ← програма для реального запиту до NASA
-tests/ByteForce.Horizons.Tests/    ← перевірки без звернення до NASA
+backend/ByteForce.Horizons/            ← класи для роботи з Horizons API
+backend/samples/Horizons.Sample/           ← програма для реального запиту до NASA
+backend/ByteForce.Horizons.Tests/    ← перевірки без звернення до NASA
 docs/horizons.md                   ← документація
-ByteForce.slnx                    ← рішення, яке об'єднує три C#-проєкти
+backend/LunarNavigator.sln         ← рішення для всіх шести C#-проєктів
 ```
 
-Модуль LOLA ще не додано; для нього передбачаємо окрему папку `src/ByteForce.Lola`.
+LOLA/Terrain/Horizon реалізується окремо у `backend/LunarNavigator.Core/{Terrain,Horizon}/` за [frozen contract](../PARALLEL_CONTRACT.md). Scientific `.cs` існуючого Horizons внеску збережено без змін; змінено layout і project metadata для `net8.0`. `backend/LunarNavigator.sln` — єдине активне рішення; старе root `.slnx` прибрано.
 
 ## Використання
 
@@ -83,14 +83,16 @@ LOLA DEM, GDAL і розрахунок профілю місцевого гор�
 
 ```powershell
 # Зібрати бібліотеку, приклад і перевірки.
-dotnet build ByteForce.slnx
+dotnet build backend/LunarNavigator.sln
 
 # Перевірити клієнт без інтернету.
-dotnet test ByteForce.slnx
+dotnet test backend/LunarNavigator.sln
 
-# Викликати Horizons API та вивести результат від NASA.
-dotnet run --project samples/Horizons.Sample
+# LIVE OPT-IN: лише після явного дозволу; викликає NASA через інтернет.
+dotnet run --project backend/samples/Horizons.Sample
 ```
+
+24 offline Horizons test cases плюс 2 scaffold health cases не є живою перевіркою NASA. Команди вище — інструкції, не звіт про запуск у цій документаційній зміні; фактичні результати див. у [parent validation](integration/bootstrap-validation.md).
 
 Тести використовують xUnit і підставний HTTP handler; лише sample викликає NASA через інтернет.
 Тестові класи розділені за призначенням: `LunarObserverTests`, `HorizonsClientRequestTests`, `HorizonsClientResponseTests`.

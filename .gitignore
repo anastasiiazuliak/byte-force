@@ -67,3 +67,37 @@ data/raw/*
 *.bin
 public-assets/terrain/**/*.glb
 
+# Parallel-development frontend, local validation and secret configuration
+node_modules/
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.env.*
+!.env.example
+.vscode/
+.idea/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.log
+*.tmp
+*.glb
+*.gltf
+*.webp
+*.cog
+*.zip
+*.7z
+*.pem
+*.key
+*.pfx
+.DS_Store
+Thumbs.db
+.validation/
+NuGetScratch*/
+.audit/
+!contracts/fixtures/**
+
