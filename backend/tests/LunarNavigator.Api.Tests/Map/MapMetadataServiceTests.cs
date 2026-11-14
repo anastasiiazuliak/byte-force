@@ -33,6 +33,22 @@ public sealed class MapMetadataServiceTests
     }
 
     [Fact]
+    public async Task Metadata_VerifiedClaimsRequireExplicitDeploymentReview()
+    {
+        using var fixture = new ManifestFixture();
+        await fixture.GetAsync(new MapManifest(1, Metadata));
+        using var factory = new ApiFactory();
+        var service = new FileMapMetadataService(factory.Services.GetRequiredService<IWebHostEnvironment>(),
+            Options.Create(new MapManifestSettings
+            {
+                ManifestPath = fixture.ManifestPath,
+                AssetRootPath = Path.GetDirectoryName(fixture.ManifestPath)!
+            }));
+        Assert.Equal("TERRAIN_DATA_UNAVAILABLE",
+            (await Assert.ThrowsAsync<NavigationException>(() => service.GetAsync())).Code);
+    }
+
+    [Fact]
     public async Task Metadata_RequiresAssetChecksForTemplates()
     {
         using var fixture = new ManifestFixture();
@@ -90,7 +106,7 @@ public sealed class MapMetadataServiceTests
         {
             Directory.CreateDirectory(_root);
             Service = new FileMapMetadataService(_factory.Services.GetRequiredService<IWebHostEnvironment>(),
-                Options.Create(new MapManifestSettings { ManifestPath = ManifestPath, AssetRootPath = _root }));
+                Options.Create(new MapManifestSettings { ManifestPath = ManifestPath, AssetRootPath = _root, MetadataReviewConfirmed = true }));
             Asset("terrain/test.glb");
         }
 

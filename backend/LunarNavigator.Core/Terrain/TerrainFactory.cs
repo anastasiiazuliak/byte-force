@@ -1,26 +1,9 @@
 using LunarNavigator.Core.Analysis;
-<<<<<<< Updated upstream
 using LunarNavigator.Core.Horizon;
-=======
-<<<<<<< HEAD
-using LunarNavigator.Core.Horizon;
-=======
->>>>>>> 69b0eae (moona)
->>>>>>> Stashed changes
 
 namespace LunarNavigator.Core.Terrain;
 
-/// <summary>
-<<<<<<< Updated upstream
-/// Factory helpers for instantiating terrain, elevation and horizon services without DI dependencies.
-=======
-<<<<<<< HEAD
-/// Factory helpers for instantiating terrain, elevation and horizon services without DI dependencies.
-=======
-/// Factory helpers for instantiating terrain and elevation services without DI dependencies.
->>>>>>> 69b0eae (moona)
->>>>>>> Stashed changes
-/// </summary>
+/// <summary>Factory helpers for terrain, height and horizon services.</summary>
 public static class TerrainFactory
 {
     /// <summary>
@@ -38,10 +21,6 @@ public static class TerrainFactory
     {
         return new LolaTerrainService(demFilePath);
     }
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
 
     /// <summary>
     /// Creates a new instance of <see cref="IHorizonService"/> backed by the given <see cref="ITerrainService"/>.
@@ -50,9 +29,4 @@ public static class TerrainFactory
     {
         return new LolaHorizonService(terrainService, options);
     }
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> 69b0eae (moona)
->>>>>>> Stashed changes
 }

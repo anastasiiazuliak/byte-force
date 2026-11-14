@@ -55,7 +55,7 @@ public sealed class LolaTiffReader : IDisposable
         {
             // Read first 16 bytes for TIFF/BigTIFF magic
             Span<byte> header = stackalloc byte[16];
-            RandomAccess.Read(handle, header, 0);
+            ReadExactly(handle, header, 0);
 
             bool isLittleEndian = header[0] == 0x49 && header[1] == 0x49; // 'II'
             if (!isLittleEndian)
@@ -91,6 +91,19 @@ public sealed class LolaTiffReader : IDisposable
         }
     }
 
+    private static void ReadExactly(SafeFileHandle handle, Span<byte> buffer, long offset)
+    {
+        if (offset < 0 || offset > RandomAccess.GetLength(handle) - buffer.Length)
+            throw new InvalidDataException("DEM read exceeds the available file; download may be incomplete.");
+        int total = 0;
+        while (total < buffer.Length)
+        {
+            int read = RandomAccess.Read(handle, buffer[total..], offset + total);
+            if (read == 0) throw new EndOfStreamException("DEM file ended before the requested data was read.");
+            total += read;
+        }
+    }
+
     private static LolaTiffReader ParseIfd(SafeFileHandle handle, long ifdOffset, bool isBigTiff, int maxCachedTiles)
     {
         int width = 7600;
@@ -104,14 +117,14 @@ public sealed class LolaTiffReader : IDisposable
         if (isBigTiff)
         {
             Span<byte> countBuf = stackalloc byte[8];
-            RandomAccess.Read(handle, countBuf, ifdOffset);
+            ReadExactly(handle, countBuf, ifdOffset);
             ulong numEntries = BitConverter.ToUInt64(countBuf);
             long entryOffset = ifdOffset + 8;
 
             Span<byte> entryBuf = stackalloc byte[20]; // BigTIFF tag is 20 bytes
             for (ulong i = 0; i < numEntries; i++)
             {
-                RandomAccess.Read(handle, entryBuf, entryOffset);
+                ReadExactly(handle, entryBuf, entryOffset);
                 ushort tag = BitConverter.ToUInt16(entryBuf[0..2]);
                 ushort type = BitConverter.ToUInt16(entryBuf[2..4]);
                 ulong count = BitConverter.ToUInt64(entryBuf[4..12]);
@@ -149,12 +162,26 @@ public sealed class LolaTiffReader : IDisposable
             }
         }
 
+        if (!isBigTiff) throw new NotSupportedException("Only tiled BigTIFF DEM files are supported.");
+        if (width <= 0 || height <= 0 || tileWidth <= 0 || tileHeight <= 0)
+            throw new InvalidDataException("Invalid DEM raster dimensions.");
+
         int tilesAcross = (width + tileWidth - 1) / tileWidth;
         int tilesDown = (height + tileHeight - 1) / tileHeight;
         int totalTiles = tilesAcross * tilesDown;
 
-        tileOffsets ??= new long[totalTiles];
-        tileByteCounts ??= new int[totalTiles];
+        if (tileOffsets is null || tileByteCounts is null ||
+            tileOffsets.Length != totalTiles || tileByteCounts.Length != totalTiles)
+            throw new InvalidDataException("DEM tile index is missing or inconsistent.");
+        long fileLength = RandomAccess.GetLength(handle);
+        for (int i = 0; i < totalTiles; i++)
+        {
+            // TIFF sparse tiles have both offset and byte count zero.
+            if (tileOffsets[i] == 0 && tileByteCounts[i] == 0) continue;
+            if (tileOffsets[i] <= 0 || tileByteCounts[i] <= 0 ||
+                tileOffsets[i] > fileLength - tileByteCounts[i])
+                throw new InvalidDataException("DEM tile data extends beyond the available file; download may be incomplete.");
+        }
 
         var meta = LolaDemMetadata.Default with
         {
@@ -173,7 +200,7 @@ public sealed class LolaTiffReader : IDisposable
         if (type == 16) // TIFF_LONG8 (8 bytes)
         {
             byte[] buf = new byte[count * 8];
-            RandomAccess.Read(handle, buf, offset);
+            ReadExactly(handle, buf, offset);
             for (int i = 0; i < count; i++)
             {
                 result[i] = BitConverter.ToInt64(buf, i * 8);
@@ -182,7 +209,7 @@ public sealed class LolaTiffReader : IDisposable
         else if (type == 4) // TIFF_LONG (4 bytes)
         {
             byte[] buf = new byte[count * 4];
-            RandomAccess.Read(handle, buf, offset);
+            ReadExactly(handle, buf, offset);
             for (int i = 0; i < count; i++)
             {
                 result[i] = BitConverter.ToUInt32(buf, i * 4);
@@ -198,7 +225,7 @@ public sealed class LolaTiffReader : IDisposable
         {
             int size = type == 4 ? 4 : 2;
             byte[] buf = new byte[count * size];
-            RandomAccess.Read(handle, buf, offset);
+            ReadExactly(handle, buf, offset);
             for (int i = 0; i < count; i++)
             {
                 result[i] = size == 4 ? BitConverter.ToInt32(buf, i * 4) : BitConverter.ToUInt16(buf, i * 2);
@@ -293,7 +320,7 @@ public sealed class LolaTiffReader : IDisposable
         byte[] compressed = ArrayPool<byte>.Shared.Rent(byteCount);
         try
         {
-            RandomAccess.Read(fileHandle, compressed.AsSpan(0, byteCount), offset);
+            ReadExactly(fileHandle, compressed.AsSpan(0, byteCount), offset);
 
             // Decompress ZLib / Deflate
             int uncompressedSize = metadata.TileWidth * metadata.TileHeight * 4;
@@ -303,13 +330,7 @@ public sealed class LolaTiffReader : IDisposable
                 using (var memStream = new MemoryStream(compressed, 0, byteCount, false))
                 using (var zlib = new ZLibStream(memStream, CompressionMode.Decompress))
                 {
-                    int totalRead = 0;
-                    while (totalRead < uncompressedSize)
-                    {
-                        int read = zlib.Read(uncompressed, totalRead, uncompressedSize - totalRead);
-                        if (read == 0) break;
-                        totalRead += read;
-                    }
+                    zlib.ReadExactly(uncompressed.AsSpan(0, uncompressedSize));
                 }
 
                 // Decode samples using TIFF Predictor

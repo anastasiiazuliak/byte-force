@@ -39,6 +39,64 @@ public sealed class ScientificEndpointTests
     }
 
     [Theory]
+    [InlineData("missing-dem.tif")]
+    [InlineData("Data/landing-sites.json")]
+    public async Task Composition_MissingOrInvalidDemRemainsAvailableAndUsesRealHorizon(string demPath)
+    {
+        using var factory = new ApiFactory();
+        using var custom = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(
+                new Dictionary<string, string?> { ["Terrain:DemPath"] = demPath }));
+            builder.ConfigureServices(services => services.AddSingleton<IEphemerisService>(new StubEphemeris()));
+        });
+        using var http = custom.CreateClient();
+        Assert.IsType<LunarNavigator.Core.Horizon.LolaHorizonService>(
+            custom.Services.GetRequiredService<IHorizonProfileProvider>());
+        var profile = await custom.Services.GetRequiredService<IHorizonProfileProvider>()
+            .GetProfileAsync(new TerrainLocation(-89, 25));
+        Assert.False(profile.TerrainApplied);
+        Assert.Empty(profile.Points);
+        using var health = await http.GetAsync("/api/v1/health");
+        Assert.Equal(HttpStatusCode.OK, health.StatusCode);
+        using var response = await http.PostAsync("/api/v1/analyze", Json(RequestJson));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("partial", json.RootElement.GetProperty("status").GetString());
+        Assert.False(json.RootElement.GetProperty("quality").GetProperty("terrainApplied").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Analyze_TruncatedBigTiffReturnsPartialWithoutLeakingServerDetails()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "private-truncated-dem-" + Guid.NewGuid() + ".tif");
+        try
+        {
+            var bytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Fixtures", "synthetic_lola_sample.tif"));
+            File.WriteAllBytes(path, bytes[..^1]);
+            using var factory = new ApiFactory();
+            using var custom = factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(
+                    new Dictionary<string, string?> { ["Terrain:DemPath"] = path }));
+                builder.ConfigureServices(services => services.AddSingleton<IEphemerisService>(new StubEphemeris()));
+            });
+            using var http = custom.CreateClient();
+            Assert.False(custom.Services.GetRequiredService<LunarNavigator.Core.Terrain.ITerrainService>().IsAvailable);
+            using var response = await http.PostAsync("/api/v1/analyze", Json(RequestJson));
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.DoesNotContain(path, body);
+            Assert.DoesNotContain("InvalidDataException", body);
+            using var json = JsonDocument.Parse(body);
+            Assert.Equal("partial", json.RootElement.GetProperty("status").GetString());
+            Assert.False(json.RootElement.GetProperty("quality").GetProperty("terrainApplied").GetBoolean());
+            Assert.Equal(JsonValueKind.Null, json.RootElement.GetProperty("samples")[0].GetProperty("sun").GetProperty("visible").ValueKind);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Theory]
     [InlineData("{broken", 400)]
     [InlineData("{}", 400)]
     [InlineData("{\"location\":{\"latitude\":-89},\"period\":{}}", 400)]

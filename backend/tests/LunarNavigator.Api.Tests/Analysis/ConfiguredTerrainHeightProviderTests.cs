@@ -10,7 +10,7 @@ public sealed class ConfiguredTerrainHeightProviderTests
     [Fact]
     public async Task Adapter_UnavailableDataDoesNotLeakProviderPaths()
     {
-        using var adapter = new ConfiguredTerrainHeightProvider(new TestTerrain { IsAvailable = false });
+        var adapter = new ConfiguredTerrainHeightProvider(new TestTerrain { IsAvailable = false });
         var result = await adapter.GetHeightAsync(new TerrainLocation(-89, 25));
         Assert.Null(result.ElevationM);
         Assert.False(result.DatumAlignmentVerified);
@@ -20,7 +20,7 @@ public sealed class ConfiguredTerrainHeightProviderTests
     [Fact]
     public async Task Adapter_Data01AlignmentClaimRequiresSeparateScientificReview()
     {
-        using var adapter = new ConfiguredTerrainHeightProvider(new TestTerrain());
+        var adapter = new ConfiguredTerrainHeightProvider(new TestTerrain());
         var result = await adapter.GetHeightAsync(new TerrainLocation(-89, 25));
         Assert.Equal(120, result.ElevationM);
         Assert.Equal("SYNTHETIC TEST ONLY", result.TerrainSource);
@@ -32,7 +32,7 @@ public sealed class ConfiguredTerrainHeightProviderTests
     [Fact]
     public async Task Adapter_PreservesCancellation()
     {
-        using var adapter = new ConfiguredTerrainHeightProvider(new TestTerrain());
+        var adapter = new ConfiguredTerrainHeightProvider(new TestTerrain());
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => adapter.GetHeightAsync(new TerrainLocation(-89, 25), cancellation.Token));

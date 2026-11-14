@@ -197,13 +197,10 @@ public sealed class LolaHorizonService : IHorizonService
                 }
             }
 
-            // If no valid terrain sample was found along the ray, fall back to geometric sphere horizon (~0 deg)
             if (!hasValidSample)
             {
-                double fallbackPsi = rayStep / LunarProjection.MoonRadiusMeters;
-                double fallbackRad = Math.Atan2((LunarProjection.MoonRadiusMeters + centerElevM) * Math.Cos(fallbackPsi) - r0,
-                    (LunarProjection.MoonRadiusMeters + centerElevM) * Math.Sin(fallbackPsi));
-                maxElevDeg = fallbackRad * (180.0 / Math.PI);
+                encounteredNoData = true;
+                continue;
             }
 
             points.Add(new HorizonPoint(Math.Round(azDeg, 4), Math.Round(maxElevDeg, 4)));
@@ -228,7 +225,7 @@ public sealed class LolaHorizonService : IHorizonService
 
         return new HorizonProfileResult(
             points,
-            TerrainApplied: !timedOut && points.Count > 0,
+            TerrainApplied: !timedOut && !encounteredNoData && !clippedRay && points.Count == rayCount,
             TerrainSource: terrainSource ?? "NASA LOLA DEM",
             ResolutionMeters: resM,
             Warnings: warnings);
@@ -263,19 +260,10 @@ public sealed class LolaHorizonService : IHorizonService
         float v01 = grid[(r1 * cols) + c0];
         float v11 = grid[(r1 * cols) + c1];
 
-        if (float.IsNaN(v00) || float.IsNaN(v10) || float.IsNaN(v01) || float.IsNaN(v11))
+        if (!float.IsFinite(v00) || !float.IsFinite(v10) || !float.IsFinite(v01) || !float.IsFinite(v11))
         {
-            // Fall back to nearest pixel if edge contains NaN
-            int nc = Math.Clamp((int)Math.Round(colF), 0, cols - 1);
-            int nr = Math.Clamp((int)Math.Round(rowF), 0, rows - 1);
-            float nearest = grid[(nr * cols) + nc];
-            if (float.IsNaN(nearest))
-            {
-                elevation = double.NaN;
-                return false;
-            }
-            elevation = nearest;
-            return true;
+            elevation = double.NaN;
+            return false;
         }
 
         double fc = colF - c0;

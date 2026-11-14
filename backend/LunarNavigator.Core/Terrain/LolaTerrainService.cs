@@ -13,8 +13,9 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
     private readonly LolaDemMetadata metadata;
     private readonly string? initWarning;
     private bool disposed;
+    private volatile bool readFailed;
 
-    public bool IsAvailable => reader != null;
+    public bool IsAvailable => reader != null && !readFailed;
     public string ResolvedPath => resolvedPath;
     public LolaDemMetadata Metadata => metadata;
 
@@ -65,7 +66,7 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (reader == null)
+        if (reader == null || readFailed)
         {
             return Task.FromResult(new TerrainHeightResult(
                 null,
@@ -73,7 +74,7 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
                 null,
                 null,
                 false,
-                new[] { initWarning ?? "LOLA DEM provider unavailable." }));
+                new[] { initWarning ?? "LOLA DEM data could not be decoded; terrain is unavailable." }));
         }
 
         // Validate geographic coverage [-90, -80]
@@ -106,7 +107,7 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
                 new[] { $"Location ({location.Latitude}°, {location.Longitude}°) projects to pixel ({col}, {row}) outside raster bounds." }));
         }
 
-        float elev = reader.ReadPixel(col, row);
+        float elev = ReadPixel(col, row);
         if (float.IsNaN(elev) || float.IsInfinity(elev))
         {
             return Task.FromResult(new TerrainHeightResult(
@@ -114,8 +115,8 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
                 metadata.DatasetName,
                 metadata.VerticalReference,
                 metadata.PixelScaleMeters,
-                true,
-                new[] { "NoData elevation at location." }));
+                false,
+                new[] { readFailed ? "LOLA DEM data could not be decoded; terrain is unavailable." : "NoData elevation at location." }));
         }
 
         return Task.FromResult(new TerrainHeightResult(
@@ -132,7 +133,7 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (reader == null)
+        if (reader == null || readFailed)
         {
             return Task.FromResult(new TerrainWindowResult(
                 request.CenterLocation,
@@ -143,7 +144,7 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
                 null,
                 null,
                 true,
-                new[] { initWarning ?? "LOLA DEM provider unavailable." }));
+                new[] { initWarning ?? "LOLA DEM data could not be decoded; terrain is unavailable." }));
         }
 
         var (centerX, centerY) = LunarProjection.ToProjected(request.CenterLocation.Latitude, request.CenterLocation.Longitude);
@@ -168,7 +169,7 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
             for (int c = 0; c < width; c++)
             {
                 int curCol = startCol + c;
-                float val = reader.ReadPixel(curCol, curRow);
+                float val = ReadPixel(curCol, curRow);
                 samples[(r * width) + c] = val;
 
                 if (float.IsNaN(val))
@@ -192,7 +193,19 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
             min == double.MaxValue ? null : Math.Round(min, 2),
             max == double.MinValue ? null : Math.Round(max, 2),
             hasNoData,
-            Array.Empty<string>()));
+            readFailed ? new[] { "LOLA DEM data could not be decoded; terrain is unavailable." } : Array.Empty<string>()));
+    }
+
+    private float ReadPixel(int col, int row)
+    {
+        if (readFailed) return float.NaN;
+        try { return reader!.ReadPixel(col, row); }
+        catch (Exception exception) when (exception is IOException or InvalidDataException)
+        {
+            // Reject the dataset after a failed tile read; never use partially decoded elevations.
+            readFailed = true;
+            return float.NaN;
+        }
     }
 
     private static string ResolvePath(string? explicitPath)

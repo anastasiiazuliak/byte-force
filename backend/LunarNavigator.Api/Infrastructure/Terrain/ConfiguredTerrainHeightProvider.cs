@@ -4,7 +4,7 @@ using LunarNavigator.Core.Terrain;
 namespace LunarNavigator.Api.Infrastructure.Terrain;
 
 /// <summary>Exposes DATA-01 heights without asserting an unreviewed frame/datum alignment or leaking internal paths.</summary>
-public sealed class ConfiguredTerrainHeightProvider(ITerrainService terrain) : ITerrainHeightProvider, IDisposable
+public sealed class ConfiguredTerrainHeightProvider(ITerrainService terrain) : ITerrainHeightProvider
 {
     private readonly ITerrainService _terrain = terrain;
 
@@ -26,8 +26,4 @@ public sealed class ConfiguredTerrainHeightProvider(ITerrainService terrain) : I
         };
     }
 
-    public void Dispose()
-    {
-        if (_terrain is IDisposable disposable) disposable.Dispose();
-    }
 }
