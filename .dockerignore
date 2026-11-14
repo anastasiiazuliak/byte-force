@@ -1,0 +1,14 @@
+.git
+.audit
+.validation
+**/node_modules
+**/dist
+**/bin
+**/obj
+data/raw
+public-assets
+.env
+.env.*
+**/__pycache__
+**/test-results
+**/playwright-report

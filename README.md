@@ -1,161 +1,91 @@
-# Lunar Navigator
+# Lunar Navigator · ByteForce
 
-Україномовний стартовий репозиторій Lunar Landing Site Navigator: порівняння двох сценаріїв посадки (місце + UTC-період) біля південного полюса Місяця, положення Сонця/Землі та локальний рельєфний горизонт.
+Україномовний інтегрований прототип **Lunar Landing Site Navigator**: місце біля південного полюса Місяця + UTC-період → аналіз Сонця/Землі → порівняння сценаріїв A/B. Мета NASA Space Apps — допомогти оцінювати освітлення й можливість зв’язку, а не лише показувати красиву поверхню.
 
-> **Статус: initial bootstrap, не завершений застосунок і не перевірений NASA продукт.** Команди нижче — інструкції запуску, а не звіт про успішну валідацію. Реальні наукові обчислення, отримання й перевірка datasets, з’єднання lane, наскрізна перевірка та production deploy залишаються окремою роботою. Synthetic fixtures і демонстраційна геометрія не є вимірюваннями NASA.
+> **Це вже інтегрований застосунок, але не науково валідований планувальник місій.** Реальний API підключений до JPL Horizons; за відсутності придатного DEM він повертає partial, а не вигадану terrain visibility. Наявна 3D-геометрія й художнє світло не доводять реальне освітлення місцевості. Публічний deployment не виконано.
 
-## Спільний старт після architecture PR merge
+## Почати тут
 
-Репозиторій: `git@github.com:anastasiiazuliak/byte-force.git`. Спочатку review/CI і merge architecture PR (`feature/bootstrap-architecture`) у `main`; лише після цього координатор фіксує **один повний SHA `origin/main`** для всіх п’ятьох незалежних clones/lane branches. Не стартуйте від старого окремого bootstrap `57f0aee`, незлитої architecture-гілки або різних HEAD. Далі всі lane працюють паралельно без очікування суміжних реалізацій. [Точні Git-кроки](docs/integration/team-workflow.md).
+- [Фінальний інтеграційний звіт і чесний DoD](docs/integration/FINAL_INTEGRATION_REPORT.md).
+- [Демо / HUM-04: pitch, реальний partial і окреме synthetic demo](docs/integration/DEMO.md).
+- [Запуск, Windows, Docker та дані](docs/integration/DEPLOYMENT.md).
+- [Фінальний звіт тестування](docs/integration/FINAL_TEST_REPORT.md) — джерело актуальних фінальних лічильників; його завершує координатор інтеграції.
+- [Аудит гілок](docs/integration/FINAL_BRANCH_AUDIT.md), [ТЗ](docs/TEAM_SPEC.md), [заморожений контракт](PARALLEL_CONTRACT.md), [OpenAPI](contracts/openapi.yaml), [API DTO](contracts/api-types.ts), [scene transform](contracts/scene/TRANSFORM.md).
 
-## Документація та пріоритети
+## Архітектура поточної інтеграції
 
-- [ТЗ продукту](docs/TEAM_SPEC.md), [аудит контрактів та відкриті питання](docs/integration/contract-audit.md), [негайний старт усіх п’ятьох](START_ALL_5.md).
-- [Заморожений паралельний контракт](PARALLEL_CONTRACT.md) — головний для полів і меж модулів першої хвилі; старі ілюстративні JSON у ТЗ його не перевизначають.
-- [OpenAPI](contracts/openapi.yaml), [TypeScript DTO та LunarApiClient](contracts/api-types.ts), [scene types](contracts/scene/scene-types.ts), [координатний transform](contracts/scene/TRANSFORM.md).
-- [Командний Git workflow](docs/integration/team-workflow.md), [розподіл завдань](TEAM_ASSIGNMENTS.md), [готові Issues](issues/).
-- [Аудит наявного коду](docs/architecture/EXISTING_CODE_AUDIT.md), [Horizons внесок](docs/horizons.md), [HUM-02 джерела та audit caveat](docs/DATA_SOURCES.md#audit-caveat).
-- [Збережений combined backlog](docs/Lunar_Navigator_TASK_BACKLOG.md), [tasks.json](tasks.json), [issues.csv](issues.csv), [архів і provenance dedup](docs/archive/package-reconciliation.md).
+```text
+React Application → typed LunarApiClient → /api/v1 → ASP.NET Core → JPL Horizons
+       │                                           └→ Terrain/Horizon services
+       └→ R3F/Three.js → /terrain, /tiles, /metadata, /illumination → static assets
+```
 
-| Lane / гілка | Персональна інструкція | Повний prompt |
-|---|---|---|
-| 1 · 3D · `feature/lane-1` | [№1](docs/agents/PERSON-01.md) | [Prompt 1](prompts/PERSON-01-PASTE-INTO-CODEX.md) |
-| 2 · UI · `feature/lane-2` | [№2](docs/agents/PERSON-02.md) | [Prompt 2](prompts/PERSON-02-PASTE-INTO-CODEX.md) |
-| 3 · API · `feature/lane-3` | [№3](docs/agents/PERSON-03.md) | [Prompt 3](prompts/PERSON-03-PASTE-INTO-CODEX.md) |
-| 4 · Data · `feature/lane-4` | [№4](docs/agents/PERSON-04.md) | [Prompt 4](prompts/PERSON-04-PASTE-INTO-CODEX.md) |
-| 5 · Integration · `feature/lane-5` | [№5](docs/agents/PERSON-05.md) | [Prompt 5](prompts/PERSON-05-PASTE-INTO-CODEX.md) |
+- `frontend/src/main.tsx` → `app/Application.tsx`: справжній composition root. `AppShell` отримує інтегровані slots форми, analysis, compare, timeline та `LunarTerrainViewer`; старий автономний explorer не є головним застосунком.
+- `frontend/src/integration/client.ts` і `src/api/`: один typed client, незалежне startup-завантаження health/config/sites/metadata, явні error/partial стани. Зміна введення скасовує pending запит; identity guard не публікує застарілу відповідь. Analyze запускається явно; timeline використовує отримані samples.
+- `backend/LunarNavigator.sln`: активне .NET 8 solution; API, Core, Models, збережена бібліотека Horizons, тести й live sample. API підключає реальний `HorizonsEphemerisService`, terrain/horizon providers і compare. Moon-fixed provider поки unavailable (503).
+- `public-assets/`: окремий static root, не ASP.NET static middleware. Vite proxy об’єднує його з API локально; nginx — у підготовленій контейнерній конфігурації.
+- `data-pipeline/`: підготовка геометрії/metadata; `data/` зберігає попередні acquisition scripts. Сирі дані та `.validation/` не є релізними артефактами.
 
-Усі п’ять починають одразу з одного стартового commit у незалежних clones. Залежності старих Issues означають залежності **фінальної інтеграції**, не заборону починати. P0 перед P1/P2; не створюйте нових задач замість готових беклогів.
+## Локальний запуск Linux / WSL
 
-## Структура
-
-- `frontend/` — React + TypeScript + Vite, R3F/Three.js; UI і сцена мають окремих власників.
-- `backend/LunarNavigator.sln` — **єдине активне .NET 8 solution**: API/Core/scaffold tests та збережені LunarNavigator.Horizons, Horizons tests і live sample. Старе root `.slnx` прибрано.
-- `backend/LunarNavigator.Horizons/`, `backend/tests/LunarNavigator.Horizons.Tests/`, `backend/samples/LunarNavigator.Horizons.Sample/` — попередній Horizons внесок; scientific `.cs` не переписано, project metadata retargeted на `net8.0`.
-- `contracts/` — frozen API/scene контракти та fixtures; не дублюйте DTO.
-- `people/`, `prompts/`, `issues/` — вихідні персональні беклоги й детальні завдання.
-- `docs/agents/`, `docs/integration/` — актуальні інструкції роботи та передачі результатів.
-- `data/README.md`, `data/scripts/download_data.py`, `data/scripts/download_data.ps1`, `data/raw/` — **збережені legacy HUM-02 шляхи**, не перенесені у `data-pipeline/`.
-- `data-pipeline/`, `public-assets/`, `infra/` — зони подальших data/deploy реалізацій, не ознака їх готовності.
-
-Фактичні результати локальних перевірок та незавершені GitHub-кроки: [bootstrap validation](docs/integration/bootstrap-validation.md). Приклади analyze/compare, typed errors і cache key: [API client guide](docs/integration/api-client.md). Для lane 3/4 готові provider interfaces описані у [backend README](backend/README.md).
-
-## Передумови (Linux і Windows)
-
-Git, Node.js **22** з npm та **.NET SDK 8** (див. `backend/global.json`). На Linux використовуйте shell, на Windows — PowerShell; Git Bash потрібен лише для `.sh`-скриптів. У Windows можна користуватися WSL, але не діліть `node_modules` між Windows і Linux. Перевірте `git --version`, `node --version`, `npm --version`, `dotnet --info`.
-
-Отримайте URL репозиторію й погоджений стартовий SHA у команди; clone/branch інструкції наведено у workflow. Наступні команди виконуються з кореня локального clone і однакові для Linux shell та Windows PowerShell, якщо не зазначено інше.
-
-## Frontend
+Потрібні Git, **Node.js 22**, npm, **.NET SDK 8** (див. `global.json`), Python 3.9+. Усі команди нижче — з кореня цього checkout; установлення пакетів може звертатися до npm/NuGet. NASA download не є частиною запуску.
 
 ```sh
-cd frontend
-npm install
-npm run dev
+npm ci --prefix frontend
+dotnet restore backend/LunarNavigator.sln
+python3 scripts/run-local.py
+# еквівалент: sh scripts/dev.sh
 ```
 
-Відкрийте локальний URL, який надрукує Vite. Dev-сервер працює до `Ctrl+C`; для інших команд відкрийте другий термінал.
+Відкрийте **http://127.0.0.1:5173**. API: `http://127.0.0.1:5080/api/v1/health`; static: `http://127.0.0.1:5081`. `Ctrl+C` завершує дочірні процеси. Зайняті порти відхиляються. Сервери після інтеграційних тестів зупинені: запускайте їх самостійно.
 
-### Явний mock-режим
-
-Створіть або доповніть **`frontend/.env.local`**, не затираючи власні налаштування:
-
-```dotenv
-VITE_USE_MOCKS=true
-```
-
-Це явний opt-in для локальної розробки без API. Після зміни env перезапустіть Vite. UI має показувати **SYNTHETIC / DEMO**, включно з provenance/quality. Для реального API приберіть прапорець або встановіть `VITE_USE_MOCKS=false`; API локально запускається на `http://localhost:5080`, REST base — `/api/v1`. Vite proxy `/api` налаштований на цей backend; `frontend/.env.example` містить `VITE_API_BASE_URL` та server-only `API_PROXY_TARGET` для зміни адреси. Мінімальний starter entrypoint не викликає API та не є AppShell: №2 використовує клієнт у власному UI. Для standalone transport: `createApiClient({ transport: createMockTransport() })` з `src/api` та `src/mocks/transport`.
-
-**Production: моки вимкнені незалежно від локального прапорця.** `VITE_USE_MOCKS=true` не повинен активувати synthetic transport у production build. Змінні `VITE_*` потрапляють до клієнтського коду: не кладіть туди секрети. API failure у real-режимі не можна приховано підміняти synthetic success.
-
-### Build і тести
-
-З каталогу `frontend/`:
+Обмежений smoke із автоматичним завершенням:
 
 ```sh
-npm run build
-npm test
-npm run test:contracts
+python3 scripts/run-local.py --smoke --timeout 120
 ```
 
-Build створює production bundle, але не доводить наукову коректність. `test` перевіряє клієнт, mock isolation та контракти; `test:contracts` запускає лише контрактні перевірки. Lockfile включено; CI використовує `npm ci`. Окремий lint поки не налаштовано; build виконує strict TypeScript check.
+Він перевіряє HTTP readiness, HTML, прямий та proxied GLB MIME/signature. Це **не** browser або science validation; metadata 503 допускається як чесний стан неготовності. На Windows рекомендовано **WSL**: Python launcher використовує POSIX process groups. Нативні npm/dotnet і окремий static server можна запускати вручну — [точні інструкції](docs/integration/DEPLOYMENT.md#windows).
 
-## Backend
+## Реальний режим та явне демо
 
-З кореня clone (Linux shell або Windows PowerShell):
+За замовчуванням `frontend/.env.example` задає `VITE_USE_MOCKS=false` і `/api/v1`. Не підміняйте помилку API моками. Введіть координати вручну (наприклад, `−89.45`, `−137.31`), UTC-інтервал і натисніть Analyze. Для короткого live smoke почніть з `2026-11-14T00:00` — `2026-11-14T01:00`, крок `60`; фактична реалізація повертає два samples, включно з обома кінцями. Visibility intervals окремо мають семантику `[startUtc,endUtc)`. Реальні запити звертаються до зовнішнього NASA JPL, потребують мережі, не потребують API key та можуть бути повільними/недоступними.
+
+Для **окремої демонстрації UI**, додайте `VITE_USE_MOCKS=true` у `frontend/.env.local` і перезапустіть Vite. DEV-only transport показує **SYNTHETIC / DEMO**: графіки, horizon, summaries і compare тут не NASA-вимірювання. Production build не активує ці моки. Не кладіть секрети у `VITE_*`.
+
+## Що реально відомо
+
+- Після виправлення читання пошкодженого/truncated DEM реальний процес API повернув **200 partial з двома JPL samples**. Початковий invalid-deflate/unread-buffer шлях давав 500; це не був лише теоретичний дефект.
+- Чинний tracked `public-assets/terrain/0/0/0.glb` (~884 kB) показаний у Chromium WebGL, але provenance геометрії та metadata **не перевірено незалежно**. `MetadataReviewConfirmed=false` → map metadata 503 → geographic picking вимкнений; ручні координати доступні.
+- Офіційний LOLA download (HEAD: 189158392 bytes) перервано deadline 240 s після 7340032 bytes. `scripts/validate-data.py` позначив файл incomplete; ignored receipt не є scientific evidence. **Не використовуйте його як DEM.**
+- Навіть повний download не зніме консервативний gate: поточний адаптер завжди повертає `DatumAlignmentVerified=false` (це не configurable setting або env switch; потрібен майбутній reviewed adapter); узгодження CRS/frame/vertical datum залишається невирішеним. Наукова terrain visibility не підтверджена.
+- Реальні LROC/WebP текстури не підготовлено; MIME налаштовано, але assets відсутні. Raw vectors не застосовуються до сцени; Moon-fixed endpoint 503, світло художнє й фіксоване, без перевіреної Sun/Earth 3D-синхронізації.
+- `visible:null` означає невідомо, не «не видно»; невідомі summaries не нулі. Compare — **B − A**. Графічні тіні не замінюють рельєфного горизонту.
+
+## Перевірки
 
 ```sh
-cd backend
-dotnet restore LunarNavigator.sln
-dotnet build LunarNavigator.sln --configuration Release --no-restore
-dotnet test LunarNavigator.sln --configuration Release --no-build
-dotnet run --project LunarNavigator.Api --urls http://localhost:5080
+npm run build --prefix frontend
+npm test --prefix frontend
+npm run test:contracts --prefix frontend
+dotnet test backend/LunarNavigator.sln --configuration Release
+npm run test:e2e --prefix frontend
 ```
 
-API працює до `Ctrl+C`. Маршрут health за контрактом: `http://localhost:5080/api/v1/health`. Наявність solution або успішний health не означає готовності Horizons/LOLA/analyze. Без перевірених даних потрібні чесні unavailable/partial результати, а не вигадані фізичні значення.
+Playwright має власний bounded launcher; не запускайте паралельний сервер на тих самих портах. Chromium/browser dependencies потрібно встановити окремо. Offline backend: **162 passed, 1 live skipped**; окремий opt-in live Horizons test — **1 passed**. Фінальний Playwright Chromium/SwiftShader rerun: **4 passed за 20.6 s, exit 0**. Перевірено WebGL2 canvas, actual GLB MIME/`glTF` signature, camera buttons і negative picking; на synthetic fixtures — graphs, Play/Pause, scrub, compare та errors. Четвертий тест **без mocks** пройшов browser → local API → NASA: analyze **200 partial, два JPL samples**, compare **200** для різних довгот A=25°E / B=26°E (A cached, B live), terrain metrics — `null`. Screenshot: `.validation/real-nasa-analysis.png`.
 
-### Збережений Horizons внесок і live opt-in
+Початковий live 500 усунено backend truncated-DEM fix. Окремий початковий E2E timeout був teardown-дефектом: три tests уже пройшли, але stdout дочірніх launcher processes лишався відкритим; Playwright `gracefulShutdown` із SIGTERM cleanup виправив завершення. Це не підтверджує реальний DEM або terrain visibility.
 
-Horizons клієнт, observer validation, CSV/JSON parsing та HTTP-handler tests були внесені до architecture scaffold. Вони збережені, а не реалізовані заново; деталі й наукові обмеження — у [Horizons guide](docs/horizons.md). Тестовий набір містить **19 Horizons, 5 Models, 8 Core/coordinates і 22 API cases**. Offline tests не звертаються до NASA; початковий restore потребує NuGet. Це опис набору, не новий звіт про успішний запуск — фактичні результати веде [parent validation](docs/integration/bootstrap-validation.md).
+**12 response payloads із реального ASP.NET pipeline з offline synthetic science providers пройшли AJV**. Security guard має hash-pinned allowance лише для наявного synthetic TIFF розміром **100044 bytes**, без загального послаблення raw-data policy; **7 regression tests passed (1 approved fixture, 6 rejection cases)**. Координатор додає offline Playwright CI job: live test там explicit opt-in і skipped за замовчуванням; успішний remote CI run цим не заявляємо. Frontend: **45 unit/integration tests**, включно з **6 contract tests**; подробиці — у [FINAL_TEST_REPORT](docs/integration/FINAL_TEST_REPORT.md). Docker build/deploy не перевірено через permission denied до daemon; перевірено конфігурацію, не production runtime.
 
-Із кореня clone, **лише з явним дозволом на живий мережевий запит**:
+## Авторство, дані та ліцензування
 
-```sh
-dotnet run --project backend/samples/LunarNavigator.Horizons.Sample
-```
+Інтеграційний checkout базується на **`dbdb5be`** (data/backend/scene вже в base); інтеграційні зміни оформлюються окремими комітами в `feature/final-integration`. Фінальний SHA/push наведено у звіті інтегратора; merge у main і release цим не стверджуються.
 
-Sample викликає зовнішній NASA JPL Horizons; не є startup кроком, CI/offline test або доказом LOLA terrain visibility. API bootstrap ще не підключає його до analyze/compare. Клієнт не потребує API key.
+- UI-дизайн і shell **Khrystyna**, source `a75d443b7ea347443a7d1f1ec159fe1841c6132f`, збережено вибірково з атрибуцією; branch не merged цілком, `demoSlots` не перенесено у головний застосунок.
+- Попередній внесок **NASA JPL Horizons** збережено в `backend/LunarNavigator.Horizons/` і `Models/`; [документація, координати та обмеження](docs/horizons.md). Старі bootstrap counts у цьому історичному документі не є фінальним звітом.
+- **HUM-02**, contribution `c960326`, merge `92de0e8` / PR #4: збережені `data/README.md`, Python/PowerShell acquisition scripts, raw placeholder і [DATA_SOURCES](docs/DATA_SOURCES.md#audit-caveat). Історичний complete не означає scientific readiness.
+- CI source `892f4b8`: еквівалентну трирядкову зміну `fetch-depth: 0` перенесено вручну; це не merge усієї гілки.
+- Командні ролі й беклоги: [TEAM_ASSIGNMENTS](TEAM_ASSIGNMENTS.md), [people](people/), [issues](issues/), [архів provenance](docs/archive/package-reconciliation.md). Не приписуємо всій команді незалежну перевірку datasets.
 
-## HUM-02 уже merged — не повторювати
-
-**PR #4 уже merged:** contribution `c960326`, merge `92de0e8`. Збережено обидва acquisition scripts, `data/README.md`, raw placeholder та [DATA_SOURCES](docs/DATA_SOURCES.md). Architecture reconciliation не переробляє HUM-02, не завантажує DEM і не виправляє acquisition code.
-
-Legacy команди, тільки після дозволу (обидві роблять мережеві запити; `--verify-only` — HEAD, не offline validation):
-
-```sh
-python data/scripts/download_data.py --verify-only
-python data/scripts/download_data.py --download --dem-only
-```
-
-Windows PowerShell: `./data/scripts/download_data.ps1 -VerifyOnly` або `-Download -DemOnly`. Не комбінуйте verify-only і download flags. `LUNAR_DATA_DIR` / `LUNAR_DEM_PATH` описані в [data README](data/README.md), але їхні поточні edge cases залишаються предметом аудиту.
-
-**Відкриті зауваження:** відсутні checksum/content checks, Python може прийняти коротку відповідь, PowerShell не гарантує failure exit code, env path semantics різняться; немає достатніх відтворюваних GDAL/CRS/datum, imagery alignment, point-source та two-person evidence. Історичний статус “complete” не засвідчує scientific readiness. Повний [audit caveat](docs/DATA_SOURCES.md#audit-caveat) доповнює, а не переписує оригінальні claims. Сирі дані не комітити.
-
-## Опціональна публікація Issues
-
-`tasks.json`, `issues.csv` та `publish_github_issues.py` збережено в корені; CSV `body_file` посилається на `issues/*.md`. Publisher за замовчуванням лише показує команди:
-
-```sh
-python publish_github_issues.py --repo anastasiiazuliak/byte-force --only BE-02
-```
-
-Не використовуйте `--apply` без людського дозволу та перевірки вже створених Issues: helper не deduplicate і не знає, що HUM-02 вже merged. GitHub assignees/permissions залишаються ручними. Історичні bootstrap/worktree scripts видалено з [provenance](docs/archive/package-reconciliation.md); створювати новий repository не потрібно.
-
-## API-клієнт і frozen сумісність
-
-Точка інтеграції frontend — **`src/integration/client`** (відносно `frontend/`), експорти `createApiClient` та `createConfiguredClient`. Перший створює клієнт явно, другий застосовує налаштування середовища, включно з dev-only opt-in mocks. Це інтеграційна межа lane №5; не створюйте паралельних HTTP-клієнтів у UI/сцені.
-
-Заморожений `LunarApiClient` у `contracts/api-types.ts` зберігає методи `health()`, `config()`, `landingSites()`, `mapMetadata()`, `analyze(request)`, `compare(request)`, `ephemeris(request)`. Нові convenience-методи `getConfig`, `getLandingSites`, `getMapMetadata`, `getEphemeris` та підтримка `AbortSignal` належать розширенню/адаптеру клієнта, **не зміні frozen DTO чи обов’язкових сигнатур**. Старі aliases мають залишатися сумісними; нові споживачі можуть використовувати cancellable виклики. GET-методи приймають `signal?: AbortSignal` першим аргументом; POST-методи — другим після request. `createConfiguredClient()` асинхронний через lazy import mock transport. Приклад:
-
-```ts
-import { createConfiguredClient } from './integration/client'; // зі src
-const api = await createConfiguredClient();
-const controller = new AbortController();
-const config = await api.getConfig(controller.signal);
-// api.analyze(request, controller.signal)
-```
-
-`ApiClientError` з `src/api` має kind (`http`, `network`, `decode`), status і body; abort не маскується HTTP-помилкою. Клієнт типізований, але runtime JSON Schema validation виконується контрактними тестами, не кожним production request.
-
-Контракт маршрутів: `GET /api/v1/{health,config,landing-sites,map/metadata}`, `POST /api/v1/{analyze,compare}` та optional `/api/v1/ephemeris`. Static terrain/tiles описані у PARALLEL_CONTRACT/metadata, але відсутні як окремі paths у frozen OpenAPI — див. аудит. У BE-01 реалізовані health, config та landing-sites; інші маршрути реалізує №3. Mock ephemeris повертає чесний 503, не вигадані Moon-fixed напрямки.
-
-## Наукова чесність і те, що ще попереду
-
-- Latitude `[-90,-80]`, longitude `[-180,180]`, azimuth `[0,360)`; час — UTC ISO-8601 з `Z`, інтервали `[startUtc,endUtc)`, різниця compare — **B − A**.
-- `visible:null` — невідомо, не `false` і не доступність; `terrainApplied=false` не є перевіркою видимості за рельєфом. Невідомі summaries не замінювати нулями.
-- `elevationDeg` — астрономічна висота, `horizonDeg` — рельєфний горизонт, `clearanceDeg` — їх різниця. Графічні тіні ілюстративні, не науковий результат.
-- Реальні CRS, vertical datum, bounds і scene transform встановлюються з metadata dataset, не з припущень. Потрібні справжні LOLA/LROC дані, перевірка джерел/ліцензій, Horizons і контрольні наукові точки.
-- Великі DEM/GLB не комітити: публікувати через погоджене static storage. Credentials, hosting, NASA submission — людські дії з явним дозволом.
-- Після merge lane ще потрібні wiring, реальний E2E, scientific validation і deploy. Цей README не засвідчує, що вони виконані.
-
-Спільні моделі LunarObserver/LunarObservation збережені в `backend/LunarNavigator.Models/`, окремо від Horizons. BE-01, стилі та тести зі stash інтегровані в `backend/LunarNavigator.Api/` і `backend/tests/LunarNavigator.Api.Tests/`. Резервний stash GitHub Desktop залишено; повторно застосовувати його не потрібно.
+Код: [MIT License](LICENSE), copyright © 2026 anastasiiazuliak. NASA/JPL Horizons, NASA LRO/LOLA/PGDA та LROC мають окремі джерела й умови атрибуції: [DATA_SOURCES](docs/DATA_SOURCES.md), [SCIENCE_METHOD](docs/SCIENCE_METHOD.md). Згадка LROC — заплановане джерело, не наявна imagery. Перед submission люди мають перевірити ліцензії конкретних assets, авторські кредити та актуальні правила NASA Space Apps. Це не офіційний/схвалений NASA продукт; hosting, credentials, відео й submission потребують людського рішення.

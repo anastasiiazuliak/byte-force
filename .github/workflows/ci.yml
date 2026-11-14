@@ -41,15 +41,50 @@ jobs:
       - run: dotnet restore LunarNavigator.sln
       - run: dotnet build LunarNavigator.sln --configuration Release --no-restore
       - run: dotnet test LunarNavigator.sln --configuration Release --no-build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked backend schema validator
+        run: npm ci --prefix tests/LunarNavigator.Api.Tests/Contracts
+      - name: Validate actual backend HTTP payloads against OpenAPI
+        run: npm --prefix tests/LunarNavigator.Api.Tests/Contracts test -- ../bin/Release/net8.0/ContractResponses
   repository:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Whitespace checks need parent history, not a shallow root snapshot.
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
       - name: Guard tracked files against secrets and oversized/raw data
         run: python scripts/check-repository.py
+      - name: Security guard regression tests
+        run: python scripts/test_repository_guard.py
       - name: Whitespace errors
         run: git --no-pager show --format= --check HEAD
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Browser UI, real local API and explicitly intercepted science fixtures (no NASA calls)
+        run: npm run test:e2e
+        working-directory: frontend
