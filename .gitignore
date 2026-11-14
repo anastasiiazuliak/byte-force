@@ -6,7 +6,7 @@
 ## has more thorough IDE-specific entries.
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/Dotnet.gitignore
-
+*.tif
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
@@ -102,3 +102,5 @@ NuGetScratch*/
 .audit/
 !contracts/fixtures/**
 
+front/res/moon_map.tif
+front/res/ldem_16.tif
