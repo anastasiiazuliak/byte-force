@@ -76,7 +76,7 @@ Contract changes не зроблено. Відомі v2 discrepancies в [contra
 
 ## Знайдені й усунені збої
 
-- Main містив conflict markers у TerrainFactory; прибрано з узгодженим env/path resolution.
+- Main містив conflict markers у TerrainFactory та API README; прибрано з узгодженим env/path resolution.
 - Horizon provider залишався unavailable навіть за наявності реалізації; DI wiring і safety checks додано.
 - Перший live browser analyze повернув **500**: truncated DEM мав читабельний TIFF header, але не всі compressed tiles. Short read передавав unread pooled-buffer bytes у ZLibStream. Виправлено file-range/complete-read/decompression checks і unavailable fallback; регресійні tests та real browser rerun пройшли.
 - Перші 3 browser cases passed, але процес test runner timeout через незавершений launcher teardown/відкритий stdout children. Playwright `gracefulShutdown: SIGTERM` з finally cleanup усунув зависання; фінальні запуски завершились exit 0.

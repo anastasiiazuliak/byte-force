@@ -147,6 +147,6 @@ Docs (`origin/docs`, tip `bcba2a3`) is contained in main. Existing 3D scene, per
 
 Відсутній CI patch `892f4b8` відтворено в repository checkout (`fetch-depth: 0`) та доповнено offline browser/security/schema CI. UI source `a75d443` включено вибірково з attribution; `demoSlots` не підключено як другий застосунок. Решта team branches вже є ancestors main — повторно не merge-или. Branch creation identity Git не зберігає, таблиця наводить commit authors, а не вигаданих branch creators.
 
-Actual merge conflicts при вибірковому перенесенні не виникли. Знайдено **вже закомічені** conflict markers у main `TerrainFactory.cs`: усунено, поєднано path/env behavior та safe unavailable cases. Rootcause runtime 500 від incomplete DEM і деталі всіх фінальних tests — у [FINAL_TEST_REPORT](FINAL_TEST_REPORT.md).
+Actual merge conflicts при вибірковому перенесенні не виникли. Знайдено **вже закомічені** conflict markers у main `TerrainFactory.cs` і API README: усунено, поєднано path/env behavior та safe unavailable cases. Rootcause runtime 500 від incomplete DEM і деталі всіх фінальних tests — у [FINAL_TEST_REPORT](FINAL_TEST_REPORT.md).
 
 Final local evidence: frontend 45 passed; backend 162 passed + 1 live skipped; separate live1 passed; browser with live opt-in4 passed; AJV12 payloads. Baseline per-branch tests окремо не вважаються passed: запускали сукупний інтегрований tree, з незмінними contracts і documented science gates.
