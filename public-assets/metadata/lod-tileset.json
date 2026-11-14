@@ -1,0 +1,68 @@
+{
+  "task": "DATA-04",
+  "tileGridScheme": "XYZ",
+  "minZoom": 0,
+  "maxZoom": 2,
+  "rootTileExtentsMeters": {
+    "width": 10080.0,
+    "height": 10080.0
+  },
+  "boundsProjectedMeters": {
+    "minX": -16320.0,
+    "maxX": -6240.0,
+    "minY": -17280.0,
+    "maxY": -7200.0
+  },
+  "boundsGeographic": {
+    "minLat": -89.68579645899133,
+    "maxLat": -89.21617788565013,
+    "minLon": -160.14478563067897,
+    "maxLon": -113.80594351845772
+  },
+  "meshLocalOrigin": [
+    -11308.18777098865,
+    -12258.857997599333,
+    0.0
+  ],
+  "referenceElevationMeters": 1937.50146484375,
+  "skirtDepthMeters": 80.0,
+  "sourceDataset": "LDEM_80S_80MPP_ADJ.TIF",
+  "verticalReference": "Moon (2015) Sphere R=1737400m",
+  "attribution": "NASA GSFC PGDA / Barker et al. 2023",
+  "coverage": {
+    "fullSouthPole80S90S": false,
+    "coveredRegionName": "Connecting Ridge Demo Window",
+    "lrocImageryAvailable": false,
+    "surfaceFallbackLayer": "hillshade"
+  },
+  "lodLevels": [
+    {
+      "zoom": 0,
+      "tilesPerAxis": 1,
+      "tileCount": 1,
+      "gridSegmentsPerTile": 32,
+      "vertexSpacingMeters": 315.0,
+      "maxGeometricErrorMeters": 235.0
+    },
+    {
+      "zoom": 1,
+      "tilesPerAxis": 2,
+      "tileCount": 4,
+      "gridSegmentsPerTile": 32,
+      "vertexSpacingMeters": 157.5,
+      "maxGeometricErrorMeters": 77.5
+    },
+    {
+      "zoom": 2,
+      "tilesPerAxis": 4,
+      "tileCount": 16,
+      "gridSegmentsPerTile": 32,
+      "vertexSpacingMeters": 78.75,
+      "maxGeometricErrorMeters": 0.0
+    }
+  ],
+  "totals": {
+    "glbBytes": 1432608,
+    "textureBytes": 4258
+  }
+}
