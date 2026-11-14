@@ -1,0 +1,38 @@
+id,title,body_file,priority,owner,dependencies,assignee_number
+HUM-01,"Створити GitHub-репозиторій, доступи та правила паралельної роботи",issues/HUM-01.md,P0,Людина №5 — Інтегратор / CI / QA,,5
+HUM-02,Отримати й перевірити офіційні NASA-дані для DEM та зображень,issues/HUM-02.md,P0,Людина №4 — LOLA / Data,,4
+HUM-03,"Обрати й підготувати демо-хостинг, домен та секрети",issues/HUM-03.md,P0,Людина №5 — Інтегратор / CI / QA,HUM-01,5
+HUM-04,"Підготувати презентацію, демонстраційний сценарій і подачу NASA",issues/HUM-04.md,P0,Людина №5 — Інтегратор / CI / QA,"QA-01,OPS-02",5
+ARC-01,"Підняти монорепозиторій: React, .NET 8, data-pipeline, contracts",issues/ARC-01.md,P0,Людина №5 — Інтегратор / CI / QA,HUM-01,5
+ARC-02,"Зафіксувати OpenAPI, TypeScript DTO та реалістичні тестові fixtures",issues/ARC-02.md,P0,Людина №5 — Інтегратор / CI / QA,ARC-01,5
+ARC-03,"Затвердити місячні координати, висотну базу, scene-transform і tile grid",issues/ARC-03.md,P0,Людина №4 — LOLA / Data,"ARC-02,HUM-02",4
+BE-01,"Реалізувати .NET API foundation, config та каталог місць",issues/BE-01.md,P0,Людина №3 — Backend / Horizons,"ARC-01,ARC-02",3
+BE-02,Підключити JPL Horizons: локальні азимут/висота Сонця та Землі,issues/BE-02.md,P0,Людина №3 — Backend / Horizons,ARC-02,3
+BE-03,"Реалізувати POST /analyze: горизонти, видимість, інтервали, summaries",issues/BE-03.md,P0,Людина №3 — Backend / Horizons,"BE-02,DATA-02,ARC-02",3
+BE-04,Реалізувати POST /compare та узгоджені метрики A/B,issues/BE-04.md,P0,Людина №3 — Backend / Horizons,"BE-03,ARC-02",3
+BE-05,POST /ephemeris: перевірені Moon-fixed напрями для освітлення 3D,issues/BE-05.md,P1,Людина №3 — Backend / Horizons,"BE-02,ARC-03",3
+BE-06,"Реалізувати GET /map/metadata для синхронізації 3D mesh, CRS та static URLs",issues/BE-06.md,P0,Людина №3 — Backend / Horizons,"ARC-02,ARC-03,DATA-03",3
+DATA-01,Підключити NASA LOLA GeoTIFF через GDAL і читати висоту за координатами,issues/DATA-01.md,P0,Людина №4 — LOLA / Data,"HUM-02,ARC-03",4
+DATA-02,Обчислити 360° локальний горизонт із LOLA та кривизною Місяця,issues/DATA-02.md,P0,Людина №4 — LOLA / Data,"DATA-01,ARC-03",4
+DATA-03,Зробити offline DEM → один реальний 3D mesh GLB для demo-ділянки,issues/DATA-03.md,P0,Людина №4 — LOLA / Data,"HUM-02,ARC-03",4
+DATA-04,Побудувати LOD GLB/WebP тайли і заповнити map metadata,issues/DATA-04.md,P1,Людина №4 — LOLA / Data,"DATA-03,ARC-03",4
+DATA-05,"Перевірити геометрію, горизонти та вихідні дані NASA на контрольних точках",issues/DATA-05.md,P0,Людина №4 — LOLA / Data,"DATA-02,BE-02",4
+FE3D-01,Створити преміальний 3D Lunar Terrain Viewer із плавним orbit/pan/zoom,issues/FE3D-01.md,P0,Людина №1 — 3D Frontend,ARC-01,1
+FE3D-02,"Додати 3D tile loader, LOD, текстури й плавне підвантаження",issues/FE3D-02.md,P1,Людина №1 — 3D Frontend,"FE3D-01,ARC-03",1
+FE3D-03,Реалізувати вибір точок A/B із raycast і коректними місячними координатами,issues/FE3D-03.md,P0,Людина №1 — 3D Frontend,"FE3D-01,ARC-03,ARC-02",1
+FE3D-04,"Синхронізувати 3D-освітлення, Сонце й часовий scrub",issues/FE3D-04.md,P1,Людина №1 — 3D Frontend,"FE3D-01,BE-05,FEUI-04",1
+FEUI-01,Створити Lunar Mission Control UI shell та адаптивний дизайн,issues/FEUI-01.md,P0,Людина №2 — UI Frontend,ARC-01,2
+FEUI-02,Створити site picker та форму дати/часу з валідацією,issues/FEUI-02.md,P0,Людина №2 — UI Frontend,"FEUI-01,ARC-02",2
+FEUI-03,"Зробити Analysis Panel: картки, графіки, 360° horizon view",issues/FEUI-03.md,P0,Людина №2 — UI Frontend,"FEUI-01,ARC-02",2
+FEUI-04,"Створити Mission Timeline зі scrub, Play/Pause та синхронізацією часу",issues/FEUI-04.md,P0,Людина №2 — UI Frontend,"FEUI-03,ARC-02",2
+FEUI-05,Створити Compare Mode для двох місць або різних дат,issues/FEUI-05.md,P0,Людина №2 — UI Frontend,"FEUI-03,FEUI-04,ARC-02",2
+FEUI-06,"Додати зрозумілі стани завантаження, пояснення точності та доступність",issues/FEUI-06.md,P1,Людина №2 — UI Frontend,"FEUI-02,FEUI-03,FEUI-05",2
+INT-01,"Підготувати frontend API client, mocks та contract tests",issues/INT-01.md,P0,Людина №5 — Інтегратор / CI / QA,"ARC-02,ARC-01",5
+INT-02,Підключити реальний API до 3D та UI для end-to-end сценарію,issues/INT-02.md,P0,Людина №5 — Інтегратор / CI / QA,"INT-01,BE-03,FE3D-03,FEUI-03",5
+OPS-01,"Налаштувати CI: build, lint, test, OpenAPI validation і PR-checks",issues/OPS-01.md,P0,Людина №5 — Інтегратор / CI / QA,"ARC-01,ARC-02",5
+OPS-02,"Задеплоїти API, UI та static 3D/imagery assets одним публічним URL",issues/OPS-02.md,P0,Людина №5 — Інтегратор / CI / QA,"HUM-03,INT-02,OPS-01,DATA-03",5
+QA-01,"Зробити наскрізні тести: вибір місця, дата, аналіз, compare, збої",issues/QA-01.md,P0,Людина №5 — Інтегратор / CI / QA,"INT-02,BE-04,FEUI-05",5
+QA-02,"Оптимізувати мобільний 3D, FPS, LOD та memory cleanup",issues/QA-02.md,P1,Людина №1 — 3D Frontend,"FE3D-02,FEUI-01,OPS-02",1
+P2-01,Додати наукову raster-маску освітленості цілої ділянки,issues/P2-01.md,P2,Людина №4 — LOLA / Data,"BE-05,DATA-04,DATA-05",4
+P2-02,Додати експорт CSV і короткий звіт без підміни наукових даних,issues/P2-02.md,P2,Людина №2 — UI Frontend,"FEUI-05,DATA-05",2
+P2-03,Додати 5 м/піксель DEM для вибраної високодетальної зони,issues/P2-03.md,P2,Людина №4 — LOLA / Data,"DATA-04,DATA-05",4

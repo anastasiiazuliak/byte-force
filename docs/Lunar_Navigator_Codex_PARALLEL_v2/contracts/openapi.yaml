@@ -1,0 +1,320 @@
+openapi: 3.1.0
+info:
+  title: Lunar Navigator API
+  version: 0.2.0
+  description: Frozen *proposed* parallel-start interface. Do not treat examples as NASA observations.
+servers:
+  - url: /api/v1
+paths:
+  /health:
+    get:
+      operationId: health
+      responses:
+        '200': {description: Healthy server, content: {application/json: {schema: {$ref: '#/components/schemas/HealthResponse'}}}}
+  /config:
+    get:
+      operationId: config
+      responses:
+        '200': {description: Region and limits, content: {application/json: {schema: {$ref: '#/components/schemas/ConfigResponse'}}}}
+  /landing-sites:
+    get:
+      operationId: landingSites
+      responses:
+        '200': {description: Curated or demonstrative sites, content: {application/json: {schema: {$ref: '#/components/schemas/LandingSitesResponse'}}}}
+  /map/metadata:
+    get:
+      operationId: mapMetadata
+      responses:
+        '200': {description: Projection and asset manifest; can be unverified, content: {application/json: {schema: {$ref: '#/components/schemas/MapMetadataResponse'}}}}
+  /analyze:
+    post:
+      operationId: analyze
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AnalysisRequest'}}}}
+      responses:
+        '200': {description: Complete or partial analysis, content: {application/json: {schema: {$ref: '#/components/schemas/AnalysisResponse'}}}}
+        '400': {$ref: '#/components/responses/ApiError'}
+        '422': {$ref: '#/components/responses/ApiError'}
+        '503': {$ref: '#/components/responses/ApiError'}
+  /compare:
+    post:
+      operationId: compare
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CompareRequest'}}}}
+      responses:
+        '200': {description: Comparison, content: {application/json: {schema: {$ref: '#/components/schemas/CompareResponse'}}}}
+        '400': {$ref: '#/components/responses/ApiError'}
+  /ephemeris:
+    post:
+      operationId: ephemeris
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/EphemerisRequest'}}}}
+      responses:
+        '200': {description: Validated Moon-fixed directions; return error until verified, content: {application/json: {schema: {$ref: '#/components/schemas/EphemerisResponse'}}}}
+        '503': {$ref: '#/components/responses/ApiError'}
+components:
+  responses:
+    ApiError: {description: Standard error, content: {application/json: {schema: {$ref: '#/components/schemas/ApiError'}}}}
+  schemas:
+    IsoUtc: {type: string, format: date-time, description: 'UTC date-time with Z'}
+    Coordinates:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude: {type: number, minimum: -90, maximum: -80}
+        longitude: {type: number, minimum: -180, maximum: 180}
+    Location:
+      allOf:
+        - {$ref: '#/components/schemas/Coordinates'}
+        - {type: object, required: [elevationM], properties: {elevationM: {type: [number, 'null']}}}
+    Period:
+      type: object
+      required: [startUtc, endUtc, stepMinutes]
+      properties:
+        startUtc: {$ref: '#/components/schemas/IsoUtc'}
+        endUtc: {$ref: '#/components/schemas/IsoUtc'}
+        stepMinutes: {type: integer, minimum: 1}
+    AnalysisOptions:
+      type: object
+      properties:
+        terrainModel: {type: string, enum: [lola], default: lola}
+        includeHorizon: {type: boolean, default: true}
+    AnalysisRequest:
+      type: object
+      required: [location, period]
+      properties:
+        location: {$ref: '#/components/schemas/Coordinates'}
+        period: {$ref: '#/components/schemas/Period'}
+        options: {$ref: '#/components/schemas/AnalysisOptions'}
+    BodyPosition:
+      type: object
+      required: [azimuthDeg, elevationDeg, horizonDeg, clearanceDeg, visible]
+      properties:
+        azimuthDeg: {type: number, minimum: 0, exclusiveMaximum: 360}
+        elevationDeg: {type: number}
+        horizonDeg: {type: [number, 'null']}
+        clearanceDeg: {type: [number, 'null']}
+        visible: {type: [boolean, 'null']}
+    AnalysisSample:
+      type: object
+      required: [timeUtc, sun, earth]
+      properties:
+        timeUtc: {$ref: '#/components/schemas/IsoUtc'}
+        sun: {$ref: '#/components/schemas/BodyPosition'}
+        earth: {$ref: '#/components/schemas/BodyPosition'}
+    Interval:
+      type: object
+      required: [startUtc, endUtc]
+      properties:
+        startUtc: {$ref: '#/components/schemas/IsoUtc'}
+        endUtc: {$ref: '#/components/schemas/IsoUtc'}
+    Summary:
+      type: object
+      required: [sunVisibleHours, earthVisibleHours, bothVisibleHours, sunVisiblePercent, earthVisiblePercent]
+      properties:
+        sunVisibleHours: {type: [number, 'null']}
+        earthVisibleHours: {type: [number, 'null']}
+        bothVisibleHours: {type: [number, 'null']}
+        sunVisiblePercent: {type: [number, 'null']}
+        earthVisiblePercent: {type: [number, 'null']}
+    Quality:
+      type: object
+      required: [ephemerisSource, terrainSource, terrainApplied, terrainResolutionMeters, visibilityMethod, warnings]
+      properties:
+        ephemerisSource: {type: string}
+        terrainSource: {type: [string, 'null']}
+        terrainApplied: {type: boolean}
+        terrainResolutionMeters: {type: [number, 'null']}
+        visibilityMethod: {type: string}
+        warnings: {type: array, items: {type: string}}
+    HorizonPoint:
+      type: object
+      required: [azimuthDeg, elevationDeg]
+      properties:
+        azimuthDeg: {type: number, minimum: 0, exclusiveMaximum: 360}
+        elevationDeg: {type: number}
+    Horizon:
+      type: object
+      required: [points]
+      properties:
+        points: {type: array, items: {$ref: '#/components/schemas/HorizonPoint'}}
+    Intervals:
+      type: object
+      required: [sunVisible, earthVisible]
+      properties:
+        sunVisible: {type: array, items: {$ref: '#/components/schemas/Interval'}}
+        earthVisible: {type: array, items: {$ref: '#/components/schemas/Interval'}}
+    AnalysisResponse:
+      type: object
+      required: [status, location, period, summary, samples, intervals, horizon, quality]
+      properties:
+        status: {type: string, enum: [complete, partial]}
+        location: {$ref: '#/components/schemas/Location'}
+        period: {$ref: '#/components/schemas/Period'}
+        summary: {$ref: '#/components/schemas/Summary'}
+        samples: {type: array, items: {$ref: '#/components/schemas/AnalysisSample'}}
+        intervals: {$ref: '#/components/schemas/Intervals'}
+        horizon: {oneOf: [{$ref: '#/components/schemas/Horizon'}, {type: 'null'}]}
+        quality: {$ref: '#/components/schemas/Quality'}
+    CompareScenario:
+      type: object
+      required: [id, location, period]
+      properties:
+        id: {type: string, enum: [A, B]}
+        location: {$ref: '#/components/schemas/Coordinates'}
+        period: {$ref: '#/components/schemas/Period'}
+        options: {$ref: '#/components/schemas/AnalysisOptions'}
+    CompareRequest:
+      type: object
+      required: [scenarios]
+      properties:
+        scenarios: {type: array, minItems: 2, maxItems: 2, items: {$ref: '#/components/schemas/CompareScenario'}}
+    CompareResponse:
+      type: object
+      required: [scenarios, differences]
+      properties:
+        scenarios:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: object
+            required: [id, analysis]
+            properties:
+              id: {type: string, enum: [A, B]}
+              analysis: {$ref: '#/components/schemas/AnalysisResponse'}
+        differences:
+          type: object
+          required: [sunVisibleHours, earthVisibleHours, bothVisibleHours]
+          properties:
+            sunVisibleHours: {type: [number, 'null']}
+            earthVisibleHours: {type: [number, 'null']}
+            bothVisibleHours: {type: [number, 'null']}
+    ConfigResponse:
+      type: object
+      required: [region, analysis, features]
+      properties:
+        region:
+          type: object
+          required: [id, name, latitudeMin, latitudeMax, longitudeMin, longitudeMax]
+          properties:
+            id: {type: string}
+            name: {type: string}
+            latitudeMin: {type: number}
+            latitudeMax: {type: number}
+            longitudeMin: {type: number}
+            longitudeMax: {type: number}
+        analysis:
+          type: object
+          required: [minStepMinutes, maxStepMinutes, maxSamples, maxScenarios]
+          properties:
+            minStepMinutes: {type: integer}
+            maxStepMinutes: {type: integer}
+            maxSamples: {type: integer}
+            maxScenarios: {type: integer, const: 2}
+        features:
+          type: object
+          required: [terrainAnalysis, scenarioComparison, horizonProfile, moonFixedEphemeris]
+          properties:
+            terrainAnalysis: {type: boolean}
+            scenarioComparison: {type: boolean}
+            horizonProfile: {type: boolean}
+            moonFixedEphemeris: {type: boolean}
+    LandingSitesResponse:
+      type: object
+      required: [sites]
+      properties:
+        sites:
+          type: array
+          items:
+            type: object
+            required: [id, name, description, latitude, longitude, sourceUrl]
+            properties:
+              id: {type: string}
+              name: {type: string}
+              description: {type: string}
+              latitude: {type: number}
+              longitude: {type: number}
+              sourceUrl: {type: [string, 'null']}
+    MapMetadataResponse:
+      type: object
+      required: [regionId, projection, render, assets, terrainDataset]
+      properties:
+        regionId: {type: string}
+        projection:
+          type: object
+          required: [name, projDefinition, sourceFrame, linearUnit]
+          properties:
+            name: {type: string, enum: [south-polar-stereographic]}
+            projDefinition: {type: [string, 'null']}
+            sourceFrame: {type: [string, 'null']}
+            linearUnit: {type: string, enum: [m]}
+        render:
+          type: object
+          required: [type, tileSize, minZoom, maxZoom, boundsMeters, sceneTransform]
+          properties:
+            type: {type: string, enum: [projected-terrain]}
+            tileSize: {type: integer}
+            minZoom: {type: integer}
+            maxZoom: {type: integer}
+            boundsMeters: {oneOf: [{type: 'null'}, {type: object, required: [minX, minY, maxX, maxY], properties: {minX: {type: number}, minY: {type: number}, maxX: {type: number}, maxY: {type: number}}}]}
+            sceneTransform: {oneOf: [{type: 'null'}, {type: object, required: [originEastingM, originNorthingM, verticalOriginM, validated], properties: {originEastingM: {type: number}, originNorthingM: {type: number}, verticalOriginM: {type: number}, validated: {type: boolean}}}]}
+        assets:
+          type: object
+          required: [terrainTemplate, surfaceTemplate, hillshadeTemplate, demoMeshUrl]
+          properties:
+            terrainTemplate: {type: [string, 'null']}
+            surfaceTemplate: {type: [string, 'null']}
+            hillshadeTemplate: {type: [string, 'null']}
+            demoMeshUrl: {type: [string, 'null']}
+        terrainDataset:
+          type: object
+          required: [id, sourceResolutionMeters, verticalReference, metadataVerified]
+          properties:
+            id: {type: string}
+            sourceResolutionMeters: {type: number}
+            verticalReference: {type: [string, 'null']}
+            metadataVerified: {type: boolean}
+    EphemerisRequest:
+      type: object
+      required: [startUtc, endUtc, stepMinutes]
+      properties:
+        startUtc: {$ref: '#/components/schemas/IsoUtc'}
+        endUtc: {$ref: '#/components/schemas/IsoUtc'}
+        stepMinutes: {type: integer, minimum: 1}
+    EphemerisResponse:
+      type: object
+      required: [referenceFrame, vectorConvention, samples, quality]
+      properties:
+        referenceFrame: {type: string}
+        vectorConvention: {type: string}
+        samples:
+          type: array
+          items:
+            type: object
+            required: [timeUtc, sunDirection, earthDirection]
+            properties:
+              timeUtc: {$ref: '#/components/schemas/IsoUtc'}
+              sunDirection: {$ref: '#/components/schemas/Direction'}
+              earthDirection: {$ref: '#/components/schemas/Direction'}
+        quality:
+          type: object
+          required: [source, warnings]
+          properties:
+            source: {type: string}
+            warnings: {type: array, items: {type: string}}
+    Direction: {type: array, minItems: 3, maxItems: 3, items: {type: number}}
+    HealthResponse:
+      type: object
+      required: [status, version]
+      properties:
+        status: {type: string, enum: [ok]}
+        version: {type: string}
+    ApiError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: {type: string, enum: [VALIDATION_ERROR, LOCATION_OUT_OF_BOUNDS, TERRAIN_DATA_UNAVAILABLE, EPHEMERIS_UNAVAILABLE, ANALYSIS_TIMEOUT, INTERNAL_ERROR]}
+            message: {type: string}
+            details: {type: object}

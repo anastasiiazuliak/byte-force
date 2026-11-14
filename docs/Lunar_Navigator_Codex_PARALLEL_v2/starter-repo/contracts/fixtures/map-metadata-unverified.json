@@ -1,0 +1,29 @@
+{
+  "regionId": "lunar-south-pole",
+  "projection": {
+    "name": "south-polar-stereographic",
+    "projDefinition": null,
+    "sourceFrame": null,
+    "linearUnit": "m"
+  },
+  "render": {
+    "type": "projected-terrain",
+    "tileSize": 256,
+    "minZoom": 0,
+    "maxZoom": 0,
+    "boundsMeters": null,
+    "sceneTransform": null
+  },
+  "assets": {
+    "terrainTemplate": null,
+    "surfaceTemplate": null,
+    "hillshadeTemplate": null,
+    "demoMeshUrl": null
+  },
+  "terrainDataset": {
+    "id": "LOLA-80MPP-ADJ",
+    "sourceResolutionMeters": 80,
+    "verticalReference": null,
+    "metadataVerified": false
+  }
+}
