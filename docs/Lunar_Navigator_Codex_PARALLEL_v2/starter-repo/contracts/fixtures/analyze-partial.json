@@ -1,0 +1,55 @@
+{
+  "status": "partial",
+  "location": {
+    "latitude": -89.5,
+    "longitude": 25,
+    "elevationM": null
+  },
+  "period": {
+    "startUtc": "2026-11-14T00:00:00Z",
+    "endUtc": "2026-11-15T00:00:00Z",
+    "stepMinutes": 60
+  },
+  "summary": {
+    "sunVisibleHours": null,
+    "earthVisibleHours": null,
+    "bothVisibleHours": null,
+    "sunVisiblePercent": null,
+    "earthVisiblePercent": null
+  },
+  "samples": [
+    {
+      "timeUtc": "2026-11-14T00:00:00Z",
+      "sun": {
+        "azimuthDeg": 125,
+        "elevationDeg": 8,
+        "horizonDeg": null,
+        "clearanceDeg": null,
+        "visible": null
+      },
+      "earth": {
+        "azimuthDeg": 215,
+        "elevationDeg": 4,
+        "horizonDeg": null,
+        "clearanceDeg": null,
+        "visible": null
+      }
+    }
+  ],
+  "intervals": {
+    "sunVisible": [],
+    "earthVisible": []
+  },
+  "horizon": null,
+  "quality": {
+    "ephemerisSource": "SYNTHETIC FIXTURE (NOT NASA)",
+    "terrainSource": null,
+    "terrainApplied": false,
+    "terrainResolutionMeters": null,
+    "visibilityMethod": "not evaluated: missing DEM",
+    "warnings": [
+      "SYNTHETIC TEST FIXTURE. DO NOT DISPLAY AS REAL SCIENCE.",
+      "Terrain unavailable: visibility unknown."
+    ]
+  }
+}
