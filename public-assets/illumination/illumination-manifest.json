@@ -1,0 +1,57 @@
+{
+  "task": "P2-01",
+  "title": "Scientific Lunar Illumination Raster Masks",
+  "sourceDataset": "LDEM_80S_80MPP_ADJ.TIF",
+  "verticalReference": "Moon (2015) Sphere R=1737400m",
+  "attribution": "NASA GSFC PGDA / Barker et al. 2023",
+  "boundsProjectedMeters": {
+    "minX": -16320.0,
+    "maxX": -6240.0,
+    "minY": -17280.0,
+    "maxY": -7200.0
+  },
+  "boundsGeographic": {
+    "minLat": -89.68579645899133,
+    "maxLat": -89.21617788565013,
+    "minLon": -160.14478563067897,
+    "maxLon": -113.80594351845772
+  },
+  "methodology": {
+    "demResolutionMeters": 80.0,
+    "rayStepMeters": 80.0,
+    "maxRayRangeMeters": 5000.0,
+    "lunarSphereRadiusMeters": 1737400.0,
+    "solarModel": "Point-source center-of-disk (0.53 deg penumbra zone noted in SCIENCE_METHOD.md)",
+    "coverageNote": "Covers Connecting Ridge demo window only; 404 on uncovered tiles should hide overlay."
+  },
+  "timestamps": [
+    {
+      "timeKey": "2026-03-01T00Z",
+      "timeUtc": "2026-03-01T00:00:00Z",
+      "sunAzimuthDeg": 142.5,
+      "sunElevationDeg": 1.25,
+      "ephemerisSource": "JPL Horizons coord@301 benchmark",
+      "tileTemplate": "/illumination/2026-03-01T00Z/{z}/{x}/{y}.webp",
+      "demoTile": "/illumination/2026-03-01T00Z/0/0/0.webp",
+      "tileSizePx": 64,
+      "litFraction": 0.47,
+      "shadowFraction": 0.499,
+      "noDataFraction": 0.031,
+      "cpuCostMs": 169.5
+    },
+    {
+      "timeKey": "2026-03-08T00Z",
+      "timeUtc": "2026-03-08T00:00:00Z",
+      "sunAzimuthDeg": 52.0,
+      "sunElevationDeg": 1.45,
+      "ephemerisSource": "JPL Horizons coord@301 benchmark",
+      "tileTemplate": "/illumination/2026-03-08T00Z/{z}/{x}/{y}.webp",
+      "demoTile": "/illumination/2026-03-08T00Z/0/0/0.webp",
+      "tileSizePx": 64,
+      "litFraction": 0.4653,
+      "shadowFraction": 0.5037,
+      "noDataFraction": 0.031,
+      "cpuCostMs": 213.8
+    }
+  ]
+}

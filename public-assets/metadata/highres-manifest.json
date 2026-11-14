@@ -1,0 +1,44 @@
+{
+  "task": "P2-03",
+  "enabled": false,
+  "status": "pending_nasa_5mpp_dem_download",
+  "optional": true,
+  "provenance": "High-resolution local DEM",
+  "sourceDataset": "LDEM_875S_5MPP (NASA PGDA 5 m/px LOLA)",
+  "attribution": "NASA GSFC PGDA / LOLA 5 m/px Polar Product",
+  "resolutionMeters": 5.0,
+  "verticalDatumNormalizedToBase": true,
+  "baseReferenceElevationMeters": 1937.50146484375,
+  "baseMeshLocalOrigin": [
+    -11308.18777098865,
+    -12258.857997599333,
+    0.0
+  ],
+  "skirtDepthMeters": 20.0,
+  "coverage": {
+    "regionName": "Connecting Ridge CR1 High-Detail Zone",
+    "fullSouthPoleCoverage": false,
+    "boundsProjectedMeters": {
+      "minX": -11628.18777098865,
+      "maxX": -10988.18777098865,
+      "minY": -12578.857997599333,
+      "maxY": -11938.857997599333
+    },
+    "boundsGeographic": {
+      "minLat": -89.46491128759006,
+      "maxLat": -89.43508807267877,
+      "minLon": -137.37440999341365,
+      "maxLon": -137.24899043492013
+    }
+  },
+  "fallbackPolicy": "Render base 80 m/px DEM outside covered bounds or when highres is disabled.",
+  "horizonDisclaimer": "5 m/px DEM refines local 3D terrain geometry only; scientific far-field horizon analysis continues to use the 80 m/px LOLA DEM unless high-res horizon data is loaded.",
+  "tileTemplate": "/terrain/highres/{z}/{x}/{y}.glb",
+  "tiles": [
+    "/terrain/highres/3/0/0.glb",
+    "/terrain/highres/3/0/1.glb",
+    "/terrain/highres/3/1/0.glb",
+    "/terrain/highres/3/1/1.glb"
+  ],
+  "totalGlbBytes": 0
+}
