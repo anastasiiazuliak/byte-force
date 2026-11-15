@@ -14,7 +14,7 @@ function synthetic(request: any) {
   result.samples = [0, 30, 60].map(minutes => ({ ...structuredClone(fixture.samples[0]), timeUtc: new Date(Date.parse(request.period.startUtc) + minutes * 60000).toISOString() }));
   return result;
 }
-test('real local API, static GLB and WebGL render; unverified picking stays disabled', async ({ page, request }) => {
+test('real local API, static GLB and WebGL render; picking follows dataset review', async ({ page, request }) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   const health = await request.get('/api/v1/health'); expect(health.ok()).toBeTruthy(); expect((await health.json()).status).toBe('ok');
   const asset = await request.get('/terrain/0/0/0.glb'); expect(asset.headers()['content-type']).toContain('model/gltf-binary'); expect((await asset.body()).subarray(0,4).toString()).toBe('glTF');
@@ -26,7 +26,10 @@ test('real local API, static GLB and WebGL render; unverified picking stays disa
   await page.getByRole('button', { name: 'Top-Down (T)', exact: true }).click();
   await page.getByRole('button', { name: 'Reset (R)', exact: true }).click();
   await page.getByTestId('lunar-terrain-viewer').locator('canvas').click();
-  await expect(page.getByLabel('Latitude A', { exact: true })).toHaveValue('');
+  const map = await request.get('/api/v1/map/metadata');
+  if (map.ok() && (await map.json()).terrainDataset.metadataVerified) {
+    await expect(page.getByLabel('Latitude A', { exact: true })).not.toHaveValue('');
+  } else await expect(page.getByLabel('Latitude A', { exact: true })).toHaveValue('');
   expect(errors).toEqual([]); await page.screenshot({ path: '../.validation/lunar-browser.png', fullPage: true });
 });
 test('synthetic response: analyze, graphs, cached UTC scrub and A/B compare', async ({ page }) => {
@@ -57,7 +60,7 @@ test('network failure and NASA error are visible, never synthetic fallback', asy
   await expect(page.getByTestId('analysis-result')).toHaveCount(0);
 });
 
-test('real NASA through browser, partial analysis and compare without a DEM', async ({ page }) => {
+test('real NASA through browser, partial analysis, compare and honest exports', async ({ page }) => {
   test.skip(process.env.LUNAR_RUN_LIVE_E2E !== '1', 'Explicit opt-in: real NASA network requests; offline CI never fabricates this result.');
   await page.goto('/'); await form(page); await page.getByLabel('Step minutes A', { exact: true }).fill('60');
   const response = page.waitForResponse(r => r.url().endsWith('/api/v1/analyze') && r.request().method() === 'POST');
@@ -78,4 +81,26 @@ test('real NASA through browser, partial analysis and compare without a DEM', as
   expect(values[1].analysis.samples[0].sun.azimuthDeg).not.toBe(values[0].analysis.samples[0].sun.azimuthDeg);
   await expect(page.getByTestId('analysis-result')).toHaveCount(2);
   await expect(page.getByTestId('comparison-differences')).toContainText('Unknown');
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download CSV', exact: true }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('lunar-compare.csv');
+  expect(await download.failure()).toBeNull();
+  const stream = await download.createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+  const csv = Buffer.concat(chunks).toString('utf8');
+  expect(csv).toContain('JPL Horizons');
+  expect(csv).toContain('unknown');
+  expect(csv).toContain('B minus A');
+  await page.getByRole('button', { name: 'Print report', exact: true }).click();
+  const report = page.getByRole('dialog');
+  await expect(report).toBeVisible();
+  await expect(report).toContainText('Partial results');
+  await expect(report).toContainText('Unknown');
+  await page.emulateMedia({ media: 'print' });
+  await expect(report).toBeVisible();
+  await page.emulateMedia({ media: 'screen' });
+  await report.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(report).not.toBeVisible();
 });
