@@ -1,57 +1,57 @@
-# HUM-04 · Pitch і демонстрація
+# HUM-04 · поточний release demo
 
-Це підготовлений сценарій, **не запис успішного public deployment/submission**. Пов’язані документи: [стан інтеграції](FINAL_INTEGRATION_REPORT.md), [фінальне тестування](FINAL_TEST_REPORT.md), [запуск](DEPLOYMENT.md), [HUM-04](../../issues/HUM-04.md).
+PR15 OPEN, локальний reviewed runtime; не public deployment/submission. [Запуск](DEPLOYMENT.md), [readiness/resources](RELEASE_READINESS.md), [остаточні результати координатора](RELEASE_TEST_REPORT.md).
 
-## Pitch (20–30 секунд)
+## Pitch · 25 секунд
 
-«Біля південного полюса Місяця низьке Сонце та місцевий рельєф ускладнюють оцінювання освітлення і зв’язку із Землею. Lunar Navigator поєднує місце й UTC-період в одному інтерфейсі, щоб порівнювати два сценарії посадки. Ми використовуємо React/TypeScript, Three.js/R3F, .NET 8 і NASA JPL Horizons. Зараз реальний шлях дає астрономічні samples та чесно повідомляє про відсутній перевірений terrain analysis; повні панелі окремо демонструємо лише на явно synthetic даних».
+«Для південного полюса Місяця важливо порівнювати не лише місця, а й час: низьке Сонце та рельєф впливають на освітлення й можливість зв’язку. Lunar Navigator поєднує NASA JPL Horizons, повний LOLA DEM та три дослідницькі 3D-ділянки. Ми вже показуємо реальний регіональний горизонт і clearance, вибір точки на mesh та зміну локального сонячного світла в часі. Це регіональна оцінка: далекі перешкоди поза 20 km не доведені, тому глобальна видимість і підсумки навмисно Unknown».
 
 ## Підготовка
 
-1. Виконайте `npm ci --prefix frontend`, `dotnet restore backend/LunarNavigator.sln`, потім `python3 scripts/run-local.py` з кореня checkout (Linux/WSL). Відкрийте http://127.0.0.1:5173. Сервер після попередніх тестів не залишений запущеним.
-2. Для першої частини `frontend/.env.local` не повинен вмикати mocks (`VITE_USE_MOCKS=false`). Перезапустіть Vite після зміни env. Перевірте позначення real, а не synthetic.
-3. Перевірте доступ до NASA JPL. Live Analyze робить зовнішні мережеві запити, не потребує API key; NASA uptime/latency не гарантовані. Не запускайте довгий інтервал для короткого виступу.
-4. Перевірте [FINAL_TEST_REPORT](FINAL_TEST_REPORT.md): фінальний Chromium/SwiftShader rerun **4 passed за 20.6 s, exit 0**, включно з четвертим live test **без mocks**: local API → NASA analyze 200 partial, два JPL samples, actual compare 200 для різних довгот A=25°E / B=26°E (A cached, B live), null terrain metrics. Screenshot: `.validation/real-nasa-analysis.png`. Перевірено також WebGL2/GLB, camera buttons/negative picking та synthetic graphs/Play/Pause/scrub/compare/errors. Backend truncated-DEM fix усунув 500, а Playwright SIGTERM graceful shutdown — окремий teardown timeout. Це не доказ scientific terrain visibility. Повторіть live walkthrough на машині запису.
+З основного ByteForce root:
 
-## Безперервний walkthrough (90–180 секунд)
+```sh
+cd .audit/final-integration
+npm ci --prefix frontend
+dotnet restore backend/LunarNavigator.sln
+python3 scripts/asset-setup.py --capture-docs --acquire-nac --prepare-runtime --write-launch-env
+python3 scripts/run-local.py
+```
 
-| Час | Дія | Що чесно сказати |
+Stable .NET 10, Node 22, Python; для Windows рекомендовано WSL. Якщо worktree вже відкрита, пропустіть `cd`. Для повторного offline asset build: `python3 scripts/asset-setup.py --offline --prepare-runtime --write-launch-env`. NASA Analyze все одно потребує мережі. Ручний dataset download не потрібний.
+
+Відкрийте http://127.0.0.1:5173, залиште `VITE_USE_MOCKS=false`, переконайтеся в reviewed source/catalog, а не fallback preview. При NASA timeout покажіть error/cancel/retry, не підміняйте відповідь mock success. Після виступу `Ctrl+C` завершує три сервіси.
+
+## Walkthrough · 90–180 секунд
+
+| Час | Дія | Пояснення |
 |---|---|---|
-| 0–25 s | Pitch, показати сторінку й режим | Це інтегрований прототип, не flight planning certification |
-| 25–45 s | Оглянути 3D terrain | GLB реально завантажується; provenance/metadata незалежно не перевірені. Pick disabled — свідомий safety gate, не клікайте mesh як географічну точку |
-| 45–75 s | Ввести A: latitude `-89.5`, longitude `25`, start `2026-11-14T00:00`, end `2026-11-14T01:00`, step `60`; Analyze site | Усі дати UTC. Два samples включають start і end; visibility intervals — `[start,end)`; реальні JPL Sun/Earth airless apparent кути, не terrain visibility |
-| 75–100 s | Показати partial, samples та повідомлення про metadata/ephemeris | DEM incomplete, horizon/visibility/summaries можуть бути unknown; unknown не означає нуль. Не обіцяти повний horizon chart у real mode |
-| 100–125 s | Показати timeline/scrub на отриманих samples | Час перемикає результати; художнє світло не є перевіреною анімацією Сонця/Землі, Moon-fixed provider 503 |
-| 125–155 s | Compare: Copy A to B, змінити Longitude B на `26`, Compare scenarios | Перевірено дві різні довготи: HTTP 200, відмінні JPL азимути, terrain metrics null. Додаткові періоди/місця залежать від upstream; він може відповісти error. Пояснити B − A; не називати unknown difference перевагою одного місця |
-| 155–180 s | Limitations + наступний крок | Потрібні повний LOLA, frame/datum review, реальні LROC assets, production validation. Залишити джерела й репозиторій на екрані |
+| 0–25 s | Pitch; показати regional status | Реальна інтеграція, не certified landing recommendation |
+| 25–50 s | Exploratory patch: Connecting Ridge; camera controls, клік actual GLB triangle для A | Reviewed coordinate/height mapping; marker стоїть на реальній triangle surface, не нульовій площині. Перемкнути patch, показати новий mesh; три patches не є затвердженими landing sites |
+| 50–85 s | Повернути Connecting Ridge, UTC за замовчуванням 15 листопада 2026, одногодинний інтервал; Analyze site | Дати UTC. NASA azimuth/elevation + LOLA observer height і regional profile; очікується 360 azimuth points, не глобальна visibility |
+| 85–110 s | Regional horizon/clearance, Unknown summaries | Model range 20 km, azimuth 1°, radial step 80 m. `terrainApplied=false` тут означає відсутність complete visibility solution, не відсутність DEM |
+| 110–135 s | Play/Pause, scrub UTC | Світло бере cached topocentric Sun angles і local Jacobian; без нового API запиту при scrub/на кожен кадр. Graphic shadows — estimates, не verified illumination |
+| 135–165 s | **Quick compare**: явна дія короткого порівняння, два samples на site; A/B patches і markers | Це actual submit, не лише Prepare. Для довільних scenarios є Prepare patch comparison + Compare scenarios. Differences — B − A; null не нуль і не доказ переваги |
+| 165–180 s | Learn / sources / limitations | Повний regional DEM, reviewed radial datum, але не повна far-field visibility; texture відсутня чесно |
 
-Це координати для відтворення workflow, **не рекомендовані місця посадки і не scientific baseline**. Для другого виду compare скопіюйте A до B та змініть лише UTC-період; не заявляйте, що обидва live compare випадки пройшли, без записаного evidence. При NASA failure покажіть error/retry і поясніть, що система не підміняє результат моками.
+Для ручного reproduction: Connecting Ridge `-89.45,-137.31`, Near Shackleton `-89.9,0`, Near de Gerlache `-88.7,-68`. Дати дозволені **1962-01-01 ≤ UTC < 2650-01-01**, не exact pole azimuth science. Це workflow coordinates, не рекомендації посадки. Для короткого control request у science review використано `-89,+25`, `2026-11-14T00:00Z`—`00:10Z`, step 10; не плутати з повним UX demo.
 
-## Окрема повнопанельна демонстрація: SYNTHETIC / DEMO
+Два reviewed opt-in browser cases вже passed: actual picking/A/B marker heights/patch switch, NASA/DEM regional profile та cached local sunlight при зміні UTC. Це не автоматичне твердження про проходження майбутнього 9-case matrix; фінальний результат — у RELEASE_TEST_REPORT.
 
-Покажіть її окремим розділом або окремим записом, не прихованим продовженням real mode:
+## Що сказати про науку й зображення
 
-1. Зупиніть launcher. У `frontend/.env.local` увімкніть `VITE_USE_MOCKS=true`, перезапустіть його.
-2. Перед першою дією явно покажіть **SYNTHETIC / DEMO** й скажіть: «Наступні графіки, horizon, visibility, summaries та differences — синтетичні UI fixtures, не вимірювання NASA».
-3. Уведіть ті самі A/B, натисніть Analyze/Compare; покажіть full panels, Play/Pause, scrub і знак B − A. Це ілюструє майбутній повний workflow, не реальну terrain blockage подію.
-4. Не приписуйте demo Moon-fixed синхронізацію: raw vectors до сцени не застосовано, освітлення художнє. Не приховуйте unavailable статус.
-5. Після демонстрації поверніть `VITE_USE_MOCKS=false` і перезапустіть Vite. Production build не активує dev mocks.
+- LOLA: повний official 189158392-byte DEM, MOON_ME/DE421, sphere R=1737400 m. Barker/NTRS/PDS generating chain закрила datum definition; exact identity/geotags/epoch gate автоматичний, без arbitrary approval flag.
+- 47,628 mesh vertices зіставлено з native source у межах **1 mm numerical tolerance**, не «місячна поверхня відома з точністю 1 mm». Triangle height і backend bilinear height можуть відрізнятися всередині cell.
+- Regional clearance доступний; усі `visible=null`, summaries null, `partial`, global `quality.terrainApplied=false`. Sampling/далекі хребти не дають права заявляти повну видимість навіть за негативного clearance.
+- LROC NAC завантажений і georeferenced, але не перекриває patches; texture/photos не застосовано, hillshade не називаємо фото.
+- Local topocentric lighting — не global Moon-fixed synchronization; `/api/v1/ephemeris` залишається 503. Немає thermal/power/solar-disc/radio-link model.
 
-## Джерела, кредити й обмеження на слайді
+## Окреме synthetic demo — лише за потреби
 
-- [NASA Space Apps challenge](https://www.spaceappschallenge.org/2026/challenges/lunar-landing-site-navigator/): люди перевіряють актуальні правила/дедлайн, не вважають це підтвердженням прийнятої заявки.
-- [NASA JPL Horizons](https://ssd-api.jpl.nasa.gov/doc/horizons.html), [наш guide](../horizons.md): реальна астрономія центрів тіл; не локальний рельєфний горизонт.
-- NASA LRO/LOLA/PGDA: заплановане terrain джерело; офіційний DEM download incomplete (7340032 із 189158392 bytes), немає science verification. Поточний адаптер завжди повертає `DatumAlignmentVerified=false`, навіть після повного download; це не налаштування/env switch, потрібен майбутній reviewed adapter.
-- LROC: джерело запланованої imagery, **текстури не підготовлено**. MIME WebP не доводить наявність asset.
-- UI: **Khrystyna**, authored source `a75d443`, вибірково збережений shell/design без `demoSlots` у головному застосунку. Попередній Horizons внесок і HUM-02 acquisition contribution збережені; [командні ролі](../../TEAM_ASSIGNMENTS.md), [README credits](../../README.md#авторство-дані-та-ліцензування), [data sources/caveat](../DATA_SOURCES.md#audit-caveat).
-- Код [MIT](../../LICENSE), © 2026 anastasiiazuliak; умови datasets/imagery та сторонніх assets перевіряються окремо. Не заявляти NASA endorsement або independently reviewed GLB provenance.
+DEV-only `VITE_USE_MOCKS=true` потребує перезапуску Vite та явного **SYNTHETIC / DEMO** на екрані. Synthetic graphs/visibility/complete panels — UI fixtures, не NASA measurements; не потрібні для поточного real regional workflow. Не монтувати їх непомітно у live запис. Production dev mocks не активує. Поверніть false після демонстрації.
 
-## Людський checklist перед поданням
+## Credits / submission
 
-- [x] Підготовлено pitch, сценарій, джерела й явне розділення real/partial та synthetic.
-- [ ] Звірити фінальні tests і виконати live walkthrough на машині запису.
-- [ ] Перевірити авторські кредити всіх учасників, ліцензії конкретних datasets/mesh/imagery та вимоги submission.
-- [ ] Отримати дозвіл на hosting; побудувати/перевірити production, HTTPS і доступ з іншого пристрою/мережі. Наразі публічного перевіреного URL немає.
-- [ ] Записати екран із правдивими mode labels, UTC subtitles і limitations; не видавати локальний/synthetic запис за deployed real science demo.
-- [ ] Додати repository URL, дозволений demo URL і перевірені матеріали. Repository reference: `https://github.com/anastasiiazuliak/byte-force` (зовнішній доступ команда перевіряє окремо).
-- [ ] Людина перевіряє права, актуальні правила/дедлайн, заповнює та надсилає заявку, підтверджує receipt. Жодної submission/deployment дії тут не виконано.
+Зберегти всі п’ять командних внесків: 3D, UI, Backend/Horizons, LOLA/Data, Integration/CI/QA ([ролі](../../TEAM_ASSIGNMENTS.md)). Authored UI **Khrystyna**, source `a75d443`, збережений design/shell без `demoSlots`; попередній [Horizons внесок](../horizons.md), HUM-02 scripts/data attribution і [README credits](../../README.md#автори-джерела-й-ліцензії) збережені. NASA/JPL Horizons, LRO/LOLA/PGDA, Barker et al. 2023, PDS і LROC — [resource/source table](RELEASE_READINESS.md#ресурси). Код [MIT](../../LICENSE), © 2026 anastasiiazuliak; dataset/imagery licensing review окремий.
+
+Люди мають: звірити final test report/SHA/CI, перевірити правила NASA Space Apps, авторство/ліцензії, записати правдивий UTC/mode-labelled walkthrough, перевірити repository і дозволений demo URL з іншого пристрою, отримати hosting permission та виконати submission/receipt. Наразі Docker runtime blocked, public URL не verified, PR15 не merged. Deadline **15 листопада 23:55 Europe/Kyiv**; переданий planning checkpoint **12:10** — не live clock і не підтвердження подання.

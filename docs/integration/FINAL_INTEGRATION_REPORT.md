@@ -1,5 +1,7 @@
 # Фінальна інтеграція: стан, evidence та незавершений DoD
 
+> **Historical snapshot — not current release evidence.** Counts, blockers, branch refs and pending statements below describe their original stage. Current completed results and remaining gates: [RELEASE_TEST_REPORT](RELEASE_TEST_REPORT.md) and [RELEASE_READINESS](RELEASE_READINESS.md). Final push/SHA and post-push CI confirmation remain pending.
+
 ## Межі звіту
 
 Робочий checkout `.audit/final-integration`, base **dbdb5be**; data/backend/scene вже в цій базі. Зміни підготовлено для feature/final-integration; звіт не означає merge, release або deploy. Commit і push state наведено у фінальній відповіді. Джерела: актуальні `Application.tsx`, backend DI/services, `scripts/run-local.py`, Docker/nginx конфігурація, вимоги [INT-02](../../issues/INT-02.md), [QA-01](../../issues/QA-01.md), [OPS-02](../../issues/OPS-02.md), [HUM-04](../../issues/HUM-04.md) і результати інтеграційної перевірки, передані координатором.

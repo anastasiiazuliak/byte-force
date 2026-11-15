@@ -62,7 +62,10 @@ jobs:
       - name: Guard tracked files against secrets and oversized/raw data
         run: python scripts/check-repository.py
       - name: Security guard regression tests
-        run: python scripts/test_repository_guard.py
+        run: |
+          python scripts/test_repository_guard.py
+          python scripts/test_data_acquisition.py
+          python scripts/test_runtime_assets.py
       - name: Whitespace errors
         run: git --no-pager show --format= --check HEAD
   e2e:

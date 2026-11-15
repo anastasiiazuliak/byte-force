@@ -1,5 +1,7 @@
 # Final test report — 2026-11-15
 
+> **Historical snapshot — not current release evidence.** Counts, blockers, branch refs and pending statements below describe their original stage. Current completed results and remaining gates: [RELEASE_TEST_REPORT](RELEASE_TEST_REPORT.md) and [RELEASE_READINESS](RELEASE_READINESS.md). Final push/SHA and post-push CI confirmation remain pending.
+
 Виконано в `.audit/final-integration`, branch `feature/final-integration`, початкова командна база `dbdb5be80f86b7cbf03adf4d5c0ce6eb9238de50`. Це не тест старого локального bootstrap. Усі наведені passed отримані фактичним запуском, а не тільки оглядом конфігурацій.
 
 ## Підсумок

@@ -1,5 +1,7 @@
 # Final integration: Lunar Navigator UI, API, terrain safety and launch
 
+> **Historical snapshot — not current release evidence.** Counts, blockers, branch refs and pending statements below describe their original stage. Current completed results and remaining gates: [RELEASE_TEST_REPORT](RELEASE_TEST_REPORT.md) and [RELEASE_READINESS](RELEASE_READINESS.md). Final push/SHA and post-push CI confirmation remain pending.
+
 ## Scope
 - Integrates the already-merged backend/data/3D work with the reviewed UI from `a75d443` / PR #14 (Khrystyna / pavlovychky); preserves design, source ownership and frozen API/scene contracts. Does not recreate the project or merge unrelated histories.
 - Wires AppShell, scene, one typed client, manual lunar coordinates, UTC analysis, compare, cached timeline and abort/stale-result protection.

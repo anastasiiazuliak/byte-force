@@ -6,8 +6,8 @@ services:
     environment:
       MapManifest__ManifestPath: /assets/metadata/map-manifest.json
       MapManifest__AssetRootPath: /assets
-      MapManifest__MetadataReviewConfirmed: "false"
-      Terrain__DemPath: ${DEM_CONTAINER_PATH:-}
+      MapManifest__MetadataReviewConfirmed: ${MAP_REVIEW_CONFIRMED:-false}
+      Terrain__DemPath: ${DEM_CONTAINER_PATH:-/dem/LDEM_80S_80MPP_ADJ.TIF}
     volumes:
       - ${ASSETS_DIR:-./public-assets}:/assets:ro
       - ${DEM_DIR:-./data/raw}:/dem:ro

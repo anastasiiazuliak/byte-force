@@ -3,6 +3,7 @@
 import argparse
 import functools
 import http.server
+import json
 import os
 from pathlib import Path
 import signal
@@ -13,6 +14,8 @@ import threading
 import time
 import urllib.request
 import urllib.error
+from urllib.parse import unquote, urlsplit
+from release_assets import validate_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -20,12 +23,49 @@ class Assets(http.server.SimpleHTTPRequestHandler):
     extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,
                       '.glb': 'model/gltf-binary', '.webp': 'image/webp'}
 
+    def safe_asset(self):
+        try:
+            path = unquote(urlsplit(self.path).path)
+        except ValueError:
+            return False
+        if '%' in path or '\\' in path or any(part.startswith('.') for part in path.split('/') if part):
+            return False
+        if not path.startswith(('/terrain/', '/tiles/', '/metadata/', '/illumination/', '/static/')):
+            return False
+        root = Path(self.directory).resolve()
+        try:
+            candidate = (root / path.lstrip('/')).resolve()
+            return candidate.is_relative_to(root) and candidate.is_file() and candidate.suffix.lower() in {'.glb', '.webp', '.json', '.png'} and not any(part.startswith('.') for part in candidate.relative_to(root).parts)
+        except (OSError, ValueError):
+            return False
+
+    def do_GET(self):
+        if not self.safe_asset():
+            self.send_error(404, 'Asset not available')
+            return
+        try:
+            super().do_GET()
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # Clients may cancel a GLB download or read only its signature.
+
+    def do_HEAD(self):
+        if not self.safe_asset():
+            self.send_error(404, 'Asset not available')
+            return
+        super().do_HEAD()
+
+    def end_headers(self):
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('Cache-Control', 'no-cache')
+        super().end_headers()
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--smoke', action='store_true')
     parser.add_argument('--timeout', type=float, default=120, help='startup deadline in seconds')
-    parser.add_argument('--assets', type=Path, default=ROOT / 'public-assets')
+    parser.add_argument('--assets', type=Path, help='Asset root; defaults to verified runtime assets when available, otherwise unreviewed public-assets')
+    parser.add_argument('--fallback-assets', action='store_true', help='Use the visibly unverified bundled preview, even if reviewed local assets exist')
     parser.add_argument('--dem', type=Path, help='optional actual DEM; never confirms scientific review')
     args = parser.parse_args()
     if args.timeout <= 0:
@@ -34,7 +74,14 @@ def main():
     if not sdk.startswith('10.'):
         parser.error('Stable .NET 10 SDK is required; selected SDK: ' + sdk)
     print('Using .NET SDK ' + sdk, flush=True)
-    assets = args.assets.resolve(strict=True)
+    reviewed = ROOT / '.validation/runtime-assets'
+    selected = args.assets or (ROOT/'public-assets' if args.fallback_assets else reviewed if reviewed.exists() else ROOT/'public-assets')
+    assets = selected.resolve(strict=True)
+    receipt = validate_runtime(assets) if (assets/'.release-review.json').exists() else None
+    if receipt:
+        print('Reviewed native LOLA asset proof verified; regional/global visibility remains unknown.', flush=True)
+    else:
+        print('Unverified preview assets: picking disabled. Run scripts/asset-setup.py --prepare-runtime for reviewed data.', flush=True)
     env = os.environ.copy()
     env.update(API_PROXY_TARGET='http://127.0.0.1:5080',
                STATIC_PROXY_TARGET='http://127.0.0.1:5081',
@@ -43,6 +90,14 @@ def main():
     env.setdefault('MapManifest__AssetRootPath', str(assets))
     if args.dem:
         env['Terrain__DemPath'] = str(args.dem.resolve(strict=True))
+    elif receipt:
+        env.setdefault('Terrain__DemPath', receipt['demPath'])
+    if receipt:
+        if Path(env['MapManifest__ManifestPath']).resolve() != assets/'metadata/map-manifest.json' or Path(env['MapManifest__AssetRootPath']).resolve() != assets:
+            parser.error('Reviewed map/static roots must refer to the same proof-checked deployment')
+        env.setdefault('MapManifest__MetadataReviewConfirmed', 'true')
+    elif env.get('MapManifest__MetadataReviewConfirmed', '').lower() == 'true':
+        parser.error('Refusing reviewed-map approval without bound native asset proof')
     children = []
     server = None
     def stop(signum, frame):
@@ -58,12 +113,28 @@ def main():
         server = http.server.ThreadingHTTPServer(('127.0.0.1', 5081),
             functools.partial(Assets, directory=str(assets)))
         threading.Thread(target=server.serve_forever, daemon=True).start()
-        for command, cwd in [
+        deadline = time.monotonic() + args.timeout
+        for index, (command, cwd) in enumerate([
             (['dotnet', 'run', '--no-launch-profile', '--project',
               str(ROOT / 'backend/LunarNavigator.Api/LunarNavigator.Api.csproj')], ROOT),
-            (['npm', 'run', 'dev', '--', '--host', '127.0.0.1', '--port', '5173', '--strictPort'], ROOT / 'frontend')]:
+            (['npm', 'run', 'dev', '--', '--host', '127.0.0.1', '--port', '5173', '--strictPort'], ROOT / 'frontend')]):
             children.append(subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True))
-        deadline = time.monotonic() + args.timeout
+            if index == 0:
+                # Avoid announcing an interactive frontend while its real API is still starting.
+                while True:
+                    if children[0].poll() is not None:
+                        raise RuntimeError('API exited before health readiness')
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError('API startup timed out')
+                    try:
+                        with urllib.request.urlopen('http://127.0.0.1:5080/api/v1/health', timeout=2) as response:
+                            if json.load(response).get('status') == 'ok':
+                                break
+                    except urllib.error.HTTPError as error:
+                        error.close()
+                    except (OSError, ValueError):
+                        pass
+                    time.sleep(.2)
         pending = {
             'http://127.0.0.1:5080/api/v1/health': 'application/json',
             'http://127.0.0.1:5173/api/v1/health': 'application/json',
@@ -82,7 +153,7 @@ def main():
                     try:
                         response = urllib.request.urlopen(url, timeout=min(2, max(.1, deadline-time.monotonic())))
                     except urllib.error.HTTPError as error:
-                        if mime is None and error.code == 503:
+                        if mime is None and error.code == 503 and (not receipt or env.get('MapManifest__MetadataReviewConfirmed', '').lower() != 'true'):
                             print('API ready; map metadata unavailable (503), NOT scientifically verified', flush=True)
                             error.close()
                             del pending[url]

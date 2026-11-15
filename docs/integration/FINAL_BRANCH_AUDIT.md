@@ -1,5 +1,7 @@
 # Final branch and frontend integration audit
 
+> **Historical snapshot — not current release evidence.** Counts, blockers, branch refs and pending statements below describe their original stage. Current completed results and remaining gates: [RELEASE_TEST_REPORT](RELEASE_TEST_REPORT.md) and [RELEASE_READINESS](RELEASE_READINESS.md). Final push/SHA and post-push CI confirmation remain pending.
+
 ## Scope and evidence
 
 - Audited local refs against `origin/main` **dbdb5be80f86b7cbf03adf4d5c0ce6eb9238de50** on 2026-11-15. No fetch, merge, stage, or commit performed. This is the locally available remote-ref snapshot, not a claim about current GitHub state.
@@ -172,3 +174,7 @@ Final local evidence: frontend 45 passed; backend 162 passed + 1 live skipped; s
 Historical main [run 43636580355](https://github.com/anastasiiazuliak/byte-force/actions/runs/43636580355): frontend success, backend failure from `TerrainFactory.cs` conflict markers (CS8300), repository failure from the existing synthetic TIFF. These confirm the locally found root causes. No historical failures were suppressed; current fixes compile the real source and accept only one exact-path/hash-pinned synthetic fixture with rejection regression tests.
 
 PR #14 remains untouched: its useful UI source is selectively integrated with attribution in this branch. Reviewers should coordinate its disposition after final integration review, not blindly merge its old demo composition over the integrated Application. No source branch or PR was deleted/closed by the integrator. Final integration PR URL and current CI status are reported after push in the final handoff.
+
+## Current selective UI/export addendum
+
+New UI branch range `a75d443..8394de2` introduces a parallel `MissionApp` and shared interfaces; it was **not merged wholesale**. The existing integrated shell and contracts were retained. P2-02 export serializer/actions/tests/docs were selectively ported, preserving teammate attribution (Khrystyna / UI contribution), not reassigned to the integrator. Current frontend evidence is 74 tests in 12 files; the earlier 13-case browser log predates new live export assertions, whose completed rerun remains pending. See [current test report](RELEASE_TEST_REPORT.md). This addendum does not refresh the historical remote-ref table or claim push/CI success.
