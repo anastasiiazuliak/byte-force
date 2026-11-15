@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AnalysisResponse } from '../../api/types';
+import { RegionalSummary } from '../analysis/RegionalSummary';
 
 export function intervalContains(time: string, start: string, end: string) {
   return (
@@ -16,8 +17,8 @@ export function MissionTimeline({
   onTime: (time: string) => void;
 }) {
   const times = [
-    ...new Set(analyses.flatMap((a) => a.samples.map((s) => s.timeUtc))),
-  ].sort();
+    ...new Set(analyses.flatMap((a) => a.samples.map((s) => s.timeUtc)).filter(time => Number.isFinite(Date.parse(time)))),
+  ].sort((a, b) => Date.parse(a) - Date.parse(b));
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const index = Math.max(
@@ -36,7 +37,7 @@ export function MissionTimeline({
     }, 1000 / speed);
     return () => clearInterval(timer);
   }, [playing, index, key, speed, onTime]);
-  if (!times.length) return <p role="status">Waiting for analysis samples.</p>;
+  if (!analyses.length) return <p role="status">Waiting for analysis samples.</p>;
   return (
     <div>
       <output data-testid="selected-utc" aria-live="polite">
@@ -48,7 +49,8 @@ export function MissionTimeline({
           aria-label="Selected UTC sample"
           type="range"
           min="0"
-          max={times.length - 1}
+          max={Math.max(0, times.length - 1)}
+          disabled={!times.length}
           value={index}
           onChange={(e) => {
             setPlaying(false);
@@ -56,7 +58,7 @@ export function MissionTimeline({
           }}
         />
       </label>
-      <button type="button" onClick={() => setPlaying(!playing)}>
+      <button type="button" disabled={times.length < 2} onClick={() => setPlaying(!playing)}>
         {playing ? 'Pause' : 'Play'}
       </button>
       <label>
@@ -75,10 +77,11 @@ export function MissionTimeline({
       {analyses.map((a, i) => (
         <section key={i}>
           <strong>Scenario {i === 0 ? 'A' : 'B'}</strong>
+          <RegionalSummary analysis={a} timeUtc={timeUtc} onTime={onTime} />
           {(['sunVisible', 'earthVisible'] as const).map((body) => (
             <p key={body}>
-              {body === 'sunVisible' ? 'Sun' : 'Earth'} intervals [start, end):{' '}
-              {a.quality.terrainApplied
+              API {body === 'sunVisible' ? 'Sun' : 'Earth'} visibility intervals [start, end):{' '}
+              {a.quality.terrainApplied && a.summary[body === 'sunVisible' ? 'sunVisibleHours' : 'earthVisibleHours'] !== null
                 ? a.intervals[body].map((interval) => (
                     <span
                       key={interval.startUtc}
