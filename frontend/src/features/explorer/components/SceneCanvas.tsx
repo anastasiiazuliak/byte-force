@@ -1,7 +1,7 @@
 import React, { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { GlobeSunlight, Lighting } from './Lighting';
+import { Lighting } from './Lighting';
 import { TerrainMesh } from './TerrainMesh';
 import { DisplayPlinth } from './DisplayPlinth';
 import { SceneControls } from './SceneControls';
@@ -15,7 +15,6 @@ import type { CameraPreset, SceneStatus, SceneSelectedSite, SiteSlot } from '../
 import { sampleTerrainSurface, type TerrainSurface } from '../scene/surface';
 import { validateLunarCoordinates } from '../selection/selectionManager';
 import { canUseGeographicTerrain } from '../scene/metadata';
-import { isGlobe } from '../scene/spherical';
 import { verifiedTerrainPick } from '../selection/verifiedPick';
 import { AdaptiveDpr } from '@react-three/drei';
 import { DragDetector } from '../selection/dragDetector';
@@ -155,9 +154,6 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
       <Starfield />
 
       <AdaptiveDpr pixelated />
-<<<<<<< Updated upstream
-      {isGlobe(metadata) ? <GlobeSunlight /> : <Lighting sunDirectionScene={sunDirectionScene} />}
-=======
       {globe ? <>
         <PolarGlobe texture={globeTexture} />
         {globeHasTerrain && globeTexture && <TerrainMesh globeTexture={globeTexture} metadata={metadata}
@@ -167,7 +163,6 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
         <FittedTerrain animationStateRef={animationStateRef} controlsRef={controlsRef} metadata={metadata}
           onStatus={handleStatus} onMeshClick={handleMeshClick} onSurfaceReady={handleSurface} />
       </>}
->>>>>>> Stashed changes
 
       {!globe && <DisplayPlinth metadata={metadata} surface={surface} enabled={showDisplayPlinth && geographicReady} />}
 

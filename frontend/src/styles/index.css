@@ -315,6 +315,7 @@ ul.notice { padding-inline-start: 25px; }
   .compare-workspace:not(.has-results) { grid-template-areas: "terrain" "form" "timeline"; }
   .mission-scene { min-height: 290px; }
   .mission-workspace .timeline { grid-auto-flow: row; }
+}
 .workspace-notice { padding: 10px 24px; color: var(--muted); font-size: 13px; }
 fieldset { min-width: 0; margin: 0 0 12px; border: 1px solid var(--border); padding: 10px; }
 fieldset label, form label { display: grid; gap: 4px; margin-bottom: 10px; }

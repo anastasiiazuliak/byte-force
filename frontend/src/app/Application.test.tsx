@@ -7,7 +7,7 @@ import { ApiClientError } from '../api/client';
 import fixture from '../../../contracts/fixtures/analyze-partial.json';
 const api = vi.hoisted(() => ({ health: vi.fn(), config: vi.fn(), landingSites: vi.fn(), mapMetadata: vi.fn(), analyze: vi.fn(), compare: vi.fn(), ephemeris: vi.fn() }));
 vi.mock('../integration/client', () => ({ createConfiguredClient: async () => api }));
-vi.mock('../features/explorer', () => ({ LunarTerrainViewer: ({ timeUtc }: { timeUtc: string }) => <div data-testid="scene-time">{timeUtc}</div> }));
+vi.mock('../features/explorer', () => ({ LunarTerrainViewer: ({ timeUtc, globe }: { timeUtc: string; globe?: boolean }) => <div data-testid="scene-time" data-view={globe ? 'globe' : 'terrain'}>{timeUtc}</div> }));
 afterEach(cleanup);
 beforeEach(() => {
   vi.resetAllMocks();
@@ -155,6 +155,7 @@ it('defaults to fail-closed Globe and preserves results and inputs across repres
   render(<Application />); await fillA();
   expect(screen.getByRole('button', { name: 'Globe View' }).getAttribute('aria-pressed')).toBe('true');
   expect(screen.getByText(/Reviewed Globe catalog unavailable/)).toBeTruthy();
+  expect((await screen.findByTestId('scene-time')).getAttribute('data-view')).toBe('globe');
   expect((screen.getByRole('checkbox', { name: 'Scientific Sun Lighting' }) as HTMLInputElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole('button', { name: 'Analyze site' }));
   await screen.findByTestId('analysis-result');
