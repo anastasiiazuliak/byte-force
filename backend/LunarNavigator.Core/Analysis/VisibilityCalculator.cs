@@ -52,9 +52,15 @@ public static class VisibilityCalculator
 
     public static double InterpolateHorizon(IReadOnlyList<HorizonPoint> points, double azimuth)
     {
-        var upper = 0;
-        while (upper < points.Count && points[upper].AzimuthDeg <= azimuth) upper++;
-        upper %= points.Count;
+        var lo = 0;
+        var hi = points.Count;
+        while (lo < hi)
+        {
+            var mid = lo + ((hi - lo) >> 1);
+            if (points[mid].AzimuthDeg <= azimuth) lo = mid + 1;
+            else hi = mid;
+        }
+        var upper = lo % points.Count;
         var lower = (upper + points.Count - 1) % points.Count;
         var low = points[lower].AzimuthDeg;
         var high = points[upper].AzimuthDeg;

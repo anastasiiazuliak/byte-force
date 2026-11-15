@@ -95,10 +95,14 @@ function useWorkspace() {
       if (!client) throw new Error('API client is not ready. Retry connection.');
       const scenarioA = parseScenario(override?.a ?? a, config), scenarioB = (override?.view ?? view) === 'compare' ? parseScenario(override?.b ?? b, config) : null;
       setState('loading');
-      setEphemerisStatus('Checking Moon-fixed ephemeris; artistic lighting remains illustrative.');
-      void client.ephemeris(scenarioA.period, run.signal).then(() => {
-        if (run.current()) setEphemerisStatus('Auxiliary Moon-fixed ephemeris received. Scene uses only local Sun angles from the selected cached analysis sample; graphical lighting is not visibility.');
-      }, e => { if (run.current()) setEphemerisStatus(`Moon-fixed ephemeris unavailable: ${errorMessage(e)}. Local cached Sun-angle lighting is used only on a reviewed map and matching sample.`); });
+      if (config !== null && !config.features.moonFixedEphemeris) {
+        setEphemerisStatus('Moon-fixed ephemeris disabled by server config; local cached Sun-angle lighting is used only on a reviewed map and matching sample.');
+      } else {
+        setEphemerisStatus('Checking Moon-fixed ephemeris; artistic lighting remains illustrative.');
+        void client.ephemeris(scenarioA.period, run.signal).then(() => {
+          if (run.current()) setEphemerisStatus('Auxiliary Moon-fixed ephemeris received. Scene uses only local Sun angles from the selected cached analysis sample; graphical lighting is not visibility.');
+        }, e => { if (run.current()) setEphemerisStatus(`Moon-fixed ephemeris unavailable: ${errorMessage(e)}. Local cached Sun-angle lighting is used only on a reviewed map and matching sample.`); });
+      }
       if (scenarioB) {
         const result = await client.compare({ scenarios: [{ id: 'A', ...scenarioA }, { id: 'B', ...scenarioB }] }, run.signal);
         if (!run.current()) return;

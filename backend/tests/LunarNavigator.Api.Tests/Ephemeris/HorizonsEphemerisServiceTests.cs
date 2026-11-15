@@ -21,11 +21,11 @@ public sealed class HorizonsEphemerisServiceTests
         var period = Request.Period with { EndUtc = Start.AddHours(1) };
         var result = await service.GetAsync(Request.Location, 0.08, period);
         await service.GetAsync(Request.Location, 0.08, period);
-        Assert.Equal(4, http.Calls);
+        Assert.Equal(2, http.Calls);
         Assert.Equal(2, result.Count);
         Assert.All(result, value => Assert.Equal(0, value.SunAzimuthDegrees));
         await service.GetAsync(Request.Location, 0.09, period);
-        Assert.Equal(8, http.Calls);
+        Assert.Equal(4, http.Calls);
     }
 
     [Fact]
@@ -34,7 +34,20 @@ public sealed class HorizonsEphemerisServiceTests
         using var http = new StubHorizonsHttpFactory();
         using var service = Service(http);
         await Task.WhenAll(service.GetAsync(Request.Location, 0, Request.Period), service.GetAsync(Request.Location, 0, Request.Period));
-        Assert.Equal(6, http.Calls);
+        Assert.Equal(2, http.Calls);
+    }
+
+    [Fact]
+    public async Task Series_BatchesLargeUniformWindowAndPartialTailSamples()
+    {
+        using var http = new StubHorizonsHttpFactory();
+        using var service = Service(http);
+        // 10-minute steps over 24h05m = 145 uniform samples + 1 trailing partial tail = 146 samples -> 2 series calls + 2 TLIST calls.
+        var period = Request.Period with { EndUtc = Start.AddHours(24).AddMinutes(5), StepMinutes = 10 };
+        var result = await service.GetAsync(Request.Location, 0.08, period);
+        Assert.Equal(146, result.Count);
+        Assert.Equal(4, http.Calls);
+        Assert.Equal(Start.AddHours(24).AddMinutes(5), result[^1].Time);
     }
 
     [Fact]
@@ -47,7 +60,7 @@ public sealed class HorizonsEphemerisServiceTests
         };
         using var service = Service(retry);
         await service.GetAsync(Request.Location, 0, Request.Period with { EndUtc = Start.AddHours(1) });
-        Assert.Equal(5, retry.Calls);
+        Assert.Equal(3, retry.Calls);
         using var malformed = new StubHorizonsHttpFactory
         {
             Respond = (_, _, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("<html>bad</html>") })

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using LunarNavigator.Core.Ephemeris;
 using LunarNavigator.Models;
 
@@ -8,13 +9,15 @@ public sealed class AnalysisService(
     IEphemerisService ephemeris, ITerrainHeightProvider heights, IHorizonProfileProvider horizons,
     IObserverAltitudeResolver altitudeResolver, AnalysisPolicy policy) : IAnalysisService, IDisposable
 {
+    private const int ProfileGateStripes = 32;
+
     private readonly IEphemerisService _ephemeris = ephemeris;
     private readonly ITerrainHeightProvider _heights = heights;
     private readonly IHorizonProfileProvider _horizons = horizons;
     private readonly IObserverAltitudeResolver _altitudeResolver = altitudeResolver;
     private readonly AnalysisPolicy _policy = policy;
-    private readonly Dictionary<ProfileKey, (DateTimeOffset Expires, HorizonProfileResult Profile)> _profiles = [];
-    private readonly SemaphoreSlim _profileGate = new(1, 1);
+    private readonly ConcurrentDictionary<ProfileKey, (DateTimeOffset Expires, HorizonProfileResult Profile, HorizonPoint[] SortedPoints)> _profiles = [];
+    private readonly SemaphoreSlim[] _profileGates = Enumerable.Range(0, ProfileGateStripes).Select(_ => new SemaphoreSlim(1, 1)).ToArray();
 
     public async Task<AnalysisResponse> AnalyzeAsync(AnalysisRequest request, CancellationToken cancellationToken = default)
     {
@@ -37,19 +40,20 @@ public sealed class AnalysisService(
         }
         var altitude = _altitudeResolver.Resolve(height);
         if (altitude.Warning is not null) warnings.Add(altitude.Warning);
-        HorizonProfileResult? profile = null;
-        if (altitude.TerrainDatumVerified && request.Location.Latitude != -90)
-        {
-            try { profile = await GetProfileAsync(location, height, cancellationToken); }
-            catch (Exception exception) when (exception is IOException or TimeoutException)
-            {
-                warnings.Add("Terrain horizon provider is unavailable.");
-            }
-        }
+        var profileTask = altitude.TerrainDatumVerified && request.Location.Latitude != -90
+            ? TryGetProfileAsync(location, height, cancellationToken)
+            : Task.FromResult<(HorizonProfileResult? Profile, HorizonPoint[] Points, bool Unavailable)>((null, [], false));
+        var ephemerisTask = _ephemeris.GetAsync(request.Location, altitude.Kilometers, request.Period, cancellationToken);
+        await Task.WhenAll(profileTask, ephemerisTask);
+
+        var (profile, points, profileUnavailable) = await profileTask;
+        var observations = await ephemerisTask;
+
+        if (profileUnavailable)
+            warnings.Add("Terrain horizon provider is unavailable.");
         if (request.Location.Latitude == -90)
             warnings.Add("Azimuth is singular at the exact pole; terrain visibility requires a reviewed meridian convention.");
         if (profile is not null) warnings.AddRange(profile.Warnings);
-        var points = profile?.Points?.OrderBy(point => point.AzimuthDeg).ToArray() ?? [];
         var regionalApplied = altitude.TerrainDatumVerified && ValidProfile(profile, height, points);
         var regionalOnly = regionalApplied && profile!.IsRegionalOnly;
         var terrainApplied = regionalApplied && !regionalOnly;
@@ -57,22 +61,40 @@ public sealed class AnalysisService(
             warnings.Add("Reviewed DEM regional horizon and regional clearance are provided, but global skyline completeness is unproven. All visibility and summary metrics remain unknown; quality.terrainApplied=false denotes no complete visibility solution, not absence of DEM sampling.");
         if (!regionalApplied)
             warnings.Add("Terrain visibility is indeterminate; visible, clearance and summary metrics are unknown.");
-        var observations = await _ephemeris.GetAsync(request.Location, altitude.Kilometers, request.Period, cancellationToken);
         ValidateObservations(observations, RequestValidation.SampleTimes(request.Period));
-        var samples = observations.Select(value => new AnalysisSample(value.Time,
-            Position(value.SunAzimuthDegrees, value.SunElevationDegrees),
-            Position(value.EarthAzimuthDegrees, value.EarthElevationDegrees))).ToArray();
-        if (terrainApplied && samples.Any(sample => Math.Abs(sample.Sun.ClearanceDeg!.Value) < 0.001 || Math.Abs(sample.Earth.ClearanceDeg!.Value) < 0.001))
+        var samples = new AnalysisSample[observations.Count];
+        var nearHorizon = false;
+        for (var index = 0; index < observations.Count; index++)
+        {
+            var value = observations[index];
+            var sunPos = Position(value.SunAzimuthDegrees, value.SunElevationDegrees);
+            var earthPos = Position(value.EarthAzimuthDegrees, value.EarthElevationDegrees);
+            if (terrainApplied && !nearHorizon &&
+                (Math.Abs(sunPos.ClearanceDeg!.Value) < 0.001 || Math.Abs(earthPos.ClearanceDeg!.Value) < 0.001))
+            {
+                nearHorizon = true;
+            }
+            samples[index] = new AnalysisSample(value.Time, sunPos, earthPos);
+        }
+        if (nearHorizon)
             warnings.Add("Near-horizon visibility is sensitive to terrain resolution and sampling error.");
         IReadOnlyList<VisibilityInterval> sun = terrainApplied ? VisibilityCalculator.GetIntervals(samples, sample => sample.Sun) : [];
         IReadOnlyList<VisibilityInterval> earth = terrainApplied ? VisibilityCalculator.GetIntervals(samples, sample => sample.Earth) : [];
         var durationHours = (request.Period.EndUtc - request.Period.StartUtc).TotalHours;
-        var summary = terrainApplied
-            ? new AnalysisSummary(VisibilityCalculator.Hours(sun), VisibilityCalculator.Hours(earth),
+        AnalysisSummary summary;
+        if (terrainApplied)
+        {
+            var sunHours = VisibilityCalculator.Hours(sun);
+            var earthHours = VisibilityCalculator.Hours(earth);
+            summary = new AnalysisSummary(sunHours, earthHours,
                 VisibilityCalculator.BothHours(sun, earth),
-                Math.Clamp(100 * VisibilityCalculator.Hours(sun) / durationHours, 0, 100),
-                Math.Clamp(100 * VisibilityCalculator.Hours(earth) / durationHours, 0, 100))
-            : new AnalysisSummary(null, null, null, null, null);
+                Math.Clamp(100 * sunHours / durationHours, 0, 100),
+                Math.Clamp(100 * earthHours / durationHours, 0, 100));
+        }
+        else
+        {
+            summary = new AnalysisSummary(null, null, null, null, null);
+        }
         warnings.Add("Center-of-disk airless apparent positions; intervals use linear clearance interpolation at the requested sampling resolution, not an exact event solver.");
         return new AnalysisResponse(terrainApplied ? "complete" : "partial",
             new AnalysisLocation(location.Latitude, location.Longitude,
@@ -95,20 +117,43 @@ public sealed class AnalysisService(
         }
     }
 
-    private async Task<HorizonProfileResult> GetProfileAsync(TerrainLocation location, TerrainHeightResult height, CancellationToken token)
+    private async Task<(HorizonProfileResult? Profile, HorizonPoint[] Points, bool Unavailable)> TryGetProfileAsync(
+        TerrainLocation location, TerrainHeightResult height, CancellationToken token)
     {
-        var key = new ProfileKey(location, height.ElevationM, height.TerrainSource, height.VerticalReference, height.ResolutionMeters);
-        await _profileGate.WaitAsync(token);
         try
         {
-            if (_profiles.TryGetValue(key, out var cached) && cached.Expires > DateTimeOffset.UtcNow) return cached.Profile;
+            var (profile, points) = await GetProfileAsync(location, height, token);
+            return (profile, points, false);
+        }
+        catch (Exception exception) when (exception is IOException or TimeoutException)
+        {
+            return (null, [], true);
+        }
+    }
+
+    private async Task<(HorizonProfileResult Profile, HorizonPoint[] SortedPoints)> GetProfileAsync(
+        TerrainLocation location, TerrainHeightResult height, CancellationToken token)
+    {
+        var key = new ProfileKey(location, height.ElevationM, height.TerrainSource, height.VerticalReference, height.ResolutionMeters);
+        var now = DateTimeOffset.UtcNow;
+        if (_profiles.TryGetValue(key, out var fastHit) && fastHit.Expires > now)
+            return (fastHit.Profile, fastHit.SortedPoints);
+
+        var gate = _profileGates[(uint)key.GetHashCode() % ProfileGateStripes];
+        await gate.WaitAsync(token);
+        try
+        {
+            now = DateTimeOffset.UtcNow;
+            if (_profiles.TryGetValue(key, out var cached) && cached.Expires > now)
+                return (cached.Profile, cached.SortedPoints);
             var profile = await _horizons.GetProfileAsync(location, token);
+            var sortedPoints = profile.Points?.OrderBy(point => point.AzimuthDeg).ToArray() ?? [];
             if (_profiles.Count >= 128) _profiles.Clear();
             // There is no revision token in the frozen provider interface. Cache only profiles for 60s, never whole analyses.
-            if (profile.TerrainApplied) _profiles[key] = (DateTimeOffset.UtcNow.AddSeconds(60), profile);
-            return profile;
+            if (profile.TerrainApplied) _profiles[key] = (DateTimeOffset.UtcNow.AddSeconds(60), profile, sortedPoints);
+            return (profile, sortedPoints);
         }
-        finally { _profileGate.Release(); }
+        finally { gate.Release(); }
     }
 
     private static bool ValidProfile(HorizonProfileResult? profile, TerrainHeightResult height, IReadOnlyList<HorizonPoint> points)
@@ -147,7 +192,10 @@ public sealed class AnalysisService(
 
     private static NavigationException InvalidEphemeris() => new(503, "EPHEMERIS_UNAVAILABLE", "Ephemeris samples are incomplete or invalid.");
 
-    public void Dispose() => _profileGate.Dispose();
+    public void Dispose()
+    {
+        foreach (var gate in _profileGates) gate.Dispose();
+    }
 
     private sealed record ProfileKey(TerrainLocation Location, double? Elevation, string? Source, string? Datum, double? Resolution);
 }

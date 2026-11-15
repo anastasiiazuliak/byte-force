@@ -390,17 +390,83 @@ public sealed class LolaTiffReader : IDisposable
     {
         if (windowWidth <= 0 || windowHeight <= 0 || (long)windowWidth * windowHeight > MaxWindowPixels)
             throw new ArgumentOutOfRangeException(nameof(windowWidth), "DEM window exceeds supported limits.");
-        float[,] result = new float[windowHeight, windowWidth];
-        for (int r = 0; r < windowHeight; r++)
+
+        float[] flat = ArrayPool<float>.Shared.Rent(windowWidth * windowHeight);
+        try
         {
-            int curRow = startRow + r;
-            for (int c = 0; c < windowWidth; c++)
+            ReadWindowFlat(startCol, startRow, windowWidth, windowHeight, flat.AsSpan(0, windowWidth * windowHeight));
+            float[,] result = new float[windowHeight, windowWidth];
+            for (int r = 0; r < windowHeight; r++)
+                flat.AsSpan(r * windowWidth, windowWidth).CopyTo(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref result[r, 0], windowWidth));
+            return result;
+        }
+        finally
+        {
+            ArrayPool<float>.Shared.Return(flat);
+        }
+    }
+
+    /// <summary>
+    /// Reads a row-major 2D window of elevation values tile-by-tile into <paramref name="destination"/>.
+    /// </summary>
+    public void ReadWindowFlat(int startCol, int startRow, int windowWidth, int windowHeight, Span<float> destination)
+    {
+        if (windowWidth <= 0 || windowHeight <= 0 || (long)windowWidth * windowHeight > MaxWindowPixels)
+            throw new ArgumentOutOfRangeException(nameof(windowWidth), "DEM window exceeds supported limits.");
+        int totalPixels = windowWidth * windowHeight;
+        if (destination.Length < totalPixels)
+            throw new ArgumentException("Destination span is smaller than the requested window.", nameof(destination));
+
+        var dst = destination[..totalPixels];
+        int validColStart = Math.Max(0, startCol);
+        int validColEnd = Math.Min(metadata.RasterWidth, startCol + windowWidth);
+        int validRowStart = Math.Max(0, startRow);
+        int validRowEnd = Math.Min(metadata.RasterHeight, startRow + windowHeight);
+
+        if (validColStart >= validColEnd || validRowStart >= validRowEnd)
+        {
+            dst.Fill(float.NaN);
+            return;
+        }
+
+        if (validColStart != startCol || validColEnd != startCol + windowWidth
+            || validRowStart != startRow || validRowEnd != startRow + windowHeight)
+        {
+            dst.Fill(float.NaN);
+        }
+
+        int tileWidth = metadata.TileWidth;
+        int tileHeight = metadata.TileHeight;
+        int tileStartY = validRowStart / tileHeight;
+        int tileEndY = (validRowEnd - 1) / tileHeight;
+        int tileStartX = validColStart / tileWidth;
+        int tileEndX = (validColEnd - 1) / tileWidth;
+
+        for (int tileY = tileStartY; tileY <= tileEndY; tileY++)
+        {
+            int tileOriginRow = tileY * tileHeight;
+            int rowMin = Math.Max(validRowStart, tileOriginRow);
+            int rowMax = Math.Min(validRowEnd, tileOriginRow + tileHeight);
+            int tileRowBase = tileY * metadata.TilesAcross;
+
+            for (int tileX = tileStartX; tileX <= tileEndX; tileX++)
             {
-                int curCol = startCol + c;
-                result[r, c] = ReadPixel(curCol, curRow);
+                float[] tileData = GetTile(tileRowBase + tileX);
+                int tileOriginCol = tileX * tileWidth;
+                int colMin = Math.Max(validColStart, tileOriginCol);
+                int colMax = Math.Min(validColEnd, tileOriginCol + tileWidth);
+                int copyWidth = colMax - colMin;
+                int localColStart = colMin - tileOriginCol;
+                int dstColOffset = colMin - startCol;
+
+                for (int r = rowMin; r < rowMax; r++)
+                {
+                    int srcIndex = ((r - tileOriginRow) * tileWidth) + localColStart;
+                    int dstIndex = ((r - startRow) * windowWidth) + dstColOffset;
+                    tileData.AsSpan(srcIndex, copyWidth).CopyTo(dst.Slice(dstIndex, copyWidth));
+                }
             }
         }
-        return result;
     }
 
     /// <summary>
@@ -491,38 +557,29 @@ public sealed class LolaTiffReader : IDisposable
 
         if (predictor == 3) // Floating Point Predictor (TIFF Tech Note 3)
         {
-            byte[] rowBuf = ArrayPool<byte>.Shared.Rent(rowBytes);
-            try
+            for (int r = 0; r < height; r++)
             {
-                for (int r = 0; r < height; r++)
+                Span<byte> rowSpan = raw.AsSpan(r * rowBytes, rowBytes);
+
+                // Undo horizontal differencing in-place inside the temporary decompressed buffer
+                for (int i = 1; i < rowBytes; i++)
                 {
-                    int rowOffset = r * rowBytes;
-                    Buffer.BlockCopy(raw, rowOffset, rowBuf, 0, rowBytes);
-
-                    // Undo horizontal differencing
-                    for (int i = 1; i < rowBytes; i++)
-                    {
-                        rowBuf[i] = (byte)((rowBuf[i] + rowBuf[i - 1]) & 0xFF);
-                    }
-
-                    // Untangle byte planes (MSB to LSB in TIFF standard)
-                    int destOffset = r * width;
-                    for (int c = 0; c < width; c++)
-                    {
-                        byte b3 = rowBuf[(0 * width) + c]; // MSB
-                        byte b2 = rowBuf[(1 * width) + c];
-                        byte b1 = rowBuf[(2 * width) + c];
-                        byte b0 = rowBuf[(3 * width) + c]; // LSB
-
-                        // Reassemble IEEE 754 little-endian 32-bit float
-                        uint u = (uint)((b3 << 24) | (b2 << 16) | (b1 << 8) | b0);
-                        floats[destOffset + c] = BitConverter.UInt32BitsToSingle(u);
-                    }
+                    rowSpan[i] = (byte)(rowSpan[i] + rowSpan[i - 1]);
                 }
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(rowBuf);
+
+                // Untangle byte planes (MSB to LSB in TIFF standard)
+                int destOffset = r * width;
+                for (int c = 0; c < width; c++)
+                {
+                    byte b3 = rowSpan[c]; // MSB
+                    byte b2 = rowSpan[width + c];
+                    byte b1 = rowSpan[(2 * width) + c];
+                    byte b0 = rowSpan[(3 * width) + c]; // LSB
+
+                    // Reassemble IEEE 754 little-endian 32-bit float
+                    uint u = (uint)((b3 << 24) | (b2 << 16) | (b1 << 8) | b0);
+                    floats[destOffset + c] = BitConverter.UInt32BitsToSingle(u);
+                }
             }
         }
         else // Predictor == 1 (No predictor / straight bytes)

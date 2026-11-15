@@ -12,6 +12,9 @@ namespace LunarNavigator.Api.Infrastructure.Horizons;
 public sealed class HorizonsEphemerisService(
     IHttpClientFactory clients, IOptions<EphemerisSettings> settings, AnalysisPolicy policy) : IEphemerisService, IDisposable
 {
+    private const int MaxSeriesBatchSize = 500;
+    private const int MaxTlistBatchSize = 40;
+
     private readonly IHttpClientFactory _clients = clients;
     private readonly EphemerisSettings _settings = settings.Value;
     private readonly AnalysisPolicy _policy = policy;
@@ -24,48 +27,128 @@ public sealed class HorizonsEphemerisService(
         RequestValidation.Validate(new AnalysisRequest(location, period), _policy);
         if (!double.IsFinite(altitudeKilometers) || altitudeKilometers <= -1737.4)
             throw RequestValidation.Invalid("Observer altitude is invalid.");
-        var observer = new LunarObserver(location.Latitude, location.Longitude, altitudeKilometers);
-        var result = new List<LunarObservation>();
-        foreach (var time in RequestValidation.SampleTimes(period))
+
+        var sampleTimes = RequestValidation.SampleTimes(period).ToArray();
+        var result = new LunarObservation[sampleTimes.Length];
+        var missingIndices = new List<int>();
+
+        for (var i = 0; i < sampleTimes.Length; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var key = new CacheKey(location.Latitude, location.Longitude, altitudeKilometers, time.UtcTicks);
+            var key = new CacheKey(location.Latitude, location.Longitude, altitudeKilometers, sampleTimes[i].UtcTicks);
             if (_cache.TryGetValue(key, out LunarObservation? cached) && cached is not null)
-            {
-                result.Add(cached);
-                continue;
-            }
-            await _gate.WaitAsync(cancellationToken);
-            try
-            {
-                if (!_cache.TryGetValue(key, out cached) || cached is null)
-                {
-                    cached = await FetchAsync(observer, time, cancellationToken);
-                    _cache.Set(key, cached, new MemoryCacheEntryOptions
-                    {
-                        AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(_settings.CacheSeconds), Size = 1
-                    });
-                }
-                result.Add(cached);
-            }
-            finally { _gate.Release(); }
+                result[i] = cached;
+            else
+                missingIndices.Add(i);
         }
+
+        if (missingIndices.Count == 0)
+            return result;
+
+        var observer = new LunarObserver(location.Latitude, location.Longitude, altitudeKilometers);
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var stillMissing = new List<int>(missingIndices.Count);
+            foreach (var index in missingIndices)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var key = new CacheKey(location.Latitude, location.Longitude, altitudeKilometers, sampleTimes[index].UtcTicks);
+                if (_cache.TryGetValue(key, out LunarObservation? cached) && cached is not null)
+                    result[index] = cached;
+                else
+                    stillMissing.Add(index);
+            }
+
+            if (stillMissing.Count > 0)
+                await FetchMissingAsync(observer, location, altitudeKilometers, period.StepMinutes, sampleTimes, stillMissing, result, cancellationToken);
+        }
+        finally { _gate.Release(); }
+
         return result;
     }
 
-    private async Task<LunarObservation> FetchAsync(LunarObserver observer, DateTimeOffset time, CancellationToken token)
+    private async Task FetchMissingAsync(
+        LunarObserver observer, Coordinates location, double altitudeKilometers, int stepMinutes,
+        DateTimeOffset[] sampleTimes, List<int> missingIndices, LunarObservation[] result, CancellationToken token)
+    {
+        var stepTicks = TimeSpan.FromMinutes(stepMinutes).Ticks;
+        var isolatedIndices = new List<int>();
+        var cursor = 0;
+
+        while (cursor < missingIndices.Count)
+        {
+            var runEnd = cursor;
+            while (runEnd + 1 < missingIndices.Count
+                && runEnd + 1 - cursor < MaxSeriesBatchSize
+                && missingIndices[runEnd + 1] == missingIndices[runEnd] + 1
+                && sampleTimes[missingIndices[runEnd + 1]].UtcTicks - sampleTimes[missingIndices[runEnd]].UtcTicks == stepTicks)
+            {
+                runEnd++;
+            }
+
+            var runLength = runEnd - cursor + 1;
+            if (runLength >= 2)
+            {
+                var startTime = sampleTimes[missingIndices[cursor]];
+                var endTime = sampleTimes[missingIndices[runEnd]];
+                var batch = await ExecuteWithRetryAsync(
+                    (client, ct) => client.GetObservationSeriesAsync(observer, startTime, endTime, stepMinutes, ct),
+                    token);
+
+                for (var offset = 0; offset < batch.Count; offset++)
+                    StoreObservation(location, altitudeKilometers, missingIndices[cursor + offset], batch[offset], result);
+            }
+            else
+            {
+                isolatedIndices.Add(missingIndices[cursor]);
+            }
+
+            cursor = runEnd + 1;
+        }
+
+        for (var offset = 0; offset < isolatedIndices.Count; offset += MaxTlistBatchSize)
+        {
+            var chunkCount = Math.Min(MaxTlistBatchSize, isolatedIndices.Count - offset);
+            var chunkTimes = new DateTimeOffset[chunkCount];
+            for (var j = 0; j < chunkCount; j++)
+                chunkTimes[j] = sampleTimes[isolatedIndices[offset + j]];
+
+            var batch = await ExecuteWithRetryAsync(
+                (client, ct) => client.GetObservationsAsync(observer, chunkTimes, ct),
+                token);
+
+            for (var j = 0; j < batch.Count; j++)
+                StoreObservation(location, altitudeKilometers, isolatedIndices[offset + j], batch[j], result);
+        }
+    }
+
+    private void StoreObservation(
+        Coordinates location, double altitudeKilometers, int index, LunarObservation raw, LunarObservation[] result)
+    {
+        var normalized = raw with
+        {
+            SunAzimuthDegrees = NormalizeAzimuth(raw.SunAzimuthDegrees),
+            EarthAzimuthDegrees = NormalizeAzimuth(raw.EarthAzimuthDegrees)
+        };
+        var key = new CacheKey(location.Latitude, location.Longitude, altitudeKilometers, normalized.Time.UtcTicks);
+        _cache.Set(key, normalized, new MemoryCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(_settings.CacheSeconds),
+            Size = 1
+        });
+        result[index] = normalized;
+    }
+
+    private async Task<T> ExecuteWithRetryAsync<T>(
+        Func<HorizonsClient, CancellationToken, Task<T>> operation, CancellationToken token)
     {
         for (var attempt = 1; ; attempt++)
         {
             try
             {
                 using var http = _clients.CreateClient("Horizons");
-                var value = await new HorizonsClient(http).GetObservationAsync(observer, time, token);
-                return value with
-                {
-                    SunAzimuthDegrees = NormalizeAzimuth(value.SunAzimuthDegrees),
-                    EarthAzimuthDegrees = NormalizeAzimuth(value.EarthAzimuthDegrees)
-                };
+                return await operation(new HorizonsClient(http), token);
             }
             catch (Exception exception) when (exception is HttpRequestException or HorizonsException or OperationCanceledException)
             {

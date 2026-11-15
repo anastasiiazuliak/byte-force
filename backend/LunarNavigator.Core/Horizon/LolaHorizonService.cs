@@ -126,7 +126,7 @@ public sealed class LolaHorizonService : IHorizonService
         double resM = window.ResolutionMeters > 0 ? window.ResolutionMeters : 80.0;
         int cols = window.Columns;
         int rows = window.Rows;
-        Func<int, int, float> readWindowPixel = (column, row) => window.Elevations[row * cols + column];
+        float[] elevations = window.Elevations;
         double centerCol = (cols - 1) / 2.0;
         double centerRow = (rows - 1) / 2.0;
 
@@ -140,69 +140,191 @@ public sealed class LolaHorizonService : IHorizonService
         double maxRange = opts.MaxRangeMeters;
 
         int rayCount = Math.Max(1, (int)Math.Ceiling(360.0 / opts.AzimuthStepDeg));
-        var points = new List<HorizonPoint>(rayCount);
-
-        bool encounteredNoData = false;
-        bool clippedRay = false;
-        bool timedOut = false;
-
-        for (int i = 0; i < rayCount; i++)
+        int activeRayCount = rayCount;
+        while (activeRayCount > 0 && (activeRayCount - 1) * opts.AzimuthStepDeg >= 360.0)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (opts.MaxComputeMilliseconds > 0 && stopwatch.ElapsedMilliseconds > opts.MaxComputeMilliseconds)
-            {
-                timedOut = true;
-                break;
-            }
+            activeRayCount--;
+        }
 
+        int stepCount = (int)Math.Floor((maxRange / rayStep) + 1e-12);
+        var cosPsi = new double[stepCount];
+        var sinPsi = new double[stepCount];
+        const double invR = 1.0 / LunarProjection.MoonRadiusMeters;
+        for (int s = 0; s < stepCount; s++)
+        {
+            double psi = (s + 1) * rayStep * invR;
+            cosPsi[s] = Math.Cos(psi);
+            sinPsi[s] = Math.Sin(psi);
+        }
+
+        const double degToRad = Math.PI / 180.0;
+        const double radToDeg = 180.0 / Math.PI;
+        const double twoR = 2.0 * LunarProjection.MoonRadiusMeters;
+        double obsLatRad = location.Latitude * degToRad;
+        double obsLonRad = location.Longitude * degToRad;
+        double sinLat = Math.Sin(obsLatRad), cosLat = Math.Cos(obsLatRad);
+        double sinLon = Math.Sin(obsLonRad), cosLon = Math.Cos(obsLonRad);
+        double obsCartX = cosLat * cosLon;
+        double obsCartY = cosLat * sinLon;
+        double obsCartZ = sinLat;
+
+        // Precompute local North/East unit basis vectors on the reference sphere.
+        double northX = -sinLat * cosLon;
+        double northY = -sinLat * sinLon;
+        double northZ = cosLat;
+        double eastX = -sinLon;
+        double eastY = cosLon;
+
+        double maxColF = cols - 1;
+        double maxRowF = rows - 1;
+        double invResM = 1.0 / resM;
+
+        var rayPoints = new HorizonPoint?[activeRayCount];
+        int encounteredNoDataFlag = 0;
+        int clippedRayFlag = 0;
+        int timedOutFlag = 0;
+        long maxComputeMs = opts.MaxComputeMilliseconds;
+
+        void ProcessRay(int i)
+        {
             double azDeg = i * opts.AzimuthStepDeg;
-            if (azDeg >= 360.0)
-            {
-                break;
-            }
+            double azRad = azDeg * degToRad;
+            double cosAz = Math.Cos(azRad);
+            double sinAz = Math.Sin(azRad);
 
-            double maxElevDeg = -90.0;
+            double tx = (cosAz * northX) + (sinAz * eastX);
+            double ty = (cosAz * northY) + (sinAz * eastY);
+            double tz = cosAz * northZ;
+
+            double maxSlope = double.NegativeInfinity;
+            double maxFallbackElevRad = double.NegativeInfinity;
             bool hasValidSample = false;
+            bool rayNoData = false;
+            bool rayClipped = false;
 
-            for (double dist = rayStep; dist <= maxRange; dist += rayStep)
+            for (int s = 0; s < stepCount; s++)
             {
-                var destination = Destination(location, azDeg, dist);
-                var (sampleX, sampleY) = LunarProjection.ToProjected(destination.Latitude, destination.Longitude);
-                double colF = (sampleX - originX) / resM;
-                double rowF = (originY - sampleY) / resM;
+                double cp = cosPsi[s];
+                double sp = sinPsi[s];
 
-                if (colF < 0 || colF > cols - 1 || rowF < 0 || rowF > rows - 1)
+                double dx = (obsCartX * cp) + (tx * sp);
+                double dy = (obsCartY * cp) + (ty * sp);
+                double dz = (obsCartZ * cp) + (tz * sp);
+
+                // Closed-form South Polar Stereographic projection from unit cartesian sphere point (dx, dy, dz).
+                double denom = 1.0 - dz;
+                double sampleX, sampleY;
+                if (denom <= 1e-15)
                 {
-                    clippedRay = true;
+                    sampleX = 0.0;
+                    sampleY = 0.0;
+                }
+                else
+                {
+                    double scale = twoR / denom;
+                    sampleX = scale * dy;
+                    sampleY = scale * dx;
+                }
+
+                double colF = (sampleX - originX) * invResM;
+                double rowF = (originY - sampleY) * invResM;
+
+                if (!double.IsFinite(colF) || !double.IsFinite(rowF)
+                    || colF < 0 || colF > maxColF || rowF < 0 || rowF > maxRowF)
+                {
+                    rayClipped = true;
                     break;
                 }
 
-                if (!BilinearDemSurface.TrySample(cols, rows, colF, rowF, readWindowPixel, out double sampleElevM))
+                if (!TrySampleFlat(elevations, cols, rows, colF, rowF, out double sampleElevM))
                 {
-                    encounteredNoData = true;
+                    rayNoData = true;
                     continue;
                 }
 
                 hasValidSample = true;
-                double psi = dist / LunarProjection.MoonRadiusMeters;
                 double rs = LunarProjection.MoonRadiusMeters + sampleElevM;
-                double elevRad = Math.Atan2((rs * Math.Cos(psi)) - r0, rs * Math.Sin(psi));
-                double elevDeg = elevRad * (180.0 / Math.PI);
-
-                if (elevDeg > maxElevDeg)
+                double yNum = (rs * cp) - r0;
+                double xDen = rs * sp;
+                if (xDen > 0.0)
                 {
-                    maxElevDeg = elevDeg;
+                    double slope = yNum / xDen;
+                    if (slope > maxSlope)
+                    {
+                        maxSlope = slope;
+                    }
+                }
+                else
+                {
+                    double elevRad = Math.Atan2(yNum, xDen);
+                    if (elevRad > maxFallbackElevRad)
+                    {
+                        maxFallbackElevRad = elevRad;
+                    }
                 }
             }
 
+            if (rayNoData) Interlocked.CompareExchange(ref encounteredNoDataFlag, 1, 0);
+            if (rayClipped) Interlocked.CompareExchange(ref clippedRayFlag, 1, 0);
+
             if (!hasValidSample)
             {
-                encounteredNoData = true;
-                continue;
+                Interlocked.CompareExchange(ref encounteredNoDataFlag, 1, 0);
+                return;
             }
 
-            points.Add(new HorizonPoint(Math.Round(azDeg, 4), Math.Round(maxElevDeg, 4)));
+            double bestElevRad = double.IsNegativeInfinity(maxFallbackElevRad)
+                ? Math.Atan(maxSlope)
+                : (double.IsNegativeInfinity(maxSlope)
+                    ? maxFallbackElevRad
+                    : Math.Max(Math.Atan(maxSlope), maxFallbackElevRad));
+
+            rayPoints[i] = new HorizonPoint(Math.Round(azDeg, 4), Math.Round(bestElevRad * radToDeg, 4));
         }
+
+        if (activeRayCount >= 32 && stepCount >= 16 && maxComputeMs <= 0)
+        {
+            Parallel.For(0, activeRayCount, new ParallelOptions { CancellationToken = cancellationToken }, ProcessRay);
+        }
+        else if (activeRayCount >= 32 && stepCount >= 16)
+        {
+            Parallel.For(0, activeRayCount, new ParallelOptions { CancellationToken = cancellationToken }, (i, loopState) =>
+            {
+                if (Volatile.Read(ref timedOutFlag) != 0 || stopwatch.ElapsedMilliseconds > maxComputeMs)
+                {
+                    Volatile.Write(ref timedOutFlag, 1);
+                    loopState.Stop();
+                    return;
+                }
+                ProcessRay(i);
+            });
+        }
+        else
+        {
+            for (int i = 0; i < activeRayCount; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (maxComputeMs > 0 && stopwatch.ElapsedMilliseconds > maxComputeMs)
+                {
+                    timedOutFlag = 1;
+                    break;
+                }
+                ProcessRay(i);
+            }
+        }
+
+        var points = new List<HorizonPoint>(activeRayCount);
+        for (int i = 0; i < activeRayCount; i++)
+        {
+            if (rayPoints[i] is { } point)
+            {
+                points.Add(point);
+            }
+        }
+
+        bool encounteredNoData = encounteredNoDataFlag != 0;
+        bool clippedRay = clippedRayFlag != 0;
+        bool timedOut = timedOutFlag != 0;
 
         var warnings = new List<string>
         {
@@ -229,6 +351,58 @@ public sealed class LolaHorizonService : IHorizonService
             TerrainSource: terrainSource ?? "NASA LOLA DEM",
             ResolutionMeters: resM,
             Warnings: warnings) { IsRegionalOnly = true };
+    }
+
+    private static bool TrySampleFlat(
+        float[] elevations, int columns, int rows, double column, double row, out double elevation)
+    {
+        int c0 = (int)Math.Floor(column);
+        int r0 = (int)Math.Floor(row);
+        int c1 = Math.Min(columns - 1, c0 + 1);
+        int r1 = Math.Min(rows - 1, r0 + 1);
+        double fc = column - c0;
+        double fr = row - r0;
+        double oneMinusFc = 1.0 - fc;
+        double oneMinusFr = 1.0 - fr;
+
+        int row0Offset = r0 * columns;
+        int row1Offset = r1 * columns;
+        double sum = 0.0;
+
+        double w00 = oneMinusFc * oneMinusFr;
+        if (w00 != 0.0)
+        {
+            float v = elevations[row0Offset + c0];
+            if (!float.IsFinite(v)) { elevation = double.NaN; return false; }
+            sum += w00 * v;
+        }
+
+        double w10 = fc * oneMinusFr;
+        if (w10 != 0.0)
+        {
+            float v = elevations[row0Offset + c1];
+            if (!float.IsFinite(v)) { elevation = double.NaN; return false; }
+            sum += w10 * v;
+        }
+
+        double w01 = oneMinusFc * fr;
+        if (w01 != 0.0)
+        {
+            float v = elevations[row1Offset + c0];
+            if (!float.IsFinite(v)) { elevation = double.NaN; return false; }
+            sum += w01 * v;
+        }
+
+        double w11 = fc * fr;
+        if (w11 != 0.0)
+        {
+            float v = elevations[row1Offset + c1];
+            if (!float.IsFinite(v)) { elevation = double.NaN; return false; }
+            sum += w11 * v;
+        }
+
+        elevation = sum;
+        return true;
     }
 
     /// <summary>Great-circle destination on the reference sphere; azimuth is north through east.</summary>

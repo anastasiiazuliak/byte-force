@@ -163,15 +163,31 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
         double max = double.MinValue;
         bool hasNoData = false;
 
-        for (int r = 0; r < height; r++)
+        if (readFailed)
         {
-            int curRow = startRow + r;
-            for (int c = 0; c < width; c++)
+            Array.Fill(samples, float.NaN);
+            hasNoData = true;
+        }
+        else
+        {
+            try
             {
-                int curCol = startCol + c;
-                float val = ReadPixel(curCol, curRow);
-                samples[(r * width) + c] = val;
+                reader!.ReadWindowFlat(startCol, startRow, width, height, samples);
+            }
+            catch (Exception exception) when (exception is IOException or InvalidDataException)
+            {
+                // Reject the dataset after a failed tile read; never use partially decoded elevations.
+                readFailed = true;
+                Array.Fill(samples, float.NaN);
+                hasNoData = true;
+            }
+        }
 
+        if (!readFailed)
+        {
+            for (int i = 0; i < samples.Length; i++)
+            {
+                float val = samples[i];
                 if (float.IsNaN(val))
                 {
                     hasNoData = true;
@@ -184,6 +200,7 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
             }
         }
 
+        var (originX, originY) = LunarProjection.FromPixel(startCol, startRow, metadata);
         return Task.FromResult(new TerrainWindowResult(
             request.CenterLocation,
             width,
@@ -195,8 +212,8 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
             hasNoData,
             readFailed ? new[] { "LOLA DEM data could not be decoded; terrain is unavailable." } : Array.Empty<string>())
         {
-            OriginX = LunarProjection.FromPixel(startCol, startRow, metadata).X,
-            OriginY = LunarProjection.FromPixel(startCol, startRow, metadata).Y
+            OriginX = originX,
+            OriginY = originY
         });
     }
 

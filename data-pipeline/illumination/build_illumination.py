@@ -92,6 +92,39 @@ def _write_rgba_webp(width: int, height: int, rgba_bytes: bytearray, out_path: P
     return fallback.as_posix()
 
 
+def _sample_bilinear_cell(
+    grid: list[list[float]],
+    cols: int,
+    rows: int,
+    col_f: float,
+    row_f: float,
+    fallback_elev: float,
+) -> float:
+    c0 = int(math.floor(col_f))
+    r0 = int(math.floor(row_f))
+    c1 = cols - 1 if c0 + 1 >= cols else c0 + 1
+    r1 = rows - 1 if r0 + 1 >= rows else r0 + 1
+
+    row0 = grid[r0]
+    row1 = grid[r1]
+    v00 = row0[c0]
+    v10 = row0[c1]
+    v01 = row1[c0]
+    v11 = row1[c1]
+
+    if math.isnan(v00) or math.isnan(v10) or math.isnan(v01) or math.isnan(v11):
+        nc = min(cols - 1, max(0, round(col_f)))
+        nr = min(rows - 1, max(0, round(row_f)))
+        v = grid[nr][nc]
+        return fallback_elev if math.isnan(v) else v
+
+    fc = col_f - c0
+    fr = row_f - r0
+    top = v00 + fc * (v10 - v00)
+    bot = v01 + fc * (v11 - v01)
+    return top + fr * (bot - top)
+
+
 def compute_sun_visibility_at_point(
     grid: list[list[float]],
     win_x0: float,
@@ -103,6 +136,7 @@ def compute_sun_visibility_at_point(
     sun_el_deg: float,
     ray_step_m: float,
     max_range_m: float,
+    _precomputed_steps: list[tuple[float, float, float]] | None = None,
 ) -> int:
     """
     Returns:
@@ -112,44 +146,58 @@ def compute_sun_visibility_at_point(
     """
     rows = len(grid)
     cols = len(grid[0])
-    col_f = (obs_x - win_x0) / pixel_scale
-    row_f = (win_y0 - obs_y) / pixel_scale
-    if col_f < 0 or col_f > cols - 1 or row_f < 0 or row_f > rows - 1:
+    inv_scale = 1.0 / pixel_scale
+    col_f = (obs_x - win_x0) * inv_scale
+    row_f = (win_y0 - obs_y) * inv_scale
+    max_col = cols - 1
+    max_row = rows - 1
+    if col_f < 0.0 or col_f > max_col or row_f < 0.0 or row_f > max_row:
         return -1
 
-    c0 = min(cols - 1, max(0, round(col_f)))
-    r0 = min(rows - 1, max(0, round(row_f)))
+    c0 = min(max_col, max(0, round(col_f)))
+    r0 = min(max_row, max(0, round(row_f)))
     if math.isnan(grid[r0][c0]):
         return -1
 
-    obs_elev = sample_bilinear(grid, win_x0, win_y0, pixel_scale, obs_x, obs_y, 0.0)
+    obs_elev = _sample_bilinear_cell(grid, cols, rows, col_f, row_f, 0.0)
     r_obs = MOON_RADIUS_M + obs_elev + 2.0  # 2m observer clearance
 
     nx, ny, ex, ey = _polar_local_basis(obs_x, obs_y)
     az_rad = math.radians(sun_az_deg)
-    dir_x = math.cos(az_rad) * nx + math.sin(az_rad) * ex
-    dir_y = math.cos(az_rad) * ny + math.sin(az_rad) * ey
+    cos_az = math.cos(az_rad)
+    sin_az = math.sin(az_rad)
+    dir_x = cos_az * nx + sin_az * ex
+    dir_y = cos_az * ny + sin_az * ey
+    dcol_per_m = dir_x * inv_scale
+    drow_per_m = -dir_y * inv_scale
 
-    max_horizon_deg = -90.0
-    dist = ray_step_m
-    while dist <= max_range_m:
-        sx = obs_x + dist * dir_x
-        sy = obs_y + dist * dir_y
-        sc = (sx - win_x0) / pixel_scale
-        sr = (win_y0 - sy) / pixel_scale
-        if sc < 0 or sc > cols - 1 or sr < 0 or sr > rows - 1:
+    use_slope = -89.9 <= sun_el_deg <= 89.9
+    sun_tan = math.tan(math.radians(sun_el_deg)) if use_slope else 0.0
+
+    if _precomputed_steps is None:
+        _precomputed_steps = []
+        dist = ray_step_m
+        while dist <= max_range_m:
+            psi = dist / MOON_RADIUS_M
+            _precomputed_steps.append((dist, math.cos(psi), math.sin(psi)))
+            dist += ray_step_m
+
+    for dist, cos_psi, sin_psi in _precomputed_steps:
+        sc = col_f + dist * dcol_per_m
+        sr = row_f + dist * drow_per_m
+        if sc < 0.0 or sc > max_col or sr < 0.0 or sr > max_row:
             break
-        sample_elev = sample_bilinear(grid, win_x0, win_y0, pixel_scale, sx, sy, obs_elev)
-        psi = dist / MOON_RADIUS_M
+        sample_elev = _sample_bilinear_cell(grid, cols, rows, sc, sr, obs_elev)
         rs = MOON_RADIUS_M + sample_elev
-        elev_deg = math.degrees(math.atan2(rs * math.cos(psi) - r_obs, rs * math.sin(psi)))
-        if elev_deg > max_horizon_deg:
-            max_horizon_deg = elev_deg
-            if max_horizon_deg >= sun_el_deg:
+        num = rs * cos_psi - r_obs
+        den = rs * sin_psi
+        if use_slope and den > 0.0:
+            if num >= sun_tan * den:
                 return 0  # early exit: already occluded
-        dist += ray_step_m
+        elif math.degrees(math.atan2(num, den)) >= sun_el_deg:
+            return 0
 
-    return 1 if sun_el_deg > max_horizon_deg else 0
+    return 1
 
 
 def parse_timestamp_spec(spec: str) -> dict:
@@ -191,6 +239,13 @@ def run_illumination_pipeline(args) -> None:
     win_x0, win_y0 = pixel_to_proj(col0, row0)
     epochs = [parse_timestamp_spec(s) for s in args.epoch]
 
+    precomputed_steps: list[tuple[float, float, float]] = []
+    dist = ray_step
+    while dist <= max_range:
+        psi = dist / MOON_RADIUS_M
+        precomputed_steps.append((dist, math.cos(psi), math.sin(psi)))
+        dist += ray_step
+
     manifest_epochs = []
     for ep in epochs:
         t0 = time.perf_counter()
@@ -213,6 +268,7 @@ def run_illumination_pipeline(args) -> None:
                 vis = compute_sun_visibility_at_point(
                     grid, win_x0, win_y0, DEM_PIXEL_SCALE_M,
                     x_proj, y_proj, az_deg, el_deg, ray_step, max_range,
+                    _precomputed_steps=precomputed_steps,
                 )
                 off = (r * tile_px + c) * 4
                 if vis == 1:

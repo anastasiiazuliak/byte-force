@@ -102,9 +102,9 @@ def acquire(url, destination, expected_bytes, workers=4, chunk_size=262144,
             futures = [pool.submit(fetch, *bounds) for bounds in ranges[batch:batch+max(1, min(workers, 4))]]
             for future in futures:
                 output.write(future.result())
-                output.flush()
-                os.fsync(output.fileno())
                 print(f'{output.tell()}/{expected_bytes} verified bytes', flush=True)
+        output.flush()
+        os.fsync(output.fileno())
     if part.stat().st_size != expected_bytes:
         raise ValueError('Final size mismatch')
     digest = sha256(part)

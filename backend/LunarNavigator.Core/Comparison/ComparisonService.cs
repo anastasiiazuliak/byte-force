@@ -16,19 +16,31 @@ public sealed class ComparisonService(IAnalysisService analysis, AnalysisPolicy 
             .Select(scenario => new AnalysisRequest(scenario.Location, scenario.Period, scenario.Options ?? new AnalysisOptions())).ToArray();
         foreach (var scenario in requests) RequestValidation.Validate(scenario, _policy);
         // Reuse identical analyses only inside this comparison. No stale cross-request analysis cache.
-        var cache = new Dictionary<AnalysisRequest, AnalysisResponse>();
-        var results = new List<CompareScenarioResponse>();
-        foreach (var (scenario, index) in requests.Select((value, index) => (value, index)))
+        AnalysisResponse responseA;
+        AnalysisResponse responseB;
+        if (requests[0].Equals(requests[1]))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!cache.TryGetValue(scenario, out var result))
-            {
-                using var scenarioCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                result = await _analysis.AnalyzeAsync(scenario, scenarioCancellation.Token);
-                cache.Add(scenario, result);
-            }
-            results.Add(new CompareScenarioResponse(index == 0 ? "A" : "B", result));
+            using var scenarioCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            responseA = await _analysis.AnalyzeAsync(requests[0], scenarioCancellation.Token);
+            responseB = responseA;
         }
+        else
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var cancelA = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            using var cancelB = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var taskA = _analysis.AnalyzeAsync(requests[0], cancelA.Token);
+            var taskB = _analysis.AnalyzeAsync(requests[1], cancelB.Token);
+            await Task.WhenAll(taskA, taskB);
+            responseA = await taskA;
+            responseB = await taskB;
+        }
+        var results = new List<CompareScenarioResponse>(2)
+        {
+            new("A", responseA),
+            new("B", responseB)
+        };
         if (requests[0].Period.EndUtc - requests[0].Period.StartUtc != requests[1].Period.EndUtc - requests[1].Period.StartUtc)
         {
             for (var index = 0; index < results.Count; index++)
