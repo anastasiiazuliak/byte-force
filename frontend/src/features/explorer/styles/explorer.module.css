@@ -415,56 +415,30 @@
 }
 
 /* Site Markers Labels */
-.markerLabel {
-  background: rgba(11, 15, 20, 0.88);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  padding: 4px 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
+.siteColorA { --site-color: #eab308; --site-text: #111827; }
+.siteColorB { --site-color: #0284c7; --site-text: #07111e; }
+
+.siteMapMarker {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  min-height: 0;
+  padding: 0;
+  border: 2px solid #f8fafc;
+  border-radius: 50%;
+  background: var(--site-color);
+  color: var(--site-text);
+  font: 700 14px/1 system-ui, sans-serif;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  transition: all 0.15s ease;
-  white-space: nowrap;
-  pointer-events: auto;
+  box-shadow: 0 0 0 2px #0b0f14;
 }
 
-.markerLabelA {
-  border-color: rgba(234, 179, 8, 0.6);
+.activeSiteMapMarker,
+.siteMapMarker:hover,
+.siteMapMarker:focus-visible {
+  box-shadow: 0 0 0 2px #0b0f14, 0 0 0 4px var(--site-color);
 }
-.markerLabelA .markerLabelTitle {
-  color: #facc15;
-}
-
-.markerLabelB {
-  border-color: rgba(2, 132, 199, 0.6);
-}
-.markerLabelB .markerLabelTitle {
-  color: #38bdf8;
-}
-
-.markerLabelHovered {
-  transform: scale(1.1);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8);
-}
-
-.markerLabelTitle {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.markerLabelCoords {
-  font-size: 10px;
-  color: #e2e8f0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
 .slotSelectorPanel {
   position: absolute;
   top: 68px;
@@ -540,11 +514,11 @@
 }
 
 .slotIndicatorA {
-  background-color: #eab308;
+  background-color: var(--site-color);
 }
 
 .slotIndicatorB {
-  background-color: #0284c7;
+  background-color: var(--site-color);
 }
 
 .activeSlotTabA {

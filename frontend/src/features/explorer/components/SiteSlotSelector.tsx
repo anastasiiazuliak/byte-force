@@ -51,7 +51,7 @@ export const SiteSlotSelector: React.FC<SiteSlotSelectorProps> = ({
           title="Click to place or inspect Landing Site A"
           aria-pressed={activeSlot === 'A'}
         >
-          <span className={styles.slotIndicatorA} />
+          <span className={styles.slotIndicatorA + " " + styles.siteColorA} />
           Site A
           {selectedA && (
             <span className={styles.slotCoordSmall}>
@@ -69,7 +69,7 @@ export const SiteSlotSelector: React.FC<SiteSlotSelectorProps> = ({
           title="Click to place or inspect Landing Site B"
           aria-pressed={activeSlot === 'B'}
         >
-          <span className={styles.slotIndicatorB} />
+          <span className={styles.slotIndicatorB + " " + styles.siteColorB} />
           Site B
           {selectedB && (
             <span className={styles.slotCoordSmall}>
