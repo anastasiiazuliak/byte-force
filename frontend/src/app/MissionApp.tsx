@@ -6,6 +6,7 @@ import type { TerrainSceneProps, SceneStatus, SiteSlot } from '../../../contract
 import { Panel } from '../components/layout/Panel';
 import { AnalysisPanel } from '../features/analysis/AnalysisPanel';
 import { compare, difference, errorMessage, type Results } from '../features/compare/compare';
+import { ExportActions } from '../features/export/ExportActions';
 import { Glossary } from '../features/methodology/Quality';
 import { PeriodFields, SitePicker } from '../features/scenario-form/ScenarioForm';
 import { coordinates, defaultDraft, validate, type Draft } from '../features/scenario-form/scenario';
@@ -259,6 +260,16 @@ export function MissionApp({ client, mode, TerrainViewer }: {
             <button aria-pressed={advanced} onClick={() => setAdvanced(true)}>Advanced</button>
           </div>
           {run.errors.some(Boolean) && <button onClick={() => retry.current?.()}>Retry analysis</button>}
+          <ExportActions run={{
+            mode,
+            apiVersion: health.value?.version,
+            scenarios: visibleResults.map((analysis, index) => ({
+              id: index === 0 ? 'A' : 'B',
+              analysis,
+              error: run.errors[index],
+            })),
+            differences: comparing ? deltas : undefined,
+          }} />
         </div>}
         {(ready || !comparing) && <Panel id="analysis" title={comparing ? 'Site 1 · Analysis' : 'Analysis'}>
           {ready ? resultPanel(0) : <p>Waiting for analysis.</p>}

@@ -1,0 +1,42 @@
+.export-report {
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 20px;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.export-report::backdrop { background: rgb(0 0 0 / 65%); }
+.export-report .report-controls { margin-bottom: 16px; }
+.export-report section { margin-top: 18px; }
+.export-report h2, .export-report h3 { margin-bottom: 6px; }
+.export-report dl { display: grid; grid-template-columns: minmax(6rem, 1fr) minmax(0, 3fr); gap: 6px 12px; margin-top: 10px; }
+.export-report dt { font-weight: 600; }
+.export-report dd { margin: 0; }
+
+@media print {
+  body:has(.export-report[open]) { background: #fff; color-scheme: light; }
+  .mission-app:has(.export-report[open]) {
+    > :not(.mission-workspace),
+    .mission-workspace > :not(.result-tools),
+    .result-tools > :not(.export-report) { display: none; }
+    .mission-workspace, .result-tools { display: block; padding: 0; min-height: 0; }
+  }
+  .export-report[open] {
+    position: static;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+    border: 0;
+    color: #111;
+    background: #fff;
+  }
+  .export-report[open]::backdrop { display: none; }
+  .export-report[open] .report-controls { display: none; }
+  .export-report h2, .export-report h3, .export-report h4 { break-after: avoid; }
+}
