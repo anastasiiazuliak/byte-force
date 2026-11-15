@@ -236,3 +236,33 @@ legend { padding-inline: 6px; font-weight: 650; }
 
 .terrain-loading { padding: 3rem; color: var(--muted); text-align: center; }
 .regional-assessment { color: var(--muted); font-size: .9rem; line-height: 1.5; }
+
+/* Adapt PERSON02's science plots without replacing the integrated workspace. */
+.science-plot { margin: 4px 0; min-width: 0; color: var(--muted); font-size: 12px; }
+.science-plot figcaption { margin-bottom: 8px; }
+.science-plot svg { background: #10131e; border: 1px solid var(--border); border-radius: 6px; }
+.science-plot svg path { fill: none; vector-effect: non-scaling-stroke; }
+.plot-grid { stroke: var(--border); }
+.sun-line { stroke: var(--sun); }
+.earth-line { stroke: var(--earth); }
+.sun-key { color: var(--sun); }
+.earth-key { color: var(--earth); }
+.chart-ticks { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font: 11px/1.5 var(--mono); }
+.analysis-time, #timeline output { font-variant-numeric: tabular-nums; }
+.analysis-time { color: var(--muted); font-size: 12px; }
+.table-scroll table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.table-scroll th { position: sticky; top: 0; background: var(--heading); }
+.table-scroll td { border-bottom: 1px solid var(--border); }
+.table-scroll time { white-space: nowrap; font-family: var(--mono); }
+#timeline .panel-body > div { grid-template-columns: minmax(0, 1fr) auto minmax(120px, 160px); align-items: end; gap: 8px 14px; }
+#timeline output, #timeline .panel-body section { grid-column: 1 / -1; }
+#timeline output { color: var(--earth); font-size: 13px; }
+#timeline input[type="range"] { accent-color: var(--earth); padding-inline: 0; }
+#timeline .panel-body section { padding-top: 10px; border-top: 1px solid var(--border); font-size: 12px; }
+#timeline .panel-body section p { margin-block: 4px; color: var(--muted); }
+#timeline .panel-body section span { display: inline-block; margin: 3px 2px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 4px; font-family: var(--mono); }
+#timeline .panel-body section [aria-current="true"] { color: var(--sun); border-color: var(--sun); }
+@media (max-width: 800px) {
+  #timeline .panel-body > div { grid-template-columns: minmax(0, 1fr) auto; }
+  #timeline .panel-body > div > label:first-of-type { grid-column: 1 / -1; }
+}
