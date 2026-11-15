@@ -128,6 +128,8 @@ class BigTiffReader:
         self._predictor = 1
         self._sample_format = 3  # 3=float
         self._bits_per_sample = 32
+        self.tags = {}
+        self._remote_identity = None
 
     # --- open / close -------------------------------------------------------
 
@@ -162,8 +164,19 @@ class BigTiffReader:
                 "User-Agent": "ByteForce-LunarNavigator/1.0",
             },
         )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            return resp.read()
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            content_range = resp.headers.get('Content-Range', '')
+            prefix = f'bytes {offset}-{offset + length - 1}/'
+            identity = (resp.headers.get('ETag'), resp.headers.get('Last-Modified'), content_range.split('/')[-1])
+            if resp.status != 206 or not content_range.startswith(prefix):
+                raise ValueError('Remote TIFF did not honor exact byte range')
+            if not any(identity[:2]) or (self._remote_identity and self._remote_identity != identity):
+                raise ValueError('Remote TIFF identity missing or changed')
+            self._remote_identity = identity
+            raw = resp.read(length+1)
+            if len(raw) != length or int(resp.headers.get('Content-Length', -1)) != length:
+                raise ValueError('Truncated/oversized remote TIFF range')
+            return raw
 
     def _u(self, fmt: str, data: bytes, off: int = 0):
         prefix = "<" if self._little_endian else ">"
@@ -248,6 +261,7 @@ class BigTiffReader:
         for i in range(n_entries):
             tag, tc, count, vob = get_entry(i)
             vals = self._read_value_or_ptr(tag, tc, count, vob)
+            self.tags[tag] = vals
 
             if tag == 256:    # ImageWidth
                 self._cols = int(vals[0])
@@ -621,8 +635,8 @@ def build_mesh_from_grid(
             x_proj = origin_x_m + c * pixel_scale
             y_proj = origin_y_m - r * pixel_scale
             elev   = grid[r][c]
-            if math.isnan(elev):
-                elev = ref_elevation   # fill NoData with reference height
+            if not math.isfinite(elev):
+                raise ValueError('NoData/nonfinite elevation in mesh; refusing synthetic fill')
             scene_x = x_proj - local_origin_x
             scene_y = elev - ref_elevation
             scene_z = -(y_proj - local_origin_y)
@@ -755,7 +769,16 @@ def run_pipeline(args) -> None:
             raise ValueError("Provide --source-file or --source-url (or use --dry-run)")
         log(f"[build_mesh] reading DEM from {'file' if source_file else 'URL'}")
         with BigTiffReader(source_file, source_url) as dem:
+            if (dem.tags.get(33550) != [80.0, 80.0, 0.0] or
+                    dem.tags.get(33922) != [0.0, 0.0, 0.0, -304000.0, 304000.0, 0.0] or
+                    dem._cols != DEM_COLS or dem._rows != DEM_ROWS or res != 80.0 or
+                    dem.tags.get(34735, [])[8:12] != [1025, 0, 1, 1]):
+                raise ValueError('Source georeferencing differs from supported regional DEM')
             grid = dem.read_window(col0, row0, width, height)
+            nodata_text = dem.tags.get(42113, ['nan'])[0]
+            nodata = float(nodata_text)
+            if any(not math.isfinite(v) or v == nodata for row in grid for v in row):
+                raise ValueError('Source window contains NoData; refusing fabricated terrain')
 
     # reference elevation = median of non-NaN values in centre strip
     centre_values = []
@@ -775,7 +798,8 @@ def run_pipeline(args) -> None:
 
     # --- build mesh --------------------------------------------------------
     # Window top-left in projected coords
-    win_x0, win_y0 = pixel_to_proj(col0, row0)   # top-left corner projected
+    # GeoKey RasterPixelIsArea=1: tiepoint is pixel corner, samples lie at centres.
+    win_x0, win_y0 = pixel_to_proj(col0 + 0.5, row0 + 0.5)
     local_cx, local_cy = geo_meta["meshLocalOrigin"][:2]
     positions, normals, uvs, indices = build_mesh_from_grid(
         grid, res, win_x0, win_y0, ref_elev,
@@ -789,6 +813,8 @@ def run_pipeline(args) -> None:
         if manifest:
             print(f"[DRY-RUN] Would write manifest to: {manifest}")
         return
+
+    geo_meta['meshLocalOrigin'][2] = ref_elev
 
     # --- write GLB ---------------------------------------------------------
     bounds_info = {
@@ -816,6 +842,12 @@ def run_pipeline(args) -> None:
             "fileSizeBytes": file_size,
             "generatedBy": "data-pipeline/terrain_mesh/build_mesh.py",
             "task": "DATA-03",
+            "scientific_review_confirmed": False,
+            "nodataPolicy": "Reject windows with nonfinite or declared NoData samples",
+            "sampleCoordinates": "RasterPixelIsArea centres: tiepoint + half a pixel; no resampling",
+            "sampleBoundsProjectedMeters": {"minX": win_x0, "maxX": win_x0 + (width-1)*res,
+                                              "minY": win_y0 - (height-1)*res, "maxY": win_y0},
+            "sceneAxes": {"x": "east", "y": "up relative to referenceElevationMeters", "z": "south"},
         }
         Path(manifest).parent.mkdir(parents=True, exist_ok=True)
         Path(manifest).write_text(json.dumps(manifest_obj, indent=2), encoding="utf-8")
@@ -850,7 +882,7 @@ def run_pipeline(args) -> None:
                         "originEastingM": geo_meta["meshLocalOrigin"][0],
                         "originNorthingM": geo_meta["meshLocalOrigin"][1],
                         "verticalOriginM": ref_elev,
-                        "validated": True,
+                        "validated": False,
                     },
                 },
                 "assets": {
@@ -863,7 +895,8 @@ def run_pipeline(args) -> None:
                     "id": "LDEM_80S_80MPP_ADJ",
                     "sourceResolutionMeters": res,
                     "verticalReference": VERTICAL_REFERENCE,
-                    "metadataVerified": True,
+                    "metadataVerified": False,
+                    "scientific_review_confirmed": False,
                 },
             },
             "requiredAssets": [demo_url],
