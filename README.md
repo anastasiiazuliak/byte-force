@@ -1,10 +1,12 @@
 # Lunar Navigator · ByteForce
 
-Інтегрований Lunar Landing Site Navigator: три дослідницькі ділянки південного полюса Місяця, UTC-аналіз Сонця/Землі та порівняння A/B на реальних NASA JPL Horizons і повному LOLA DEM.
+Інтегрований Lunar Landing Site Navigator: за замовчуванням source-derived **South Pole Overview** із реального LOLA DEM, ручний перехід до трьох native 80 m дослідницьких patches, UTC-аналіз Сонця/Землі та порівняння A/B на реальних NASA JPL Horizons. Overview — planar polar relief, не curved globe і не автоматична adaptive tile pyramid.
 
 > **Поточний результат — regional estimate, не повна global visibility.** Реальні регіональні horizon/clearance доступні, picking і локальне освітлення працюють. Усі `visible` та глобальні summaries залишаються `null`, `status=partial`, `quality.terrainApplied=false`: рельєф за межами 20 km і похибка дискретизації не доведені. Це не рекомендація місця посадки, power prediction чи NASA-certified продукт.
 
 ## Актуальні документи
+
+- [Polar overview: джерело, точне покриття, геометрія, camera/picking, обмеження й reproduction](docs/integration/POLAR_OVERVIEW.md); [selective UI integration audit](docs/integration/POLAR_UI_AUDIT.md).
 
 - [Release readiness: стан PR15, ресурси, докази та gates](docs/integration/RELEASE_READINESS.md).
 - [Запуск / deployment](docs/integration/DEPLOYMENT.md), [pitch і demo](docs/integration/DEMO.md).
@@ -26,13 +28,13 @@ python3 scripts/asset-setup.py --capture-docs --acquire-nac --prepare-runtime --
 python3 scripts/run-local.py
 ```
 
-Якщо вже перебуваєте в final worktree, пропустіть `cd`. Asset setup автоматично завантажує/відновлює офіційні regional ресурси, валідує, генерує три meshes та публікує proof-bound runtime. **Ручного download не потрібно.** Потрібні мережа й місце на диску; великі assets ignored і не додаються до Git. Повторне складання з наявних даних без мережі:
+Якщо вже перебуваєте в final worktree, пропустіть `cd`. Asset setup автоматично завантажує/відновлює офіційні regional ресурси, валідує, генерує три native meshes і coarse polar overview та публікує proof-bound runtime. **Ручного download не потрібно.** Потрібні мережа й місце на диску; великі assets ignored і не додаються до Git. Повторне складання з наявних даних без мережі:
 
 ```sh
 python3 scripts/asset-setup.py --offline --prepare-runtime --write-launch-env
 ```
 
-Одна команда `python3 scripts/run-local.py` запускає frontend **http://127.0.0.1:5173**, API **5080**, static **5081**. Launcher перевіряє .NET 10, published proof і API health до запуску Vite. `Ctrl+C` завершує дочірні процеси; cleanup перевірено. Bounded smoke: `python3 scripts/run-local.py --smoke --timeout 120`. Сервіси після тестів не залишені запущеними.
+Одна команда `python3 scripts/run-local.py` запускає frontend **http://127.0.0.1:5173**, API **5080**, static **5081**. Launcher перевіряє .NET 10, published proof і API health до запуску Vite. `Ctrl+C` завершує дочірні процеси; cleanup перевірено. Bounded smoke: `python3 scripts/run-local.py --smoke --timeout 120`. Це історичний launcher-cleanup evidence, не стан поточної сесії: polar browser suite повторно використовує вже запущені користувачем API/static/frontend на **5080/5081/5173** через `LUNAR_E2E_REUSE_SERVER=1`. Ці сервери не зупинялися цим documentation task. Runtime validation регенерує overview з перевіреного source DEM; поточна startup ціна близько **30 s** — integrity/performance tradeoff.
 
 Без reviewed runtime launcher використовує unreviewed `public-assets` preview; `--fallback-assets` вибирає його навмисно, із disabled picking. Це не reviewed режим. Windows: рекомендовано WSL через POSIX process groups; [ручний native запуск](docs/integration/DEPLOYMENT.md#windows) описано окремо.
 
@@ -41,7 +43,7 @@ python3 scripts/asset-setup.py --offline --prepare-runtime --write-launch-env
 - `frontend/src/main.tsx` → `app/Application.tsx`: premium React/TypeScript shell, ScenarioForm, analysis/compare, UTC timeline і lazy R3F/Three.js explorer; один typed API client, cancel/stale-response guard.
 - `.NET 10` API/Core/Models/Horizons: усі **9 проєктів**, migration `27c414e`. `global.json`: stable `10.0.100`, `latestFeature`; фактично SDK **10.0.113**, API CoreCLR **10.0.13**. ASP.NET testing **10.0.15**, Test SDK **18.12.0**; Docker/CI також 10.
 - `data/raw/`: повний official LOLA і малий georeferenced LROC NAC; `.validation/release-assets/`: три generated candidates. `release_assets.py` перевіряє identity/native vertex proof і публікує `.validation/runtime-assets/` із hidden bound review receipt.
-- API metadata та `/static/metadata/explorer-sites.json` використовують reviewed mapping, meshes доступні як `/static/{site}/terrain.glb`. Launcher дозволяє map review лише після перевірки proof; DEM datum має окремий exact-body/geotags/same-open-handle/epoch gate, не довільний boolean override.
+- API metadata та `/static/metadata/explorer-sites.json` використовують reviewed mapping. Catalog відкриває `/static/overview/terrain.glb` за замовчуванням; ручний вибір patches завантажує `/static/{site}/terrain.glb`. Overview: **40,001 vertices / 79,600 triangles / 2,236,672 bytes**, native sample centres у перетині 80°S circle і raster coverage **±303960 m**, scene east/up/-north без globe curvature. Browser не завантажує TIFF; GPU-memory benchmark/FPS claim відсутні. Launcher дозволяє map review лише після перевірки proof; DEM datum має окремий exact-body/geotags/same-open-handle/epoch gate, не довільний boolean override.
 - Observer і horizon rays використовують спільну bilinear DEM surface; геодезичні rays, сферична кривизна, 360 азимутів із кроком 1°, radial step 80 m, range 20 km.
 - A/B markers і picking прив’язані до реальних GLB triangles та їх висоти. Cached topocentric Sun azimuth/elevation через local projection Jacobian керують графічним світлом при зміні UTC, без нового API запиту на кожен кадр. Це **не global Moon-fixed**: `/api/v1/ephemeris` лишається 503.
 
@@ -54,6 +56,10 @@ python3 scripts/asset-setup.py --offline --prepare-runtime --write-launch-env
 LROC NAC **завантажений**, геоприв’язка перевірена, але він **не перекриває** ці три patches. Реальних site textures/photos немає, нічого не підроблено. Graphic shadows не доводять фізичне освітлення, thermal/power або radio link budget.
 
 ## Перевірки й release статус
+
+**Поточний polar evidence** (наявні logs, не rerun цим docs task): `.validation/polar-browser.log` — **19 passed**, observed no pageerrors; **rerun після mobile toolbar fixes pending**. `.validation/polar-backend.log` — **203 passed**; `.validation/polar-unit.log` — **78 passed / 12 files**; `.validation/polar-overview-tests.log` — **5 passed / 228.781 s**. Browser run явно reuse user-running 5080/5081/5173 через `LUNAR_E2E_REUSE_SERVER=1`, не доказ stopped servers. Final SHA/push/GitHub CI — coordinator pending. [Детальний scope і команди](docs/integration/POLAR_OVERVIEW.md#existing-test-evidence-and-pending-gates).
+
+Нижче — попередній release-stage evidence, збережений як історичний snapshot, не новий polar rerun:
 
 Full opt-in backend: **203 passed, 0 skipped** (`.validation/final-backend-live.log`), SDK **10.0.113** / runtime **10.0.13**, усі 9 projects `net10.0`. Frontend після selective export port: **74 tests / 12 files**, contracts **6** — subset; backend schema **12** — synthetic scientific providers, не live NASA. Python: **13 + 4 + 7 = 24 offline cases**. Browser: **13 passed** (`.validation/final-browser.log`): 6 intercepted cases, 2 live scientific NASA paths, 5 local startup/geometry/controls. Post-analysis widths **390/768/1024/1440** перевірено intercepted synthetic responses. Smoke **PASS** (`.validation/final-smoke.log`). Нові live export browser assertions ще testing і не входять до цього passed evidence. Final Git push/SHA та GitHub CI confirmation **pending** — [current test report](docs/integration/RELEASE_TEST_REPORT.md).
 
