@@ -67,6 +67,7 @@ jobs:
           python scripts/test_data_acquisition.py
           python scripts/test_runtime_assets.py
           python scripts/test_overview.py
+          python scripts/test_spherical_cap.py
       - name: Whitespace errors
         run: git --no-pager show --format= --check HEAD
   e2e:
