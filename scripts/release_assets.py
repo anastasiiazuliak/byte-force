@@ -10,6 +10,34 @@ import importlib.util
 import json
 import os
 import shutil
+import tempfile
+
+
+def overview_builder():
+    spec = importlib.util.spec_from_file_location('release_overview', ROOT/'data-pipeline/terrain_mesh/build_overview.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def overview_metadata(proof):
+    return {'regionId':'lunar-south-pole','projection':dict(PROJECTION),
+      'render':{'type':'projected-terrain','tileSize':256,'minZoom':0,'maxZoom':0,
+        'boundsMeters':proof['boundsProjectedMeters'],
+        'sceneTransform':{'originEastingM':0,'originNorthingM':0,'verticalOriginM':0,'validated':True},
+        'visualization':'planar-polar-map; radial DEM heights; no globe curvature'},
+      'assets':{'terrainTemplate':None,'surfaceTemplate':None,'hillshadeTemplate':None,'demoMeshUrl':'/static/overview/terrain.glb'},
+      'terrainDataset':{'id':'LDEM_80S_80MPP_ADJ','sourceResolutionMeters':80,
+        'verticalReference':'HORIZONS_LUNAR_REFERENCE_SPHERE_1737400M','metadataVerified':True},
+      'overview':proof,
+      'geoSourceReview':{'reviewId':REVIEW_ID,'sourceLocalSha256':DEM_SHA,'sourceBytes':DEM_SIZE,
+        'sources':SOURCES,'sourceFrame':'MOON_ME_DE421','heightDefinition':'radial_distance_m_minus_1737400',
+        'publisherChecksumAvailable':False,'globalSkylineCompletenessVerified':False,'physicalGroundTruthVerified':False}}
+
+
+def overview_manifest(proof):
+    return {'schemaVersion':1,'metadata':overview_metadata(proof),
+            'requiredAssets':['/static/overview/terrain.glb']}
 
 ROOT = Path(__file__).resolve().parents[1]
 REVIEW_ID = 'PR15-BARKER2023-LDEM80S80-2026-11-15'
@@ -52,11 +80,16 @@ def map_manifest(site):
     return {'schemaVersion':1,'metadata':m,'requiredAssets':[m['assets']['demoMeshUrl']]}
 
 
-def catalog():
-    return {'schemaVersion':1,'reviewId':REVIEW_ID,'sites':[
+def catalog(overview=None):
+    result = {'schemaVersion':1,'reviewId':REVIEW_ID,'sites':[
       {'id':name,'label':p['label'],'latitude':p['point'][0],'longitude':p['point'][1],
        'description':'Native 80 m LOLA patch coordinates; not an approved landing site or a suitability ranking.',
        'metadata':metadata(name)} for name,p in PATCHES.items()]}
+    if overview is not None:
+        result['overview'] = {'id':'south-pole-overview','label':'South pole 80–90°S · DEM overview',
+            'description':'Downsampled real radial DEM heights on a planar polar map, not a curved globe or landing-site assessment.',
+            'metadata':overview_metadata(overview)}
+    return result
 
 
 def atomic_write(path, body):
@@ -98,19 +131,24 @@ def prepare_runtime(dem, candidates=None, output=None):
           'mapManifestLocalSha256':hashlib.sha256(encoded(map_manifest(site))).hexdigest(),
           'nativeVertexProof':{**proof,'sceneOriginMeters':p['origin'],'sampleBoundsProjectedMeters':metadata(site)['render']['boundsMeters']}})
     output.mkdir(parents=True,exist_ok=True)
+    overview_path = output/'static/overview/terrain.glb'
+    overview_temporary = overview_path.with_name(overview_path.name+'.tmp')
+    overview = overview_builder().generate(dem, overview_temporary)
+    overview_temporary.replace(overview_path)
+    atomic_write(output/'metadata/overview-map.json',encoded(overview_manifest(overview)))
     for site in PATCHES:
         target=output/'static'/site/'terrain.glb';target.parent.mkdir(parents=True,exist_ok=True)
         temp=target.with_name(target.name+'.tmp');shutil.copyfile(candidates/site/'terrain.glb',temp);temp.replace(target)
         atomic_write(output/'metadata'/f'{site}-map.json',encoded(map_manifest(site)))
     atomic_write(output/'metadata/map-manifest.json',encoded(map_manifest('connecting-ridge')))
-    atomic_write(output/'static/metadata/explorer-sites.json',encoded(catalog()))
+    atomic_write(output/'static/metadata/explorer-sites.json',encoded(catalog(overview)))
     # Legacy static smoke URL remains an alias, with the same reviewed bytes.
     alias=output/'terrain/0/0/0.glb';alias.parent.mkdir(parents=True,exist_ok=True)
     shutil.copyfile(output/'static/connecting-ridge/terrain.glb',alias)
     receipt={'schemaVersion':1,'reviewId':REVIEW_ID,'demPath':str(dem),'sourceBytes':DEM_SIZE,'sourceLocalSha256':DEM_SHA,
       'publisherChecksumAvailable':False,'sourceFrame':'MOON_ME_DE421','heightDefinition':'radial_distance_m_minus_1737400',
       'approvalScope':['radial-height-datum','native-mesh-coordinate-mapping'],'globalSkylineCompletenessVerified':False,
-      'physicalGroundTruthVerified':False,'sources':SOURCES,'patches':proofs,'texture':None}
+      'physicalGroundTruthVerified':False,'sources':SOURCES,'patches':proofs,'texture':None,'overview':overview}
     atomic_write(output/'.release-review.json',encoded(receipt))
     validate_runtime(output)
     atomic_write(output/'compose.env', (f'ASSETS_DIR={output}\nDEM_DIR={dem.parent}\nDEM_CONTAINER_PATH=/dem/{dem.name}\nMAP_REVIEW_CONFIRMED=true\n').encode())
@@ -122,7 +160,16 @@ def validate_runtime(output):
     receipt=json.loads((output/'.release-review.json').read_text())
     if receipt.get('reviewId') != REVIEW_ID or receipt.get('sourceLocalSha256') != DEM_SHA or receipt.get('sourceBytes') != DEM_SIZE or receipt.get('globalSkylineCompletenessVerified') is not False or receipt.get('physicalGroundTruthVerified') is not False:
         raise ValueError('Runtime approval receipt is not this reviewed product')
-    checked_dem(receipt['demPath'])
+    dem = checked_dem(receipt['demPath'])
+    # Recompute every sample, triangle and normal from the verified source, not receipt booleans.
+    with tempfile.TemporaryDirectory(dir=output) as temporary:
+        expected_mesh = Path(temporary)/'overview.glb'
+        overview = overview_builder().generate(dem, expected_mesh)
+        published = output/'static/overview/terrain.glb'
+        if published.is_symlink() or not published.resolve().is_relative_to(output) or published.read_bytes() != expected_mesh.read_bytes():
+            raise ValueError('Overview mesh differs from source-derived geometry')
+    if receipt.get('overview') != overview or (output/'metadata/overview-map.json').read_bytes() != encoded(overview_manifest(overview)):
+        raise ValueError('Overview metadata/proof differs from source-derived geometry')
     for site,p in PATCHES.items():
         mesh=output/'static'/site/'terrain.glb'
         if mesh.is_symlink() or not mesh.resolve().is_relative_to(output) or mesh.stat().st_size != p['bytes'] or digest(mesh) != p['sha']:
@@ -134,7 +181,7 @@ def validate_runtime(output):
         proof=next((item for item in proofs if item.get('site')==site),{})
         if proof.get('meshLocalSha256') != p['sha'] or proof.get('mapManifestLocalSha256') != hashlib.sha256(expected).hexdigest() or proof.get('nativeVertexProof',{}).get('all_vertices_match_native_samples') is not True:
             raise ValueError(f'{site}: missing bound native proof')
-    if (output/'metadata/map-manifest.json').read_bytes() != encoded(map_manifest('connecting-ridge')) or (output/'static/metadata/explorer-sites.json').read_bytes() != encoded(catalog()):
+    if (output/'metadata/map-manifest.json').read_bytes() != encoded(map_manifest('connecting-ridge')) or (output/'static/metadata/explorer-sites.json').read_bytes() != encoded(catalog(overview)):
         raise ValueError('Published map/catalog differs from the reviewed version')
     if digest(output/'terrain/0/0/0.glb') != PATCHES['connecting-ridge']['sha']:
         raise ValueError('Legacy alias differs from reviewed mesh')

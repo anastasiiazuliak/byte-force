@@ -163,7 +163,10 @@ def main():
                        'actual_bytes':(folder/'terrain.glb').stat().st_size,
                        'local_sha256':manifest['meshLocalSha256'],
                        'origin':manifest['meshLocalOrigin'],'bounds':manifest['boundsProjectedMeters']})
-    summary = {'dem_receipt':str(output/'dem-receipt.json'), 'meshes':meshes,
+    from release_assets import checked_dem, overview_builder
+    overview = overview_builder().generate(checked_dem(args.dem), output/'overview/terrain.glb')
+    (output/'overview/terrain-manifest.json').write_text(json.dumps(overview,indent=2)+'\n')
+    summary = {'dem_receipt':str(output/'dem-receipt.json'), 'meshes':meshes, 'overview':overview,
                'scientific_review_confirmed':False, 'generated_utc':datetime.now(timezone.utc).isoformat()}
     (output/'asset-receipt.json').write_text(json.dumps(summary, indent=2)+'\n')
     if args.write_launch_env:

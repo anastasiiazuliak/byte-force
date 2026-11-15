@@ -66,6 +66,7 @@ jobs:
           python scripts/test_repository_guard.py
           python scripts/test_data_acquisition.py
           python scripts/test_runtime_assets.py
+          python scripts/test_overview.py
       - name: Whitespace errors
         run: git --no-pager show --format= --check HEAD
   e2e:
