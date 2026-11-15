@@ -1,6 +1,6 @@
 # Source-derived south-pole overview
 
-Current implementation snapshot: 2026-11-15, `.audit/final-integration`. This document supplements, rather than rewrites, historical FINAL/bootstrap/release-stage reports. Final Git SHA, push and GitHub CI confirmation remain pending with the coordinator. UI attribution and selective integration are documented separately in [POLAR_UI_AUDIT.md](POLAR_UI_AUDIT.md).
+Current implementation snapshot: 2026-11-15, `.audit/final-integration`. This document supplements, rather than rewrites, historical FINAL/bootstrap/release-stage reports. Implementation `804167d3632ef704dd8f1111dbe7c19655f1e243` is pushed to the existing PR15 and passed **8/8 GitHub checks**: [PR workflow](https://github.com/anastasiiazuliak/byte-force/actions/runs/43710649359) and [push workflow](https://github.com/anastasiiazuliak/byte-force/actions/runs/43710644845). Subsequent documentation-only updates have their own checks; PR remains open. UI attribution and selective integration are documented separately in [POLAR_UI_AUDIT.md](POLAR_UI_AUDIT.md).
 
 ## Source, coverage and geometry
 
@@ -82,4 +82,4 @@ These are inspected existing logs, not tests rerun by this documentation task:
 | `.validation/polar-unit.log` | **78 passed / 12 files** | Frontend unit/contract coverage, not a browser layout benchmark. |
 | `.validation/polar-overview-tests.log` | **5 passed**, 202.654 s | Source-derived overview validation tests; elapsed test time is not startup or FPS measurement. |
 
-The separate [UI audit](POLAR_UI_AUDIT.md) records teammate attribution, selective ports and its own validation limits. Earlier FINAL/bootstrap and release reports retain their historical-stage meaning. Final SHA, push/CI and release disposition are separate gates; the post-toolbar browser rerun is completed. Browser testing exposed and fixed a real race: a late default-overview catalog must never override an explicit user patch choice.
+The separate [UI audit](POLAR_UI_AUDIT.md) records teammate attribution, selective ports and its own validation limits. Earlier FINAL/bootstrap and release reports retain their historical-stage meaning. Implementation push/CI and the post-toolbar browser rerun are completed; merge, release and external deployment remain separate human decisions. Browser testing exposed and fixed a real race: a late default-overview catalog must never override an explicit user patch choice.
