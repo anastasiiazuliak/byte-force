@@ -7,6 +7,7 @@ import React, {
   useEffect,
 } from 'react';
 import * as THREE from 'three';
+import { GLOBE_CENTER, globeCloseupPosition, globeFitDistance, globeOverviewPosition } from '../scene/polarGlobe';
 import type {
   LunarTerrainViewerProps,
   TerrainSceneCommands,
@@ -65,6 +66,7 @@ export const LunarTerrainViewer = forwardRef<
 >(function LunarTerrainViewer(
   {
     metadata,
+    globe = false,
     selectedA,
     selectedB,
     timeUtc,
@@ -147,17 +149,22 @@ export const LunarTerrainViewer = forwardRef<
   const fitTerrain = useCallback((topDown = false) => {
     const surface = surfaceRef.current;
     const controls = controlsRef.current;
-    if (!surface || !controls) return;
+    if (!controls) return;
+    const camera = controls.object as THREE.PerspectiveCamera;
+    if (globe) {
+      triggerAnimationTo(globeOverviewPosition(globeFitDistance(camera.fov, camera.aspect)).toArray(), GLOBE_CENTER, 900);
+      return;
+    }
+    if (!surface) return;
     const box = new THREE.Box3().setFromObject(surface.group);
     const center = box.getCenter(new THREE.Vector3());
     const extent = box.getSize(new THREE.Vector3());
     const radius = metadata?.assets.demoMeshUrl?.match(/\/(overview|globe)\/terrain\.glb$/)
       ? Math.hypot(Math.max(extent.x, extent.z), extent.y) / 2 : extent.length() / 2;
-    const camera = controls.object as THREE.PerspectiveCamera;
     const angle = Math.min(camera.fov * Math.PI / 360, Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect));
     const offset = new THREE.Vector3(0, topDown ? 1 : 0.36, topDown ? 0.001 : 0.933).normalize().multiplyScalar(radius / Math.sin(angle) * 1.1);
     triggerAnimationTo(center.clone().add(offset).toArray(), center.toArray(), 900);
-  }, [triggerAnimationTo, metadata?.assets.demoMeshUrl]);
+  }, [triggerAnimationTo, metadata?.assets.demoMeshUrl, globe]);
   const reset = useCallback(() => fitTerrain(), [fitTerrain]);
   const fitRegion = reset;
   const setTopDown = useCallback(() => fitTerrain(true), [fitTerrain]);
@@ -166,9 +173,10 @@ export const LunarTerrainViewer = forwardRef<
     (location: { latitude: number; longitude: number }) => {
       const point = sampleTerrainSurface(metadata, surfaceRef.current, location);
       if (!point) return;
-      triggerAnimationTo([point.x, point.y + 4000, point.z + 6000], [point.x, point.y, point.z], 1200);
+      if (globe) triggerAnimationTo(globeCloseupPosition(point).toArray(), GLOBE_CENTER, 1200);
+      else triggerAnimationTo([point.x, point.y + 4000, point.z + 6000], [point.x, point.y, point.z], 1200);
     },
-    [triggerAnimationTo, metadata]
+    [triggerAnimationTo, metadata, globe]
   );
 
   useImperativeHandle(
@@ -226,6 +234,8 @@ export const LunarTerrainViewer = forwardRef<
         )}
       >
         <SceneCanvas
+          key={globe ? 'globe' : 'terrain'}
+          globe={globe}
           onFitCamera={fitTerrain}
           metadata={metadata}
           selectedA={selectedA}

@@ -7,6 +7,7 @@ import { terrainAssetKey } from '../scene/metadata';
 import { sampleTerrainSurface } from '../scene/surface';
 import { verifiedTerrainPick } from '../selection/verifiedPick';
 import { solarSceneDirection } from '../lighting/solarSceneDirection';
+import { ACTIVE_LATITUDE, GLOBE_CENTER, GLOBE_MAX_POLAR_ANGLE, globeCloseupPosition, globeFitDistance, globeOverviewPosition } from '../scene/polarGlobe';
 const sha = '82030dcbdd7c4bb0c7d858e9b4b293b9f2cda5a543ba31ec0f42784bd6beee5a';
 function globe() {
   const m = structuredClone(fixture.metadata);
@@ -57,4 +58,26 @@ it('fails closed on altered asset, axes, proof or origin', () => {
     (m: ReturnType<typeof globe>) => { m.sphericalMesh.nativeVertexSampleSha256 = 'd'.repeat(64); },
     (m: ReturnType<typeof globe>) => { m.render.sceneTransform.originEastingM = 1; } ];
   for (const mutate of mutations) { const m = globe(); mutate(m); expect(terrainAssetKey(m as MapMetadataResponse)).toBeNull(); }
+});
+
+it('fits the whole Moon in wide and portrait viewports and keeps close-ups above the polar surface', () => {
+  const center = new THREE.Vector3(...GLOBE_CENTER);
+  const radius = -GLOBE_CENTER[1];
+  for (const aspect of [0.45, 1, 1.8]) {
+    const limiting = Math.min(THREE.MathUtils.degToRad(24), Math.atan(Math.tan(THREE.MathUtils.degToRad(24)) * aspect));
+    const offset = globeOverviewPosition(globeFitDistance(48, aspect)).sub(center);
+    expect(Math.asin(radius / offset.length())).toBeLessThan(limiting);
+    expect(offset.angleTo(new THREE.Vector3(0, 1, 0))).toBeLessThan(0.002);
+  }
+  const p = sphericalForward(ACTIVE_LATITUDE, 157, 2000);
+  const close = globeCloseupPosition(p).sub(center);
+  expect(close.length()).toBeGreaterThan(radius + 2000);
+  expect(close.angleTo(new THREE.Vector3(0, 1, 0))).toBeLessThan(GLOBE_MAX_POLAR_ANGLE);
+});
+
+it('restricts geographic selection to the reviewed polar area even where the visual sphere extends farther', () => {
+  const metadata = globe() as MapMetadataResponse;
+  const key = terrainAssetKey(metadata);
+  expect(verifiedTerrainPick(metadata, key, sphericalForward(ACTIVE_LATITUDE, 50))).not.toBeNull();
+  expect(verifiedTerrainPick(metadata, key, sphericalForward(ACTIVE_LATITUDE + 0.01, 50))).toBeNull();
 });

@@ -8,9 +8,11 @@ import {
 } from '../scene/camera';
 import type { CameraAnimationState } from '../scene/camera';
 import type { CameraPreset } from '../types';
+import { GLOBE_CENTER, GLOBE_MAX_POLAR_ANGLE, GLOBE_MIN_DISTANCE } from '../scene/polarGlobe';
 
 export interface SceneControlsProps {
   enableKeyboard?: boolean;
+  globe?: boolean;
   onFitCamera?: (topDown?: boolean) => void;
   onPresetChange?: (preset: CameraPreset) => void;
   animationStateRef: React.MutableRefObject<CameraAnimationState | null>;
@@ -19,6 +21,7 @@ export interface SceneControlsProps {
 
 export const SceneControls: React.FC<SceneControlsProps> = ({
   enableKeyboard = true,
+  globe = false,
   onFitCamera,
   onPresetChange,
   animationStateRef,
@@ -100,16 +103,16 @@ export const SceneControls: React.FC<SceneControlsProps> = ({
     if (enableKeyboard && keysPressed.current.size > 0) {
       const panSpeed = camera.position.distanceTo(controls.target) * 0.02;
 
-      if (keysPressed.current.has('arrowleft')) {
+      if (!globe && keysPressed.current.has('arrowleft')) {
         controls.pan(-panSpeed, 0);
       }
-      if (keysPressed.current.has('arrowright')) {
+      if (!globe && keysPressed.current.has('arrowright')) {
         controls.pan(panSpeed, 0);
       }
-      if (keysPressed.current.has('arrowup')) {
+      if (!globe && keysPressed.current.has('arrowup')) {
         controls.pan(0, panSpeed);
       }
-      if (keysPressed.current.has('arrowdown')) {
+      if (!globe && keysPressed.current.has('arrowdown')) {
         controls.pan(0, -panSpeed);
       }
 
@@ -129,15 +132,15 @@ export const SceneControls: React.FC<SceneControlsProps> = ({
       ref={controlsRef}
       enableDamping
       dampingFactor={0.08}
-      minDistance={400}
-      maxDistance={80000}
-      maxPolarAngle={Math.PI / 2 - 0.02}
+      minDistance={globe ? GLOBE_MIN_DISTANCE : 400}
+      maxDistance={globe ? Infinity : 80000}
+      maxPolarAngle={globe ? GLOBE_MAX_POLAR_ANGLE : Math.PI / 2 - 0.02}
       screenSpacePanning={false}
-      enablePan
+      enablePan={!globe}
       panSpeed={1.2}
       rotateSpeed={0.8}
       zoomSpeed={1.0}
-      target={DEFAULT_CAMERA_PRESET.target}
+      target={globe ? GLOBE_CENTER : DEFAULT_CAMERA_PRESET.target}
     />
   );
 };

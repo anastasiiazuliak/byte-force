@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useMemo, useState } from 'react';
+import React, { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GlobeSunlight, Lighting } from './Lighting';
@@ -7,6 +7,8 @@ import { DisplayPlinth } from './DisplayPlinth';
 import { SceneControls } from './SceneControls';
 import { SiteMarkers } from './SiteMarkers';
 import { Starfield } from './Starfield';
+import { PolarCamera, PolarGlobe, useGlobeTexture } from './PolarGlobe';
+import { GLOBE_CENTER, globeCloseupPosition, globeFitDistance, globeOverviewPosition } from '../scene/polarGlobe';
 import { DEFAULT_CAMERA_PRESET } from '../scene/camera';
 import type { CameraAnimationState } from '../scene/camera';
 import type { CameraPreset, SceneStatus, SceneSelectedSite, SiteSlot } from '../types';
@@ -20,6 +22,7 @@ import { DragDetector } from '../selection/dragDetector';
 import type { MapMetadataResponse, Coordinates, IsoUtc } from '../../../api/types';
 
 export interface SceneCanvasProps {
+  globe?: boolean;
   metadata?: MapMetadataResponse | null;
   showDisplayPlinth?: boolean;
   selectedA?: Coordinates | null;
@@ -40,6 +43,7 @@ export interface SceneCanvasProps {
 }
 
 export const SceneCanvas: React.FC<SceneCanvasProps> = ({
+  globe = false,
   metadata,
   showDisplayPlinth = true,
   selectedA,
@@ -57,6 +61,9 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
   animationStateRef,
   controlsRef,
 }) => {
+  const globeTexture = useGlobeTexture(globe);
+  const globeHasTerrain = globe && canUseGeographicTerrain(metadata);
+  const globeInitialPosition = useMemo(() => globeOverviewPosition(globeFitDistance(DEFAULT_CAMERA_PRESET.fov ?? 48, 1)).toArray(), []);
   const [surface, setSurface] = useState<TerrainSurface | null>(null);
   const handleSurface = useCallback((group: THREE.Group | null, key: string | null) => {
     const next = group && key ? { group, key } : null;
@@ -67,6 +74,9 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
   const [meshStatus, setMeshStatus] = useState<SceneStatus>('loading');
   const geographicReady = meshStatus === 'ready' && canUseGeographicTerrain(metadata);
   const handleStatus = useCallback((status: SceneStatus) => { setMeshStatus(status); onStatus?.(status); }, [onStatus]);
+  useEffect(() => {
+    if (globe && !globeHasTerrain) handleStatus('demo-only');
+  }, [globe, globeHasTerrain, handleStatus]);
   const dragDetector = useMemo(() => new DragDetector({ maxMoveDistancePixels: 6 }), []);
   const isPointerDownValidClick = useRef(true);
 
@@ -128,7 +138,7 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
         fov: DEFAULT_CAMERA_PRESET.fov || 48,
         near: 2,
         far: 600000,
-        position: DEFAULT_CAMERA_PRESET.position,
+        position: globe ? globeInitialPosition : DEFAULT_CAMERA_PRESET.position,
       }}
       dpr={[0.75, typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches ? 1.25 : 1.75]}
       gl={{
@@ -145,16 +155,21 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
       <Starfield />
 
       <AdaptiveDpr pixelated />
+<<<<<<< Updated upstream
       {isGlobe(metadata) ? <GlobeSunlight /> : <Lighting sunDirectionScene={sunDirectionScene} />}
+=======
+      {globe ? <>
+        <PolarGlobe texture={globeTexture} />
+        {globeHasTerrain && globeTexture && <TerrainMesh globeTexture={globeTexture} metadata={metadata}
+          onStatus={handleStatus} onMeshClick={handleMeshClick} onSurfaceReady={handleSurface} />}
+      </> : <>
+        <Lighting sunDirectionScene={sunDirectionScene} />
+        <FittedTerrain animationStateRef={animationStateRef} controlsRef={controlsRef} metadata={metadata}
+          onStatus={handleStatus} onMeshClick={handleMeshClick} onSurfaceReady={handleSurface} />
+      </>}
+>>>>>>> Stashed changes
 
-      <FittedTerrain animationStateRef={animationStateRef} controlsRef={controlsRef}
-        metadata={metadata}
-        onStatus={handleStatus}
-        onMeshClick={handleMeshClick}
-        onSurfaceReady={handleSurface}
-      />
-
-      <DisplayPlinth metadata={metadata} surface={surface} enabled={showDisplayPlinth && geographicReady} />
+      {!globe && <DisplayPlinth metadata={metadata} surface={surface} enabled={showDisplayPlinth && geographicReady} />}
 
       {geographicReady && <SiteMarkers
         positionA={positionA}
@@ -170,9 +185,9 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
             animationStateRef.current = {
               isAnimating: true,
               startPosition: controls.object.position.clone(),
-              targetPosition: new THREE.Vector3(targetPt.x, targetPt.y + 4000, targetPt.z + 6000),
+              targetPosition: globe ? globeCloseupPosition(targetPt) : new THREE.Vector3(targetPt.x, targetPt.y + 4000, targetPt.z + 6000),
               startLookAt: controls.target.clone(),
-              targetLookAt: new THREE.Vector3(targetPt.x, targetPt.y, targetPt.z),
+              targetLookAt: globe ? new THREE.Vector3(...GLOBE_CENTER) : new THREE.Vector3(targetPt.x, targetPt.y, targetPt.z),
               progress: 0,
               durationMs: 900,
               startTime: performance.now(),
@@ -182,12 +197,14 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
       />}
 
       <SceneControls
+        globe={globe}
         onFitCamera={onFitCamera}
         enableKeyboard={enableKeyboard}
         onPresetChange={onPresetChange}
         animationStateRef={animationStateRef}
         controlsRef={controlsRef}
       />
+      {globe && <PolarCamera controlsRef={controlsRef} animationStateRef={animationStateRef} />}
     </Canvas>
   );
 };

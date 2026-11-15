@@ -28,6 +28,7 @@ export interface CameraPreset {
 }
 
 export interface LunarTerrainViewerProps {
+  globe?: boolean;
   metadata?: MapMetadataResponse | null;
   selectedA?: Coordinates | null;
   selectedB?: Coordinates | null;
