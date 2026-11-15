@@ -30,6 +30,10 @@ def main():
     args = parser.parse_args()
     if args.timeout <= 0:
         parser.error('--timeout must be positive')
+    sdk = subprocess.check_output(['dotnet', '--version'], cwd=ROOT, text=True).strip()
+    if not sdk.startswith('10.'):
+        parser.error('Stable .NET 10 SDK is required; selected SDK: ' + sdk)
+    print('Using .NET SDK ' + sdk, flush=True)
     assets = args.assets.resolve(strict=True)
     env = os.environ.copy()
     env.update(API_PROXY_TARGET='http://127.0.0.1:5080',

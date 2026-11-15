@@ -1,6 +1,6 @@
 # API — backend lane 3
 
-.NET 8; усі проєкти — в `backend/LunarNavigator.sln`, тести — в `backend/tests/LunarNavigator.Api.Tests`.
+.NET 10; усі проєкти — в `backend/LunarNavigator.sln`, тести — в `backend/tests/LunarNavigator.Api.Tests`.
 HTTP base `/api/v1`, JSON camelCase, UTC ISO-8601 з `Z`. Health/config/catalog працюють offline;
 analyze/compare потребують NASA Horizons. Без перевіреного terrain повертаються чесні partial/null,
 а не синтетичні наукові результати.

@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
       - run: dotnet restore LunarNavigator.sln
       - run: dotnet build LunarNavigator.sln --configuration Release --no-restore
       - run: dotnet test LunarNavigator.sln --configuration Release --no-build
@@ -47,7 +47,7 @@ jobs:
       - name: Install locked backend schema validator
         run: npm ci --prefix tests/LunarNavigator.Api.Tests/Contracts
       - name: Validate actual backend HTTP payloads against OpenAPI
-        run: npm --prefix tests/LunarNavigator.Api.Tests/Contracts test -- ../bin/Release/net8.0/ContractResponses
+        run: npm --prefix tests/LunarNavigator.Api.Tests/Contracts test -- ../bin/Release/net10.0/ContractResponses
   repository:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -77,7 +77,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'

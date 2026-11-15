@@ -1,4 +1,4 @@
-# Lunar Navigator backend (.NET 8)
+# Lunar Navigator backend (.NET 10)
 
 Один solution: `backend/LunarNavigator.sln`. Назва проєкту, assembly, папки та базового namespace
 збігається; усі вони починаються з `LunarNavigator`.
@@ -38,8 +38,8 @@ dotnet test backend/tests/LunarNavigator.Horizons.Tests
 dotnet test backend/tests/LunarNavigator.Models.Tests
 ```
 
-Потрібен .NET 8 SDK; root і backend `global.json` вибирають `8.0.100` з `latestFeature`.
-Усі проєкти мають target `net8.0`. У solution тести зібрані в окремій папці `tests`.
+Потрібен .NET 10 SDK; root і backend `global.json` вибирають `8.0.100` з `latestFeature`.
+Усі проєкти мають target `net10.0`. У solution тести зібрані в окремій папці `tests`.
 
 BE-01 реалізує health, config і landing-sites; деталі — у [README API](LunarNavigator.Api/README.md).
 Каталог містить явно позначені DEMO-точки. Health перевіряє тільки вебсервер.

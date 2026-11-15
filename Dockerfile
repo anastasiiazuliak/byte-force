@@ -1,8 +1,8 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS api-build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS api-build
 WORKDIR /src
 COPY backend/ backend/
 RUN dotnet publish backend/LunarNavigator.Api/LunarNavigator.Api.csproj -c Release -o /out
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS api
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api
 WORKDIR /app
 COPY --from=api-build /out .
 ENV ASPNETCORE_URLS=http://+:8080

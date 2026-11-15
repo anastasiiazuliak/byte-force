@@ -22,13 +22,13 @@ React Application → typed LunarApiClient → /api/v1 → ASP.NET Core → JPL 
 
 - `frontend/src/main.tsx` → `app/Application.tsx`: справжній composition root. `AppShell` отримує інтегровані slots форми, analysis, compare, timeline та `LunarTerrainViewer`; старий автономний explorer не є головним застосунком.
 - `frontend/src/integration/client.ts` і `src/api/`: один typed client, незалежне startup-завантаження health/config/sites/metadata, явні error/partial стани. Зміна введення скасовує pending запит; identity guard не публікує застарілу відповідь. Analyze запускається явно; timeline використовує отримані samples.
-- `backend/LunarNavigator.sln`: активне .NET 8 solution; API, Core, Models, збережена бібліотека Horizons, тести й live sample. API підключає реальний `HorizonsEphemerisService`, terrain/horizon providers і compare. Moon-fixed provider поки unavailable (503).
+- `backend/LunarNavigator.sln`: активне .NET 10 solution; API, Core, Models, збережена бібліотека Horizons, тести й live sample. API підключає реальний `HorizonsEphemerisService`, terrain/horizon providers і compare. Moon-fixed provider поки unavailable (503).
 - `public-assets/`: окремий static root, не ASP.NET static middleware. Vite proxy об’єднує його з API локально; nginx — у підготовленій контейнерній конфігурації.
 - `data-pipeline/`: підготовка геометрії/metadata; `data/` зберігає попередні acquisition scripts. Сирі дані та `.validation/` не є релізними артефактами.
 
 ## Локальний запуск Linux / WSL
 
-Потрібні Git, **Node.js 22**, npm, **.NET SDK 8** (див. `global.json`), Python 3.9+. Усі команди нижче — з кореня цього checkout; установлення пакетів може звертатися до npm/NuGet. NASA download не є частиною запуску.
+Потрібні Git, **Node.js 22**, npm, **.NET SDK 10** (див. `global.json`), Python 3.9+. Усі команди нижче — з кореня цього checkout; установлення пакетів може звертатися до npm/NuGet. NASA download не є частиною запуску.
 
 ```sh
 npm ci --prefix frontend

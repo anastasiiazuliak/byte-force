@@ -4,7 +4,7 @@
 
 ## Linux / WSL: один launcher
 
-Передумови: Python 3.9+, Node.js 22/npm, .NET SDK 8 відповідно до `global.json`. З кореня checkout:
+Передумови: Python 3.9+, Node.js 22/npm, .NET SDK 10 відповідно до `global.json`. З кореня checkout:
 
 ```sh
 npm ci --prefix frontend
@@ -61,7 +61,7 @@ npm run dev --prefix frontend -- --host 127.0.0.1 --port 5173 --strictPort
 
 Default Vite proxy уже спрямований на API/static вище. Для native static server перевірте GLB MIME: стандартний `http.server` залежить від Python MIME table і **не має гарантованих overrides launcher**. Для відтворення перевіреного MIME/smoke використовуйте WSL launcher. Без окремих absolute map env paths API лишиться у чесному metadata unavailable стані. Ці native Windows кроки — інструкції, не звіт про перевірку Windows runtime. Зупиніть кожне вікно `Ctrl+C`.
 
-## Production: підготовлені nginx + .NET 8 контейнери
+## Production: підготовлені nginx + .NET 10 контейнери
 
 Наступні команди — для людини з Docker permissions; вони **не були успішно виконані як build/deploy тут**. Перший runtime запуск краще виконати локально, не виставляючи сервіс в інтернет.
 
