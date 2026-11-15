@@ -24,7 +24,7 @@ describe('live workspace composition', () => {
     render(<Application />); await fillA();
     fireEvent.click(screen.getByRole('button', { name: 'Analyze site' }));
     await screen.findByText('Partial analysis');
-    expect(api.analyze.mock.calls[0][0].period.startUtc).toBe('2028-04-15T00:00:00.000Z');
+    expect(api.analyze.mock.calls[0][0].period.startUtc).toBe('2026-11-15T00:00:00.000Z');
     expect(screen.getByTestId('ephemeris-status').textContent).toContain('EPHEMERIS_UNAVAILABLE (HTTP 503)');
     expect(screen.getByTestId('analysis-result').textContent).toContain('Terrain not considered');
     expect(screen.getByTestId('analysis-result').textContent).toContain('Unknown');
@@ -57,4 +57,58 @@ describe('live workspace composition', () => {
     expect((await screen.findByTestId('analysis-error')).textContent).toContain('EPHEMERIS_UNAVAILABLE (HTTP 503): Horizons offline');
     expect(screen.queryByTestId('analysis-result')).toBeNull();
   });
+});
+
+it('renders regional data even when global visibility is unverified, and cancels loading', async () => {
+  api.analyze.mockResolvedValue({ ...fixture, horizon: { points: [{ azimuthDeg: 0, elevationDeg: 2 }, { azimuthDeg: 180, elevationDeg: 3 }] } });
+  render(<Application />); await fillA();
+  fireEvent.click(screen.getByRole('button', { name: 'Analyze site' }));
+  await screen.findByText('REGIONAL ESTIMATE · far-field visibility unknown');
+  expect(screen.getByRole('img', { name: 'Terrain horizon profile: azimuth 0 to 360 degrees' })).toBeTruthy();
+  expect(screen.getByTestId('analysis-result').textContent).not.toContain('Terrain not considered');
+  api.analyze.mockImplementation(() => new Promise(() => {}));
+  fireEvent.click(screen.getByRole('button', { name: 'Analyze site' }));
+  await screen.findByRole('button', { name: 'Cancel analysis' });
+  const signal = api.analyze.mock.calls[1][1] as AbortSignal;
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel analysis' }));
+  expect(signal.aborted).toBe(true);
+  expect(screen.queryByTestId('analysis-result')).toBeNull();
+});
+
+it('prepares exploratory A/B coordinates without submitting or losing UTC drafts', async () => {
+  render(<Application />); await fillA();
+  fireEvent.click(screen.getByRole('button', { name: 'Prepare patch comparison' }));
+  expect((screen.getByLabelText('Latitude A') as HTMLInputElement).value).toBe('-89.45');
+  expect((screen.getByLabelText('Latitude B') as HTMLInputElement).value).toBe('-89.9');
+  expect((screen.getByLabelText('Start UTC A') as HTMLInputElement).value).toBe('2026-11-15T00:00');
+  expect(api.compare).not.toHaveBeenCalled();
+});
+
+it('announces reviewed regional map metadata without claiming complete visibility', async () => {
+  const { default: map } = await import('../../../contracts/fixtures/map-metadata-real.json');
+  api.mapMetadata.mockResolvedValue({ ...map.metadata, terrainDataset: { ...map.metadata.terrainDataset, metadataVerified: true } });
+  render(<Application />);
+  await screen.findByText('Reviewed regional map');
+  expect(screen.queryByText('Complete analysis')).toBeNull();
+});
+
+it('quick-compares two explicit exploratory coordinates with only two samples per site', async () => {
+  api.compare.mockResolvedValue({ scenarios: [{ id: 'A', analysis: fixture }, { id: 'B', analysis: fixture }], differences: { sunVisibleHours: null, earthVisibleHours: null, bothVisibleHours: null } });
+  render(<Application />); await fillA();
+  fireEvent.click(screen.getByRole('button', { name: 'Quick compare · 2 samples/site' }));
+  await screen.findByTestId('comparison-differences');
+  expect(api.compare).toHaveBeenCalledOnce();
+  const [a,b] = api.compare.mock.calls[0][0].scenarios;
+  expect(a.location).toEqual({ latitude: -89.45, longitude: -137.31 });
+  expect(b.location).toEqual({ latitude: -89.9, longitude: 0 });
+  expect(Date.parse(a.period.endUtc)-Date.parse(a.period.startUtc)).toBe(3600000);
+  expect(a.period.stepMinutes).toBe(60);
+});
+
+it('quick comparison rejects incomplete UTC without a request or uncaught event error', async () => {
+  render(<Application />); await fillA();
+  fireEvent.change(screen.getByLabelText('Start UTC A'), { target: { value: '' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Quick compare · 2 samples/site' }));
+  expect((await screen.findByTestId('analysis-error')).textContent).toContain('UTC');
+  expect(api.compare).not.toHaveBeenCalled();
 });

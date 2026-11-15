@@ -185,3 +185,54 @@ th, td { padding: 6px; text-align: left; }
 .scene { height: min(75vh, 760px); min-height: 420px; }
 #timeline p { overflow-wrap: anywhere; }
 @media (max-width: 800px) { .scene { height: 52vh; min-height: 340px; } }
+
+/* Keep PERSON02's palette and panels; give the terrain and reading order room. */
+body { line-height: 1.5; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.workspace-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; border-bottom: 1px solid var(--border); }
+.workspace-notice > p { flex-basis: 100%; }
+.status-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.status-chips span, .quality-banner { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; color: var(--sun); }
+.workspace-notice summary { display: flex; align-items: center; }
+.workspace-notice details p { max-width: 85ch; }
+.workspace { gap: 16px; padding: 16px; grid-template-columns: minmax(250px, 1fr) minmax(0, 3.6fr) minmax(260px, 1fr); }
+.scene { height: min(80svh, 900px); min-height: 560px; }
+.panel-body { padding: 18px; }
+.panel article { display: grid; gap: 10px; }
+.panel article h3 { font-size: 15px; }
+.panel article > p { margin: 0; }
+.panel article svg { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; max-width: 100%; max-height: 230px; overflow: hidden; }
+.panel article > *, .panel article details { min-width: 0; }
+.analysis-warnings p { padding-inline: 10px; }
+@media (min-width: 801px) {
+  /* Results must not enlarge the terrain row when warnings or samples expand. */
+  #analysis .panel-body, #comparison .panel-body { max-height: max(560px, min(80svh, 900px)); overflow: auto; scrollbar-gutter: stable; }
+}
+.panel small, form > p { color: var(--muted); font-size: 12px; }
+.quickstart { display: grid; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.primary-button { width: 100%; }
+fieldset { padding: 14px; margin: 0; }
+legend { padding-inline: 6px; font-weight: 650; }
+#timeline .panel-body > div { display: grid; gap: 12px; }
+#timeline output { font-family: var(--mono); overflow-wrap: anywhere; }
+.skip-link { position: fixed; top: -100px; left: 12px; z-index: 1000; background: var(--panel); color: inherit; padding: 12px; }
+.skip-link:focus { top: 12px; }
+@media (min-width: 801px) and (max-width: 1199px) {
+  .workspace, .workspace:has(#comparison) { grid-template-columns: minmax(250px, 1fr) minmax(0, 2fr); grid-template-areas: 'form terrain' 'analysis comparison' 'timeline timeline'; }
+  .scene { min-height: 560px; }
+}
+@media (max-width: 800px) {
+  .workspace, .workspace:has(#comparison) { padding: 10px; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+  .workspace-notice { padding: 10px 12px; gap: 6px; }
+  .scene { min-height: 390px; height: 55svh; padding-bottom: 0; }
+  .app-header { gap: 10px; }
+  .app-header h1 { font-size: 17px; }
+  .data-mode { white-space: normal; max-width: 110px; text-align: right; }
+  .panel-body { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+.terrain-loading { padding: 3rem; color: var(--muted); text-align: center; }
+.regional-assessment { color: var(--muted); font-size: .9rem; line-height: 1.5; }

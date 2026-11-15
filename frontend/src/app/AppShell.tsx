@@ -50,7 +50,7 @@ export function AppShell({ slots, dataMode, scene = emptyScene, state = 'ready',
   const { TerrainViewer, ScenarioForm, AnalysisPanel, MissionTimeline, ComparePanel } = slots;
 
   return (
-    <div className="app-shell" lang="en">
+    <div className="app-shell" lang="en"><a className="skip-link" href="#site-time">Skip to site and time</a>
       <header className="app-header">
         <h1>Lunar Site Navigator</h1>
         <nav aria-label="Workspace">
@@ -63,8 +63,8 @@ export function AppShell({ slots, dataMode, scene = emptyScene, state = 'ready',
         </div>
       </header>
       <aside id="learn" hidden={!showLearn}>
-        The workspace displays sunlight and Earth visibility for lunar landing sites.
-        {dataMode === 'demo' && ' Demo intervals are illustrative.'}
+        Explore lunar coordinates, not approved landing sites. Regional DEM horizons and clearances are estimates; distant terrain is not certified. Unknown visibility is not zero visible time.
+        {dataMode === 'demo' && ' Demo intervals are illustrative.'}<p>Method: LOLA regional terrain, MOON_ME / DE421, radial height above the 1737.4 km sphere; reviewed UTC 1962–2649. Airless apparent disc centers, not power, thermal safety or communication performance. Sampled profiles do not certify a complete skyline.</p>
       </aside>
       {notice && <div className="workspace-notice">{notice}</div>}
       <main className="workspace">
