@@ -20,6 +20,28 @@ def overview_builder():
     return module
 
 
+def spherical_builder():
+    spec = importlib.util.spec_from_file_location('release_cap', ROOT/'data-pipeline/terrain_mesh/build_spherical_cap.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def globe_metadata(overview, spherical):
+    result = overview_metadata(overview)
+    result['render']['visualization'] = 'spherical-cap'
+    result['assets']['demoMeshUrl'] = '/static/globe/terrain.glb'
+    result['sphericalCap'] = {'validated':True,'radiusMeters':1737400,
+        'frame':'MOON_ME_DE421','sceneAxes':'Y,-Z-R,-X','heightExaggeration':1}
+    result['sphericalMesh'] = spherical
+    return result
+
+
+def globe_manifest(overview, spherical):
+    return {'schemaVersion':1,'metadata':globe_metadata(overview,spherical),
+            'requiredAssets':['/static/globe/terrain.glb']}
+
+
 def overview_metadata(proof):
     return {'regionId':'lunar-south-pole','projection':dict(PROJECTION),
       'render':{'type':'projected-terrain','tileSize':256,'minZoom':0,'maxZoom':0,
@@ -80,7 +102,7 @@ def map_manifest(site):
     return {'schemaVersion':1,'metadata':m,'requiredAssets':[m['assets']['demoMeshUrl']]}
 
 
-def catalog(overview=None):
+def catalog(overview=None, spherical=None):
     result = {'schemaVersion':1,'reviewId':REVIEW_ID,'sites':[
       {'id':name,'label':p['label'],'latitude':p['point'][0],'longitude':p['point'][1],
        'description':'Native 80 m LOLA patch coordinates; not an approved landing site or a suitability ranking.',
@@ -89,6 +111,10 @@ def catalog(overview=None):
         result['overview'] = {'id':'south-pole-overview','label':'South pole 80–90°S · DEM overview',
             'description':'Downsampled real radial DEM heights on a planar polar map, not a curved globe or landing-site assessment.',
             'metadata':overview_metadata(overview)}
+    if spherical is not None:
+        result['globe'] = {'id':'south-pole-globe','label':'South pole 80–90°S · physical LOLA cap',
+            'description':'Real radial LOLA heights on the lunar reference sphere; physical curvature with no height exaggeration or decorative walls.',
+            'metadata':globe_metadata(overview,spherical)}
     return result
 
 
@@ -135,20 +161,25 @@ def prepare_runtime(dem, candidates=None, output=None):
     overview_temporary = overview_path.with_name(overview_path.name+'.tmp')
     overview = overview_builder().generate(dem, overview_temporary)
     overview_temporary.replace(overview_path)
+    spherical_path = output/'static/globe/terrain.glb'
+    spherical_temporary = spherical_path.with_name(spherical_path.name+'.tmp')
+    spherical = spherical_builder().generate(dem, spherical_temporary)
+    spherical_temporary.replace(spherical_path)
+    atomic_write(output/'metadata/globe-map.json',encoded(globe_manifest(overview,spherical)))
     atomic_write(output/'metadata/overview-map.json',encoded(overview_manifest(overview)))
     for site in PATCHES:
         target=output/'static'/site/'terrain.glb';target.parent.mkdir(parents=True,exist_ok=True)
         temp=target.with_name(target.name+'.tmp');shutil.copyfile(candidates/site/'terrain.glb',temp);temp.replace(target)
         atomic_write(output/'metadata'/f'{site}-map.json',encoded(map_manifest(site)))
     atomic_write(output/'metadata/map-manifest.json',encoded(map_manifest('connecting-ridge')))
-    atomic_write(output/'static/metadata/explorer-sites.json',encoded(catalog(overview)))
+    atomic_write(output/'static/metadata/explorer-sites.json',encoded(catalog(overview,spherical)))
     # Legacy static smoke URL remains an alias, with the same reviewed bytes.
     alias=output/'terrain/0/0/0.glb';alias.parent.mkdir(parents=True,exist_ok=True)
     shutil.copyfile(output/'static/connecting-ridge/terrain.glb',alias)
     receipt={'schemaVersion':1,'reviewId':REVIEW_ID,'demPath':str(dem),'sourceBytes':DEM_SIZE,'sourceLocalSha256':DEM_SHA,
       'publisherChecksumAvailable':False,'sourceFrame':'MOON_ME_DE421','heightDefinition':'radial_distance_m_minus_1737400',
       'approvalScope':['radial-height-datum','native-mesh-coordinate-mapping'],'globalSkylineCompletenessVerified':False,
-      'physicalGroundTruthVerified':False,'sources':SOURCES,'patches':proofs,'texture':None,'overview':overview}
+      'physicalGroundTruthVerified':False,'sources':SOURCES,'patches':proofs,'texture':None,'overview':overview,'sphericalMesh':spherical}
     atomic_write(output/'.release-review.json',encoded(receipt))
     validate_runtime(output)
     atomic_write(output/'compose.env', (f'ASSETS_DIR={output}\nDEM_DIR={dem.parent}\nDEM_CONTAINER_PATH=/dem/{dem.name}\nMAP_REVIEW_CONFIRMED=true\n').encode())
@@ -168,6 +199,13 @@ def validate_runtime(output):
         published = output/'static/overview/terrain.glb'
         if published.is_symlink() or not published.resolve().is_relative_to(output) or published.read_bytes() != expected_mesh.read_bytes():
             raise ValueError('Overview mesh differs from source-derived geometry')
+        expected_cap = Path(temporary)/'cap.glb'
+        spherical = spherical_builder().generate(dem, expected_cap)
+        published_cap = output/'static/globe/terrain.glb'
+        if published_cap.is_symlink() or not published_cap.resolve().is_relative_to(output) or published_cap.read_bytes() != expected_cap.read_bytes():
+            raise ValueError('Spherical mesh differs from source-derived geometry')
+    if receipt.get('sphericalMesh') != spherical or (output/'metadata/globe-map.json').read_bytes() != encoded(globe_manifest(overview,spherical)):
+        raise ValueError('Spherical metadata/proof differs from source-derived geometry')
     if receipt.get('overview') != overview or (output/'metadata/overview-map.json').read_bytes() != encoded(overview_manifest(overview)):
         raise ValueError('Overview metadata/proof differs from source-derived geometry')
     for site,p in PATCHES.items():
@@ -181,7 +219,7 @@ def validate_runtime(output):
         proof=next((item for item in proofs if item.get('site')==site),{})
         if proof.get('meshLocalSha256') != p['sha'] or proof.get('mapManifestLocalSha256') != hashlib.sha256(expected).hexdigest() or proof.get('nativeVertexProof',{}).get('all_vertices_match_native_samples') is not True:
             raise ValueError(f'{site}: missing bound native proof')
-    if (output/'metadata/map-manifest.json').read_bytes() != encoded(map_manifest('connecting-ridge')) or (output/'static/metadata/explorer-sites.json').read_bytes() != encoded(catalog(overview)):
+    if (output/'metadata/map-manifest.json').read_bytes() != encoded(map_manifest('connecting-ridge')) or (output/'static/metadata/explorer-sites.json').read_bytes() != encoded(catalog(overview,spherical)):
         raise ValueError('Published map/catalog differs from the reviewed version')
     if digest(output/'terrain/0/0/0.glb') != PATCHES['connecting-ridge']['sha']:
         raise ValueError('Legacy alias differs from reviewed mesh')

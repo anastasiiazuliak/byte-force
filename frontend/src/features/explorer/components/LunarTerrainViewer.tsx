@@ -151,11 +151,11 @@ export const LunarTerrainViewer = forwardRef<
     const box = new THREE.Box3().setFromObject(surface.group);
     const center = box.getCenter(new THREE.Vector3());
     const extent = box.getSize(new THREE.Vector3());
-    const radius = metadata?.assets.demoMeshUrl?.endsWith('/overview/terrain.glb')
+    const radius = metadata?.assets.demoMeshUrl?.match(/\/(overview|globe)\/terrain\.glb$/)
       ? Math.hypot(Math.max(extent.x, extent.z), extent.y) / 2 : extent.length() / 2;
     const camera = controls.object as THREE.PerspectiveCamera;
     const angle = Math.min(camera.fov * Math.PI / 360, Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect));
-    const offset = new THREE.Vector3(0, topDown ? 1 : 0.6, topDown ? 0.001 : 0.8).normalize().multiplyScalar(radius / Math.sin(angle) * 1.1);
+    const offset = new THREE.Vector3(0, topDown ? 1 : 0.36, topDown ? 0.001 : 0.933).normalize().multiplyScalar(radius / Math.sin(angle) * 1.1);
     triggerAnimationTo(center.clone().add(offset).toArray(), center.toArray(), 900);
   }, [triggerAnimationTo, metadata?.assets.demoMeshUrl]);
   const reset = useCallback(() => fitTerrain(), [fitTerrain]);
@@ -281,7 +281,13 @@ export const LunarTerrainViewer = forwardRef<
           onSelectPreset={(presetId) => {
             const preset = CAMERA_PRESETS[presetId];
             if (preset) {
-              fitTerrain(presetId === 'topDown');
+              if (presetId === 'shackleton') {
+                if (selectedA) flyTo(selectedA);
+                else if (controlsRef.current) {
+                  const c = controlsRef.current;
+                  triggerAnimationTo(c.target.clone().add(c.object.position.clone().sub(c.target).multiplyScalar(0.25)).toArray(), c.target.toArray());
+                }
+              } else fitTerrain(presetId === 'topDown');
               setCurrentPreset(preset);
               onCameraPresetChange?.(preset);
             }

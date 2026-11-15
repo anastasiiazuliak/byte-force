@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('whole-pole default, verified picking and native detail round trip', async ({ page }) => {
   test.skip(process.env.LUNAR_REVIEWED_E2E !== '1', 'Requires locally proof-published real NASA overview; no synthetic replacement in CI.');
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto('/');
+  await page.goto('/'); await page.getByRole('button', { name: 'Terrain View', exact: true }).click();
   const viewer = page.getByTestId('lunar-terrain-viewer');
   await expect(viewer).toHaveAttribute('data-selected-asset-key', /overview\/terrain.glb/);
   await expect(page.getByText('Terrain: Ready (GLB)', { exact: true })).toBeVisible();
@@ -43,7 +43,7 @@ for (const width of [390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: width < 800 ? 844 : 1000 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
-    await page.goto('/');
+    await page.goto('/'); await page.getByRole('button', { name: 'Terrain View', exact: true }).click();
     const viewer = page.getByTestId('lunar-terrain-viewer');
     await expect(viewer).toHaveAttribute('data-selected-asset-key', /overview\/terrain.glb/);
     await expect(page.getByText('Terrain: Ready (GLB)', { exact: true })).toBeVisible();
@@ -83,7 +83,7 @@ test('a late overview catalog never replaces an explicit user-selected patch', a
     await route.fulfill({ response });
   });
   const pending = page.waitForRequest('**/static/metadata/explorer-sites.json');
-  await page.goto('/'); await pending;
+  await page.goto('/'); await page.getByRole('button', { name: 'Terrain View', exact: true }).click(); await pending;
   await page.getByLabel('Exploratory patch', { exact: true }).selectOption('near-shackleton');
   releaseCatalog();
   await expect(page.getByRole('button', { name: 'South Pole Overview', exact: true })).toBeEnabled();
@@ -95,7 +95,7 @@ test('a late overview catalog never replaces an explicit user-selected patch', a
 test('missing overview stays unavailable and cannot produce geographic picks', async ({ page }) => {
   test.skip(process.env.LUNAR_REVIEWED_E2E !== '1', 'Requires reviewed catalog to request overview.');
   await page.route('**/static/overview/terrain.glb', route => route.fulfill({ status: 404, body: 'Asset intentionally missing for regression test' }));
-  await page.goto('/');
+  await page.goto('/'); await page.getByRole('button', { name: 'Terrain View', exact: true }).click();
   await expect(page.getByText('Terrain unavailable · retained view / fallback', { exact: true })).toBeVisible();
   await page.getByTestId('lunar-terrain-viewer').locator('canvas').click();
   await expect(page.getByLabel('Latitude A', { exact: true })).toHaveValue('');

@@ -1,4 +1,6 @@
-# Source-derived south-pole overview
+# Source-derived south-pole overview — historical planar stage
+
+> **Stage notice:** this document records the earlier planar overview implementation and its evidence. It is **not the current default representation**. The current default is Globe View, with physical spherical curvature, separate decorative display edge and scientific Sun lighting disabled on Globe. See [SPHERICAL_RELEASE.md](SPHERICAL_RELEASE.md) for current geometry, method, reproduction and final local evidence. Statements below about “current/default”, approximate overview lighting, startup timing, pushes and CI apply to this historical planar stage, not the uncommitted spherical release.
 
 Current implementation snapshot: 2026-11-15, `.audit/final-integration`. This document supplements, rather than rewrites, historical FINAL/bootstrap/release-stage reports. Implementation `804167d3632ef704dd8f1111dbe7c19655f1e243` is pushed to the existing PR15 and passed **8/8 GitHub checks**: [PR workflow](https://github.com/anastasiiazuliak/byte-force/actions/runs/43710649359) and [push workflow](https://github.com/anastasiiazuliak/byte-force/actions/runs/43710644845). Subsequent documentation-only updates have their own checks; PR remains open. UI attribution and selective integration are documented separately in [POLAR_UI_AUDIT.md](POLAR_UI_AUDIT.md).
 

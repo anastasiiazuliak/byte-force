@@ -1,10 +1,11 @@
+import { isGlobe, validGlobeMapping } from './spherical';
 import type { MapMetadataResponse } from '../../../api/types';
 /** The current projection implementation supports only this spherical polar CRS. */
 export function canUseGeographicTerrain(metadata?: MapMetadataResponse | null): boolean {
   const projection = metadata?.projection;
   const definition = projection?.projDefinition ?? '';
   const transform = metadata?.render.sceneTransform;
-  return Boolean(metadata?.terrainDataset.metadataVerified && metadata.terrainDataset.verticalReference === 'HORIZONS_LUNAR_REFERENCE_SPHERE_1737400M' &&
+  return Boolean((!isGlobe(metadata) || metadata && validGlobeMapping(metadata)) && metadata?.terrainDataset.metadataVerified && metadata.terrainDataset.verticalReference === 'HORIZONS_LUNAR_REFERENCE_SPHERE_1737400M' &&
     transform?.validated && [transform.originEastingM, transform.originNorthingM, transform.verticalOriginM].every(Number.isFinite) &&
     projection?.sourceFrame && projection.linearUnit === 'm' &&
     ['+proj=stere', '+lat_0=-90', '+lon_0=0', '+R=1737400', '+units=m'].every(token => definition.split(/\s+/).includes(token)) &&
@@ -15,6 +16,7 @@ export function canUseGeographicTerrain(metadata?: MapMetadataResponse | null): 
 /** Identity includes URL and all reviewed mapping fields; any change invalidates old picks. */
 export function terrainAssetKey(metadata?: MapMetadataResponse | null): string | null {
   if (!canUseGeographicTerrain(metadata) || metadata?.terrainDataset.verticalReference !== 'HORIZONS_LUNAR_REFERENCE_SPHERE_1737400M' || !metadata?.assets?.demoMeshUrl) return null;
+  if (metadata.assets.demoMeshUrl === '/static/globe/terrain.glb' && !isGlobe(metadata)) return null;
   const b = metadata.render.boundsMeters;
   if (!b || ![b.minX, b.maxX, b.minY, b.maxY].every(Number.isFinite) || b.minX >= b.maxX || b.minY >= b.maxY) return null;
   return JSON.stringify(metadata);

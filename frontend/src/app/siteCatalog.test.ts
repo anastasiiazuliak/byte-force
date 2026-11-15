@@ -58,3 +58,37 @@ it('rejects an overview with a wrong origin without losing native patches', asyn
   const patches = await loadSiteCatalog(new AbortController().signal, value.sites[0].metadata as MapMetadataResponse, publish);
   expect(publish).not.toHaveBeenCalled(); expect(patches[1].metadata).not.toBeNull();
 });
+
+function globeCatalog() {
+  const value = overviewCatalog();
+  const native = 'c'.repeat(64);
+  const metadata = { ...structuredClone(value.overview.metadata),
+    assets: { ...value.overview.metadata.assets, demoMeshUrl: '/static/globe/terrain.glb' },
+    render: { ...value.overview.metadata.render, visualization: 'spherical-cap' },
+    overview: { ...value.overview.metadata.overview, vertexSampleSha256: native },
+    sphericalCap: { validated: true, radiusMeters: 1737400, frame: 'MOON_ME_DE421', sceneAxes: 'Y,-Z-R,-X', heightExaggeration: 1 },
+    sphericalMesh: { algorithm: 'native-pixel-centre-spherical-cap-v1', radiusMeters: 1737400, frame: 'MOON_ME_DE421', sceneAxes: 'Y,-Z-R,-X', heightExaggeration: 1, decorativeWalls: false,
+      vertexCount: 40001, triangleCount: 79600, sourceLocalSha256: value.overview.metadata.geoSourceReview.sourceLocalSha256,
+      vertexSampleSha256: 'a'.repeat(64), meshLocalSha256: 'b'.repeat(64), nativeVertexSampleSha256: native } };
+  return { ...value, globe: { id: 'south-pole-globe', label: 'Globe', description: 'Real spherical cap', metadata } };
+}
+it('publishes Globe only against reviewed catalog while leaving native patches unchanged', async () => {
+  const value = globeCatalog(), publish = vi.fn();
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => value }));
+  const result = await loadSiteCatalog(new AbortController().signal, value.sites[0].metadata as MapMetadataResponse, undefined, publish);
+  expect(publish).toHaveBeenCalledWith(value.globe);
+  expect(result.map(p => p.metadata?.assets.demoMeshUrl)).toEqual(value.sites.map(p => p.metadata.assets.demoMeshUrl));
+  publish.mockClear();
+  await loadSiteCatalog(new AbortController().signal, null, undefined, publish);
+  expect(publish).not.toHaveBeenCalled();
+});
+it.each(['asset', 'axes', 'source', 'proof'])('rejects mismatched Globe %s without losing native patches', async field => {
+  const value = globeCatalog(), publish = vi.fn(), m = value.globe.metadata;
+  if (field === 'asset') m.assets.demoMeshUrl = '/static/overview/terrain.glb';
+  if (field === 'axes') m.sphericalCap.sceneAxes = 'X,Y,Z';
+  if (field === 'source') m.sphericalMesh.sourceLocalSha256 = '0'.repeat(64);
+  if (field === 'proof') m.sphericalMesh.nativeVertexSampleSha256 = 'd'.repeat(64);
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => value }));
+  const result = await loadSiteCatalog(new AbortController().signal, value.sites[0].metadata as MapMetadataResponse, undefined, publish);
+  expect(publish).not.toHaveBeenCalled(); expect(result[1].metadata).not.toBeNull();
+});

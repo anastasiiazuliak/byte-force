@@ -70,10 +70,10 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
             title={
               isHorizonsLighting
                 ? 'Local solar direction at Scenario A from cached azimuth/elevation and the local projection Jacobian. Approximate across the map, especially whole-pole overview; not globally accurate illumination or scientific terrain visibility.'
-                : 'Preview lighting (Polar low grazing angle ~2.5°); not an official eclipse calculation'
+                : 'Exploration Lighting adds illustrative ambient and fill light so terrain remains readable. It does not show actual lunar illumination or visibility.'
             }
           >
-            {isHorizonsLighting ? (sunlightLabel || '☀ Local solar direction · graphical shadows only') : '☀ Artistic lighting · not ephemeris'}
+            {isHorizonsLighting ? (sunlightLabel || '☀ Local solar direction · graphical shadows only') : (sunlightLabel || 'Exploration Lighting · illustrative fill')}
           </span>
         </div>
 

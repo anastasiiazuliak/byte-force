@@ -2,6 +2,8 @@
 
 PR15 OPEN, локальний reviewed runtime; не public deployment/submission. [Запуск](DEPLOYMENT.md), [readiness/resources](RELEASE_READINESS.md), [остаточні результати координатора](RELEASE_TEST_REPORT.md).
 
+Поточний default і докази: **[Globe spherical release](SPHERICAL_RELEASE.md)**. Почніть із physical 80–90°S cap (height/curvature 1×), поясніть raster-intersection coverage і label «Display edge · not lunar interior». Це не NASA interior і не повний Moon. Globe/Terrain поділяють координати, cached analysis та UTC; LOD — ручний, не continuous streaming.
+
 ## Pitch · 25 секунд
 
 «Для південного полюса Місяця важливо порівнювати не лише місця, а й час: низьке Сонце та рельєф впливають на освітлення й можливість зв’язку. Lunar Navigator поєднує NASA JPL Horizons, повний LOLA DEM та три дослідницькі 3D-ділянки. Ми вже показуємо реальний регіональний горизонт і clearance, вибір точки на mesh та зміну локального сонячного світла в часі. Це регіональна оцінка: далекі перешкоди поза 20 km не доведені, тому глобальна видимість і підсумки навмисно Unknown».
@@ -27,10 +29,10 @@ Stable .NET 10, Node 22, Python; для Windows рекомендовано WSL. 
 | Час | Дія | Пояснення |
 |---|---|---|
 | 0–25 s | Pitch; показати regional status | Реальна інтеграція, не certified landing recommendation |
-| 25–50 s | Exploratory patch: Connecting Ridge; camera controls, клік actual GLB triangle для A | Reviewed coordinate/height mapping; marker стоїть на реальній triangle surface, не нульовій площині. Перемкнути patch, показати новий mesh; три patches не є затвердженими landing sites |
+| 25–50 s | Default Globe: camera controls і actual GLB pick A; потім Terrain View → Connecting Ridge | Reviewed coordinate/height mapping; marker стоїть на реальній triangle surface, не нульовій площині. Перемкнути patch, показати новий mesh; три patches не є затвердженими landing sites |
 | 50–85 s | Повернути Connecting Ridge, UTC за замовчуванням 15 листопада 2026, одногодинний інтервал; Analyze site | Дати UTC. NASA azimuth/elevation + LOLA observer height і regional profile; очікується 360 azimuth points, не глобальна visibility |
 | 85–110 s | Regional horizon/clearance, Unknown summaries | Model range 20 km, azimuth 1°, radial step 80 m. `terrainApplied=false` тут означає відсутність complete visibility solution, не відсутність DEM |
-| 110–135 s | Play/Pause, scrub UTC | Світло бере cached topocentric Sun angles і local Jacobian; без нового API запиту при scrub/на кожен кадр. Graphic shadows — estimates, не verified illumination |
+| 110–135 s | Play/Pause, scrub UTC | На Globe Scientific Sun Lighting disabled для scientific safety; Exploration — neutral illustrative fill. Лише reviewed Terrain може використати cached local Sun at A через Jacobian, без нових API запитів при scrub. Graphic shadows не доводять illumination |
 | 135–165 s | **Quick compare**: явна дія короткого порівняння, два samples на site; A/B patches і markers | Це actual submit, не лише Prepare. Для довільних scenarios є Prepare patch comparison + Compare scenarios. Differences — B − A; null не нуль і не доказ переваги |
 | 165–180 s | Learn / sources / limitations | Повний regional DEM, reviewed radial datum, але не повна far-field visibility; texture відсутня чесно |
 
@@ -39,6 +41,8 @@ Stable .NET 10, Node 22, Python; для Windows рекомендовано WSL. 
 Два reviewed opt-in browser cases вже passed: actual picking/A/B marker heights/patch switch, NASA/DEM regional profile та cached local sunlight при зміні UTC. Це не автоматичне твердження про проходження майбутнього 9-case matrix; фінальний результат — у RELEASE_TEST_REPORT.
 
 ## Що сказати про науку й зображення
+
+Analysis має три рівні: Astronomical Position (local N=0°/E=90°), Regional Terrain Assessment (horizon/clearance), Confirmed Visibility (API boolean або Unknown). Покажіть adaptive zero-inclusive altitude/clearance chart, exact-sample tooltip без interpolation та warning details. Null summary не нуль; навіть negative clearance не доводить confirmed blockage без error bounds. Поточний final local evidence — 107 frontend / 27 browser / 33 Python; browser містить actual і intercepted cases, не всі live NASA. .NET 10 final rerun, commit/push/CI pending coordinator.
 
 - LOLA: повний official 189158392-byte DEM, MOON_ME/DE421, sphere R=1737400 m. Barker/NTRS/PDS generating chain закрила datum definition; exact identity/geotags/epoch gate автоматичний, без arbitrary approval flag.
 - 47,628 mesh vertices зіставлено з native source у межах **1 mm numerical tolerance**, не «місячна поверхня відома з точністю 1 mm». Triangle height і backend bilinear height можуть відрізнятися всередині cell.

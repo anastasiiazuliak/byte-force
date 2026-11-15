@@ -18,7 +18,7 @@ test('real local API, static GLB and WebGL render; picking follows dataset revie
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   const health = await request.get('/api/v1/health'); expect(health.ok()).toBeTruthy(); expect((await health.json()).status).toBe('ok');
   const asset = await request.get('/terrain/0/0/0.glb'); expect(asset.headers()['content-type']).toContain('model/gltf-binary'); expect((await asset.body()).subarray(0,4).toString()).toBe('glTF');
-  await page.goto('/'); await expect(page.getByRole('heading', { name: 'Lunar Site Navigator' })).toBeVisible();
+  await page.goto('/'); await page.getByRole('button', { name: 'Terrain View', exact: true }).click(); await expect(page.getByRole('heading', { name: 'Lunar Site Navigator' })).toBeVisible();
   await expect(page.getByTestId('lunar-terrain-viewer').locator('canvas')).toBeVisible();
   await expect(page.getByText('Terrain: Ready (GLB)')).toBeVisible({ timeout: 30000 });
   const rendered = await page.locator('canvas').first().evaluate((canvas: HTMLCanvasElement) => !!canvas.getContext('webgl2'));
@@ -36,7 +36,7 @@ test('synthetic response: analyze, graphs, cached UTC scrub and A/B compare', as
   let analyses = 0, comparisons = 0;
   await page.route('**/api/v1/analyze', async route => { analyses++; await route.fulfill({ json: synthetic(route.request().postDataJSON()) }); });
   await page.route('**/api/v1/compare', async route => { comparisons++; const input = route.request().postDataJSON(); await route.fulfill({ json: { scenarios: input.scenarios.map((s: any) => ({ id: s.id, analysis: synthetic(s) })), differences: { sunVisibleHours: null, earthVisibleHours: null, bothVisibleHours: null } } }); });
-  await page.goto('/'); await form(page); await page.getByRole('button', { name: 'Analyze site', exact: true }).click();
+  await page.goto('/'); await page.getByRole('button', { name: 'Terrain View', exact: true }).click(); await form(page); await page.getByRole('button', { name: 'Analyze site', exact: true }).click();
   await expect(page.getByTestId('analysis-result')).toContainText('SYNTHETIC');
   await expect(page.getByRole('img', { name: 'Sun and Earth altitude over UTC period in degrees' })).toBeVisible();
   const slider = page.getByRole('slider', { name: 'Selected UTC sample' }); await slider.fill('1');
@@ -52,7 +52,7 @@ test('synthetic response: analyze, graphs, cached UTC scrub and A/B compare', as
 });
 test('network failure and NASA error are visible, never synthetic fallback', async ({ page }) => {
   await page.route('**/api/v1/analyze', route => route.abort('failed'));
-  await page.goto('/'); await form(page); await page.getByRole('button', { name: 'Analyze site', exact: true }).click();
+  await page.goto('/'); await page.getByRole('button', { name: 'Terrain View', exact: true }).click(); await form(page); await page.getByRole('button', { name: 'Analyze site', exact: true }).click();
   await expect(page.getByTestId('analysis-error')).toContainText('Network request failed'); await expect(page.getByTestId('analysis-result')).toHaveCount(0);
   await page.unroute('**/api/v1/analyze');
   await page.route('**/api/v1/analyze', route => route.fulfill({ status: 503, json: { error: { code: 'EPHEMERIS_UNAVAILABLE', message: 'NASA unavailable — explicit browser fixture' } } }));
@@ -62,7 +62,7 @@ test('network failure and NASA error are visible, never synthetic fallback', asy
 
 test('real NASA through browser, partial analysis, compare and honest exports', async ({ page }) => {
   test.skip(process.env.LUNAR_RUN_LIVE_E2E !== '1', 'Explicit opt-in: real NASA network requests; offline CI never fabricates this result.');
-  await page.goto('/'); await form(page); await page.getByLabel('Step minutes A', { exact: true }).fill('60');
+  await page.goto('/'); await page.getByRole('button', { name: 'Terrain View', exact: true }).click(); await form(page); await page.getByLabel('Step minutes A', { exact: true }).fill('60');
   const response = page.waitForResponse(r => r.url().endsWith('/api/v1/analyze') && r.request().method() === 'POST');
   await page.getByRole('button', { name: 'Analyze site', exact: true }).click();
   const actual = await response; expect(actual.status()).toBe(200); const result = await actual.json();
