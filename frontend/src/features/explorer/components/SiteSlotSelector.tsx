@@ -87,7 +87,7 @@ export const SiteSlotSelector: React.FC<SiteSlotSelectorProps> = ({
             onClick={() => onFlyToSite?.('A')}
             title="Focus camera on Site A"
           >
-            Focus A
+            Focus Site A
           </button>
         )}
         {selectedB && (
@@ -97,7 +97,7 @@ export const SiteSlotSelector: React.FC<SiteSlotSelectorProps> = ({
             onClick={() => onFlyToSite?.('B')}
             title="Focus camera on Site B"
           >
-            Focus B
+            Focus Site B
           </button>
         )}
       </div>

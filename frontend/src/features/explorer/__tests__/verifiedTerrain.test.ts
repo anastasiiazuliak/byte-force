@@ -14,7 +14,7 @@ function metadata(): MapMetadataResponse {
 describe('verified terrain picking', () => {
   it('round trips centre, corners, pole and signed coordinates with translated height origin', () => {
     const m = metadata();
-    for (const [x,y] of [[0,0],[-400000,-400000],[-400000,400000],[400000,-400000],[400000,400000],[-12345,23456]]) {
+    for (const [x,y] of [[0,0],[-200000,-200000],[-200000,200000],[200000,-200000],[200000,200000],[-12345,23456]]) {
       const point = projectedToScene({x,y}, 2100, m.render.sceneTransform!);
       const pick = verifiedTerrainPick(m, terrainAssetKey(m), point)!;
       const expected = projectedToGeographic(x,y);
@@ -22,6 +22,11 @@ describe('verified terrain picking', () => {
       expect(pick.longitude).toBeCloseTo(expected.longitude, 9);
       expect(pick.elevationM).toBeCloseTo(2100);
     }
+  });
+  it('rejects square-bounds corners north of 80S', () => {
+    const m = metadata();
+    const point = projectedToScene({x:300000,y:300000}, 0, m.render.sceneTransform!);
+    expect(verifiedTerrainPick(m, terrainAssetKey(m), point)).toBeNull();
   });
   it('rejects stale, absent, invalid and out of bounds picks', () => {
     const m = metadata(), key = terrainAssetKey(m);

@@ -36,9 +36,9 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
         );
       case 'demo-only':
         return (
-          <span className={`${styles.statusBadge} ${styles.statusDemo}`} title="Synthetic procedural relief; not NASA terrain or verified geography">
+          <span className={`${styles.statusBadge} ${styles.statusDemo}`} title="Requested asset unavailable. Previous mesh is retained when present; otherwise synthetic relief. Geographic picking is disabled.">
             <span className={styles.statusDot} />
-            Synthetic terrain · fallback
+            Terrain unavailable · retained view / fallback
           </span>
         );
       case 'loading':
@@ -69,7 +69,7 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
             }`}
             title={
               isHorizonsLighting
-                ? 'Local solar direction from site azimuth/elevation; graphical shadows are not terrain visibility'
+                ? 'Local solar direction at Scenario A from cached azimuth/elevation and the local projection Jacobian. Approximate across the map, especially whole-pole overview; not globally accurate illumination or scientific terrain visibility.'
                 : 'Preview lighting (Polar low grazing angle ~2.5°); not an official eclipse calculation'
             }
           >
@@ -121,9 +121,9 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
             type="button"
             className={`${styles.controlButton} ${currentPreset?.id === 'oblique' ? styles.activeButton : ''}`}
             onClick={onReset}
-            title="Reset to oblique South Pole perspective (Shortcut: R)"
+            title="Reset camera to loaded terrain (Shortcut: R)"
           >
-            Reset (R)
+            Reset Camera (R)
           </button>
 
           <button
@@ -139,9 +139,9 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
             type="button"
             className={`${styles.controlButton} ${currentPreset?.id === 'fitRegion' ? styles.activeButton : ''}`}
             onClick={onFitRegion}
-            title="Wide illustrative camera view (Shortcut: F)"
+            title="Fit loaded terrain (Shortcut: F)"
           >
-            Fit Region (F)
+            Fit Terrain (F)
           </button>
 
           <div className={styles.divider} />

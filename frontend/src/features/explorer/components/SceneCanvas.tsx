@@ -30,6 +30,7 @@ export interface SceneCanvasProps {
   onOutOfBounds?: (message: string) => void;
   onPresetChange?: (preset: CameraPreset) => void;
   enableKeyboard?: boolean;
+  onFitCamera?: (topDown?: boolean) => void;
   animationStateRef: React.MutableRefObject<CameraAnimationState | null>;
   controlsRef: React.MutableRefObject<any>;
 }
@@ -47,6 +48,7 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
   onOutOfBounds,
   onPresetChange,
   enableKeyboard = true,
+  onFitCamera,
   animationStateRef,
   controlsRef,
 }) => {
@@ -139,7 +141,7 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
       <AdaptiveDpr pixelated />
       <Lighting sunDirectionScene={sunDirectionScene} />
 
-      <FittedTerrain controlsRef={controlsRef}
+      <FittedTerrain animationStateRef={animationStateRef} controlsRef={controlsRef}
         metadata={metadata}
         onStatus={handleStatus}
         onMeshClick={handleMeshClick}
@@ -172,6 +174,7 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
       />}
 
       <SceneControls
+        onFitCamera={onFitCamera}
         enableKeyboard={enableKeyboard}
         onPresetChange={onPresetChange}
         animationStateRef={animationStateRef}
@@ -181,25 +184,30 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
   );
 };
 
-function FittedTerrain({ controlsRef, ...props }: React.ComponentProps<typeof TerrainMesh> & { controlsRef: React.MutableRefObject<any> }) {
+function FittedTerrain({ controlsRef, animationStateRef, ...props }: React.ComponentProps<typeof TerrainMesh> & { controlsRef: React.MutableRefObject<any>; animationStateRef: React.MutableRefObject<CameraAnimationState | null> }) {
   const { camera, size } = useThree();
   const fit = useCallback((box: THREE.Box3) => {
     if (box.isEmpty() || !(camera instanceof THREE.PerspectiveCamera)) return;
     const center = box.getCenter(new THREE.Vector3());
-    const radius = box.getSize(new THREE.Vector3()).length() / 2;
+    const extent = box.getSize(new THREE.Vector3());
+    // The overview is a disc; a square bounding-box diagonal wastes 41% of its radius.
+    const radius = props.metadata?.assets.demoMeshUrl?.endsWith('/overview/terrain.glb')
+      ? Math.hypot(Math.max(extent.x, extent.z), extent.y) / 2 : extent.length() / 2;
     const angle = Math.min(camera.fov * Math.PI / 360, Math.atan(Math.tan(camera.fov * Math.PI / 360) * size.width / size.height));
     const distance = radius / Math.sin(angle) * 1.1;
-    camera.position.copy(center).add(new THREE.Vector3(0, 0.6, 0.8).multiplyScalar(distance));
-    camera.lookAt(center);
+    const targetPosition = center.clone().add(new THREE.Vector3(0, 0.6, 0.8).multiplyScalar(distance));
+    animationStateRef.current = { isAnimating: true, startPosition: camera.position.clone(), targetPosition,
+      startLookAt: controlsRef.current?.target.clone() ?? center.clone(), targetLookAt: center.clone(),
+      progress: 0, durationMs: 1100, startTime: performance.now() };
     camera.near = Math.max(1, radius / 2000);
     camera.far = Math.max(100000, distance + radius * 10);
     camera.updateProjectionMatrix();
     if (controlsRef.current) {
-      controlsRef.current.target.copy(center);
+      controlsRef.current.terrainBounds = box.clone();
       controlsRef.current.minDistance = Math.max(50, radius / 50);
-      controlsRef.current.maxDistance = radius * 15;
+      controlsRef.current.maxDistance = radius * 5;
       controlsRef.current.update();
     }
-  }, [camera, size.width, size.height, controlsRef]);
+  }, [camera, size.width, size.height, controlsRef, animationStateRef, props.metadata?.assets.demoMeshUrl]);
   return <TerrainMesh {...props} onLoadedBounds={fit} />;
 }

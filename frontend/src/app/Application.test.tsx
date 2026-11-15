@@ -1,3 +1,4 @@
+import * as siteCatalog from './siteCatalog';
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -111,4 +112,26 @@ it('quick comparison rejects incomplete UTC without a request or uncaught event 
   fireEvent.click(screen.getByRole('button', { name: 'Quick compare · 2 samples/site' }));
   expect((await screen.findByTestId('analysis-error')).textContent).toContain('UTC');
   expect(api.compare).not.toHaveBeenCalled();
+});
+
+it('defaults to catalog overview and returning to it preserves both scenario drafts', async () => {
+  const { default: map } = await import('../../../contracts/fixtures/map-metadata-real.json');
+  api.mapMetadata.mockResolvedValue(map.metadata);
+  const loader = vi.spyOn(siteCatalog, 'loadSiteCatalog').mockImplementation(async (_signal, _reviewed, publish) => {
+    publish?.({ id: 'south-pole-overview', label: 'Overview', description: 'Coarse overview', metadata: map.metadata as import('../api/types').MapMetadataResponse });
+    return siteCatalog.exploratoryPatches;
+  });
+  try {
+    render(<Application />);
+    await waitFor(() => expect((screen.getByLabelText('Exploratory patch') as HTMLSelectElement).value).toBe('south-pole-overview'));
+    await fillA();
+    fireEvent.click(screen.getByRole('button', { name: /^Compare$/ }));
+    fireEvent.change(screen.getByLabelText('Latitude B'), { target: { value: '-88' } });
+    fireEvent.change(screen.getByLabelText('Longitude B'), { target: { value: '45' } });
+    fireEvent.click(screen.getByRole('button', { name: /^South Pole Overview$/ }));
+    expect((screen.getByLabelText('Latitude A') as HTMLInputElement).value).toBe('-89.5');
+    expect((screen.getByLabelText('Latitude B') as HTMLInputElement).value).toBe('-88');
+    expect((screen.getByLabelText('Longitude B') as HTMLInputElement).value).toBe('45');
+    expect(api.analyze).not.toHaveBeenCalled(); expect(api.compare).not.toHaveBeenCalled();
+  } finally { loader.mockRestore(); }
 });

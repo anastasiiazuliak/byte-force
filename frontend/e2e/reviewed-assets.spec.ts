@@ -20,7 +20,7 @@ test('reviewed native geometry: pick A/B, real surface markers and patch replace
   const map = await request.get('/api/v1/map/metadata'); expect(map.status()).toBe(200);
   const data = await map.json(); expect(data.terrainDataset.metadataVerified).toBe(true);
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/'); await ready(page);
+  await page.goto('/'); await page.getByLabel('Exploratory patch', { exact: true }).selectOption('connecting-ridge'); await ready(page);
   const viewer = page.getByTestId('lunar-terrain-viewer');
   await expect(viewer).toHaveAttribute('data-selected-asset-key', /connecting-ridge/);
   await pick(page);
@@ -46,7 +46,7 @@ test('reviewed native geometry: pick A/B, real surface markers and patch replace
 
 test('live reviewed DEM profile and local Horizons light follow cached UTC', async ({ page }) => {
   test.skip(process.env.LUNAR_REVIEWED_E2E !== '1' || process.env.LUNAR_RUN_LIVE_E2E !== '1', 'Explicit opt-in required for real DEM and NASA requests.');
-  await page.goto('/'); await ready(page); await pick(page); await period(page);
+  await page.goto('/'); await page.getByLabel('Exploratory patch', { exact: true }).selectOption('connecting-ridge'); await ready(page); await pick(page); await period(page);
   const done = page.waitForResponse(response => response.url().endsWith('/api/v1/analyze') && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Analyze site', exact: true }).click();
   const response = await done; expect(response.status()).toBe(200); const result = await response.json();

@@ -34,3 +34,27 @@ it.each(['https://foreign/terrain.glb', '/static/../foreign.glb', '/static/near-
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ schemaVersion: 1, sites }) }));
   expect(await loadSiteCatalog(new AbortController().signal, reviewed as MapMetadataResponse)).toEqual(exploratoryPatches);
 });
+
+function overviewCatalog() {
+  const sites = catalog();
+  const metadata = { ...structuredClone(sites[0].metadata),
+    assets: { terrainTemplate: null, surfaceTemplate: null, hillshadeTemplate: null, demoMeshUrl: '/static/overview/terrain.glb' },
+    render: { ...sites[0].metadata.render, boundsMeters: { minX: -303960, minY: -303960, maxX: 303960, maxY: 303960 },
+      sceneTransform: { originEastingM: 0, originNorthingM: 0, verticalOriginM: 0, validated: true } },
+    overview: { algorithm: 'native-pixel-centre-polar-rings-v1', vertexCount: 40001, triangleCount: 79600, requestedLatitudeMaxDeg: -80 },
+    geoSourceReview: { sourceLocalSha256: '82030dcbdd7c4bb0c7d858e9b4b293b9f2cda5a543ba31ec0f42784bd6beee5a' } };
+  return { schemaVersion: 1, sites, overview: { id: 'south-pole-overview', label: 'Overview', description: 'Coarse planar map', metadata } };
+}
+it('publishes the reviewed overview separately without changing native patches', async () => {
+  const value = overviewCatalog(), publish = vi.fn();
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => value }));
+  const patches = await loadSiteCatalog(new AbortController().signal, value.sites[0].metadata as MapMetadataResponse, publish);
+  expect(publish).toHaveBeenCalledWith(value.overview);
+  expect(patches.map(p => p.id)).toEqual(exploratoryPatches.map(p => p.id));
+});
+it('rejects an overview with a wrong origin without losing native patches', async () => {
+  const value = overviewCatalog(), publish = vi.fn(); value.overview.metadata.render.sceneTransform.originEastingM = 1;
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => value }));
+  const patches = await loadSiteCatalog(new AbortController().signal, value.sites[0].metadata as MapMetadataResponse, publish);
+  expect(publish).not.toHaveBeenCalled(); expect(patches[1].metadata).not.toBeNull();
+});

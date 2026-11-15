@@ -3,7 +3,6 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls as DreiOrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import {
-  CAMERA_PRESETS,
   DEFAULT_CAMERA_PRESET,
   easeInOutCubic,
 } from '../scene/camera';
@@ -12,6 +11,7 @@ import type { CameraPreset } from '../types';
 
 export interface SceneControlsProps {
   enableKeyboard?: boolean;
+  onFitCamera?: (topDown?: boolean) => void;
   onPresetChange?: (preset: CameraPreset) => void;
   animationStateRef: React.MutableRefObject<CameraAnimationState | null>;
   controlsRef: React.MutableRefObject<any>;
@@ -19,6 +19,7 @@ export interface SceneControlsProps {
 
 export const SceneControls: React.FC<SceneControlsProps> = ({
   enableKeyboard = true,
+  onFitCamera,
   onPresetChange,
   animationStateRef,
   controlsRef,
@@ -51,49 +52,13 @@ export const SceneControls: React.FC<SceneControlsProps> = ({
       if (!controls) return;
 
       switch (e.key.toLowerCase()) {
-        case 'r':
-          triggerPreset(CAMERA_PRESETS.oblique);
-          break;
-        case 't':
-          triggerPreset(CAMERA_PRESETS.topDown);
-          break;
-        case 'f':
-          triggerPreset(CAMERA_PRESETS.fitRegion);
-          break;
-        case '1':
-          triggerPreset(CAMERA_PRESETS.oblique);
-          break;
-        case '2':
-          triggerPreset(CAMERA_PRESETS.shackleton);
-          break;
+        case 'r': case 'f': case '1': case '2': onFitCamera?.(); break;
+        case 't': onFitCamera?.(true); break;
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       keysPressed.current.delete(e.key.toLowerCase());
-    };
-
-    const triggerPreset = (preset: CameraPreset) => {
-      const controls = controlsRef.current;
-      if (!controls) return;
-
-      const curPos = camera.position.clone();
-      const curTarget = controls.target.clone();
-
-      animationStateRef.current = {
-        isAnimating: true,
-        startPosition: curPos,
-        targetPosition: new THREE.Vector3(...preset.position),
-        startLookAt: curTarget,
-        targetLookAt: new THREE.Vector3(...preset.target),
-        progress: 0,
-        durationMs: 1000,
-        startTime: performance.now(),
-      };
-
-      if (onPresetChange) {
-        onPresetChange(preset);
-      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -103,12 +68,18 @@ export const SceneControls: React.FC<SceneControlsProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [enableKeyboard, camera, onPresetChange, animationStateRef, controlsRef]);
+  }, [enableKeyboard, camera, onPresetChange, animationStateRef, controlsRef, onFitCamera]);
 
   useFrame(() => {
     const controls = controlsRef.current;
     if (!controls) return;
 
+    const bounds = controls.terrainBounds as THREE.Box3 | undefined;
+    if (bounds && !animationStateRef.current?.isAnimating) {
+      const before = controls.target.clone();
+      controls.target.clamp(bounds.min, bounds.max);
+      camera.position.add(controls.target.clone().sub(before));
+    }
     const anim = animationStateRef.current;
     if (anim && anim.isAnimating) {
       const elapsed = performance.now() - anim.startTime;

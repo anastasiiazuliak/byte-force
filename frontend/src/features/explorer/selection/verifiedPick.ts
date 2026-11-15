@@ -7,5 +7,6 @@ export function verifiedTerrainPick(metadata: MapMetadataResponse | null | undef
   const origin = metadata.render.sceneTransform!;
   const { projected } = sceneToProjected(point, origin);
   if (!projectedWithinBounds(metadata, projected.x, projected.y)) return null;
-  return sceneToGeographic(point, origin);
+  const geo = sceneToGeographic(point, origin);
+  return geo.latitude <= -80 && geo.latitude >= -90 ? geo : null;
 }

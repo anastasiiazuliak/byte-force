@@ -24,7 +24,7 @@ test('real local API, static GLB and WebGL render; picking follows dataset revie
   const rendered = await page.locator('canvas').first().evaluate((canvas: HTMLCanvasElement) => !!canvas.getContext('webgl2'));
   expect(rendered).toBeTruthy();
   await page.getByRole('button', { name: 'Top-Down (T)', exact: true }).click();
-  await page.getByRole('button', { name: 'Reset (R)', exact: true }).click();
+  await page.getByRole('button', { name: 'Reset Camera (R)', exact: true }).click();
   await page.getByTestId('lunar-terrain-viewer').locator('canvas').click();
   const map = await request.get('/api/v1/map/metadata');
   if (map.ok() && (await map.json()).terrainDataset.metadataVerified) {

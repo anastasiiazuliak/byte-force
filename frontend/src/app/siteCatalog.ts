@@ -6,15 +6,16 @@ export const exploratoryPatches: ExploratoryPatch[] = [
   { id: 'near-shackleton', label: 'Near Shackleton', latitude: -89.9, longitude: 0, description: 'Exploratory coordinates, not an approved landing site.', metadata: null },
   { id: 'near-de-gerlache', label: 'Near de Gerlache', latitude: -88.7, longitude: -68, description: 'Exploratory coordinates, not an approved landing site.', metadata: null },
 ];
+export interface Overview { id: string; label: string; description: string; metadata: MapMetadataResponse }
 /** A static catalog may select assets, never elevate their scientific approval. */
-export async function loadSiteCatalog(signal: AbortSignal, reviewed: MapMetadataResponse | null): Promise<ExploratoryPatch[]> {
+export async function loadSiteCatalog(signal: AbortSignal, reviewed: MapMetadataResponse | null, onOverview?: (overview: Overview) => void): Promise<ExploratoryPatch[]> {
   try {
     const response = await fetch('/static/metadata/explorer-sites.json', { signal });
     if (!response.ok) return exploratoryPatches;
     const value = await response.json();
     if (value.schemaVersion !== 1 || !Array.isArray(value.sites) || value.sites.length !== 3) return exploratoryPatches;
-    const root = reviewed?.assets.demoMeshUrl?.match(/^(\/[^?#]*?)connecting-ridge\/terrain\.glb$/)?.[1];
-    return exploratoryPatches.map(expected => {
+    const root = reviewed?.assets.demoMeshUrl?.match(/^(\/[^?#]*?)(?:connecting-ridge|overview)\/terrain\.glb$/)?.[1];
+    const patches = exploratoryPatches.map(expected => {
       const site = value.sites.find((s: ExploratoryPatch) => s.id === expected.id);
       const m = site?.metadata as MapMetadataResponse | undefined;
       if (!site || site.latitude !== expected.latitude || site.longitude !== expected.longitude || typeof site.label !== 'string' || typeof site.description !== 'string' || !m) throw new Error('Invalid patch');
@@ -29,5 +30,23 @@ export async function loadSiteCatalog(signal: AbortSignal, reviewed: MapMetadata
       if (!m.assets.demoMeshUrl || !Object.values(m.render.sceneTransform).every(v => typeof v === 'boolean' || typeof v === 'number' && Number.isFinite(v))) throw new Error('Invalid transform');
       return { ...expected, metadata: m };
     });
+    const o = value.overview;
+    const m = o?.metadata;
+    const proof = m?.overview;
+    const t = m?.render?.sceneTransform;
+    const bounds = m?.render?.boundsMeters;
+    if (root && reviewed && canUseGeographicTerrain(reviewed) && o?.id === 'south-pole-overview' &&
+        typeof o.label === 'string' && typeof o.description === 'string' && canUseGeographicTerrain(m) &&
+        m.regionId === reviewed.regionId && JSON.stringify(m.projection) === JSON.stringify(reviewed.projection) &&
+        m.terrainDataset.id === reviewed.terrainDataset.id && m.terrainDataset.sourceResolutionMeters === 80 &&
+        m.terrainDataset.verticalReference === reviewed.terrainDataset.verticalReference &&
+        t?.validated === true && t.originEastingM === 0 && t.originNorthingM === 0 && t.verticalOriginM === 0 &&
+        bounds?.minX === -303960 && bounds.minY === -303960 && bounds.maxX === 303960 && bounds.maxY === 303960 &&
+        m.assets.demoMeshUrl === `${root}overview/terrain.glb` && m.assets.terrainTemplate === null &&
+        m.assets.surfaceTemplate === null && m.assets.hillshadeTemplate === null &&
+        proof?.algorithm === 'native-pixel-centre-polar-rings-v1' && proof.vertexCount === 40001 &&
+        proof.triangleCount === 79600 && proof.requestedLatitudeMaxDeg === -80 &&
+        m.geoSourceReview?.sourceLocalSha256 === '82030dcbdd7c4bb0c7d858e9b4b293b9f2cda5a543ba31ec0f42784bd6beee5a') onOverview?.(o);
+    return patches;
   } catch { return exploratoryPatches; }
 }

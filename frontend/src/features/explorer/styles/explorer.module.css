@@ -686,3 +686,22 @@
   gap: 4px 12px;
   color: #94a3b8;
 }
+
+@media (max-width: 600px) {
+  .overlayContainer { padding: 10px; }
+  .topBar { gap: 6px; }
+  .badgeGroup { min-width: 0; gap: 4px; }
+  .statusBadge, .lightingBadge { max-width: 100%; padding: 4px 6px; font-size: 10px; }
+  .lightingBadge { max-height: 38px; overflow: auto; }
+  .iconButton { flex-shrink: 0; min-height: 44px; }
+  .slotSelector { top: 100px; left: 10px; right: 10px; }
+  .slotTabs { flex-wrap: wrap; }
+  .slotTab { min-height: 44px; padding: 4px 7px; }
+  .slotCoordSmall { font-size: 9px; }
+  .focusSiteButton { min-height: 44px; }
+  .buttonGroup { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; max-width: 350px; gap: 2px; }
+  .controlButton { min-width: 0; min-height: 44px; padding: 4px; font-size: 10px; white-space: normal; }
+  .buttonGroup > * { min-width: 0; }
+  .buttonGroup .divider { display: none; }
+  .helpPanel { max-width: 100%; max-height: 65%; overflow: auto; }
+}

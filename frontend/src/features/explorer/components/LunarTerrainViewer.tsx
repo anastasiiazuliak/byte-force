@@ -144,26 +144,23 @@ export const LunarTerrainViewer = forwardRef<
     []
   );
 
-  const reset = useCallback(() => {
-    const preset = CAMERA_PRESETS.oblique;
-    triggerAnimationTo(preset.position, preset.target, 900);
-    setCurrentPreset(preset);
-    onCameraPresetChange?.(preset);
-  }, [triggerAnimationTo, onCameraPresetChange]);
-
-  const setTopDown = useCallback(() => {
-    const preset = CAMERA_PRESETS.topDown;
-    triggerAnimationTo(preset.position, preset.target, 900);
-    setCurrentPreset(preset);
-    onCameraPresetChange?.(preset);
-  }, [triggerAnimationTo, onCameraPresetChange]);
-
-  const fitRegion = useCallback(() => {
-    const preset = CAMERA_PRESETS.fitRegion;
-    triggerAnimationTo(preset.position, preset.target, 1100);
-    setCurrentPreset(preset);
-    onCameraPresetChange?.(preset);
-  }, [triggerAnimationTo, onCameraPresetChange]);
+  const fitTerrain = useCallback((topDown = false) => {
+    const surface = surfaceRef.current;
+    const controls = controlsRef.current;
+    if (!surface || !controls) return;
+    const box = new THREE.Box3().setFromObject(surface.group);
+    const center = box.getCenter(new THREE.Vector3());
+    const extent = box.getSize(new THREE.Vector3());
+    const radius = metadata?.assets.demoMeshUrl?.endsWith('/overview/terrain.glb')
+      ? Math.hypot(Math.max(extent.x, extent.z), extent.y) / 2 : extent.length() / 2;
+    const camera = controls.object as THREE.PerspectiveCamera;
+    const angle = Math.min(camera.fov * Math.PI / 360, Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect));
+    const offset = new THREE.Vector3(0, topDown ? 1 : 0.6, topDown ? 0.001 : 0.8).normalize().multiplyScalar(radius / Math.sin(angle) * 1.1);
+    triggerAnimationTo(center.clone().add(offset).toArray(), center.toArray(), 900);
+  }, [triggerAnimationTo, metadata?.assets.demoMeshUrl]);
+  const reset = useCallback(() => fitTerrain(), [fitTerrain]);
+  const fitRegion = reset;
+  const setTopDown = useCallback(() => fitTerrain(true), [fitTerrain]);
 
   const flyTo = useCallback(
     (location: { latitude: number; longitude: number }) => {
@@ -229,6 +226,7 @@ export const LunarTerrainViewer = forwardRef<
         )}
       >
         <SceneCanvas
+          onFitCamera={fitTerrain}
           metadata={metadata}
           selectedA={selectedA}
           selectedB={selectedB}
@@ -283,7 +281,7 @@ export const LunarTerrainViewer = forwardRef<
           onSelectPreset={(presetId) => {
             const preset = CAMERA_PRESETS[presetId];
             if (preset) {
-              triggerAnimationTo(preset.position, preset.target, 1000);
+              fitTerrain(presetId === 'topDown');
               setCurrentPreset(preset);
               onCameraPresetChange?.(preset);
             }
