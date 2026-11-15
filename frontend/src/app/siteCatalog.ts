@@ -1,3 +1,4 @@
+import { isGlobe } from '../features/explorer/scene/spherical';
 import { canUseGeographicTerrain } from '../features/explorer/scene/metadata';
 import type { MapMetadataResponse } from '../api/types';
 export interface ExploratoryPatch { id: string; label: string; latitude: number; longitude: number; description: string; metadata: MapMetadataResponse | null }
@@ -8,7 +9,7 @@ export const exploratoryPatches: ExploratoryPatch[] = [
 ];
 export interface Overview { id: string; label: string; description: string; metadata: MapMetadataResponse }
 /** A static catalog may select assets, never elevate their scientific approval. */
-export async function loadSiteCatalog(signal: AbortSignal, reviewed: MapMetadataResponse | null, onOverview?: (overview: Overview) => void): Promise<ExploratoryPatch[]> {
+export async function loadSiteCatalog(signal: AbortSignal, reviewed: MapMetadataResponse | null, onOverview?: (overview: Overview) => void, onGlobe?: (globe: Overview) => void): Promise<ExploratoryPatch[]> {
   try {
     const response = await fetch('/static/metadata/explorer-sites.json', { signal });
     if (!response.ok) return exploratoryPatches;
@@ -47,6 +48,12 @@ export async function loadSiteCatalog(signal: AbortSignal, reviewed: MapMetadata
         proof?.algorithm === 'native-pixel-centre-polar-rings-v1' && proof.vertexCount === 40001 &&
         proof.triangleCount === 79600 && proof.requestedLatitudeMaxDeg === -80 &&
         m.geoSourceReview?.sourceLocalSha256 === '82030dcbdd7c4bb0c7d858e9b4b293b9f2cda5a543ba31ec0f42784bd6beee5a') onOverview?.(o);
+    const g = value.globe;
+    const gm = g?.metadata;
+    if (root === '/static/' && reviewed && canUseGeographicTerrain(reviewed) && g?.id === 'south-pole-globe' &&
+        typeof g.label === 'string' && typeof g.description === 'string' && gm && isGlobe(gm) && canUseGeographicTerrain(gm) &&
+        gm.regionId === reviewed.regionId && gm.terrainDataset.id === reviewed.terrainDataset.id &&
+        gm.terrainDataset.sourceResolutionMeters === 80 && JSON.stringify(gm.projection) === JSON.stringify(reviewed.projection)) onGlobe?.(g);
     return patches;
   } catch { return exploratoryPatches; }
 }

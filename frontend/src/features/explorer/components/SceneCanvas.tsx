@@ -3,6 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Lighting } from './Lighting';
 import { TerrainMesh } from './TerrainMesh';
+import { DisplayPlinth } from './DisplayPlinth';
 import { SceneControls } from './SceneControls';
 import { SiteMarkers } from './SiteMarkers';
 import { DEFAULT_CAMERA_PRESET } from '../scene/camera';
@@ -18,6 +19,7 @@ import type { MapMetadataResponse, Coordinates, IsoUtc } from '../../../api/type
 
 export interface SceneCanvasProps {
   metadata?: MapMetadataResponse | null;
+  showDisplayPlinth?: boolean;
   selectedA?: Coordinates | null;
   selectedB?: Coordinates | null;
   activeSlot?: SiteSlot;
@@ -37,6 +39,7 @@ export interface SceneCanvasProps {
 
 export const SceneCanvas: React.FC<SceneCanvasProps> = ({
   metadata,
+  showDisplayPlinth = true,
   selectedA,
   selectedB,
   activeSlot = 'A',
@@ -148,6 +151,8 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
         onSurfaceReady={handleSurface}
       />
 
+      <DisplayPlinth metadata={metadata} surface={surface} enabled={showDisplayPlinth && geographicReady} />
+
       {geographicReady && <SiteMarkers
         positionA={positionA}
         positionB={positionB}
@@ -191,14 +196,20 @@ function FittedTerrain({ controlsRef, animationStateRef, ...props }: React.Compo
     const center = box.getCenter(new THREE.Vector3());
     const extent = box.getSize(new THREE.Vector3());
     // The overview is a disc; a square bounding-box diagonal wastes 41% of its radius.
-    const radius = props.metadata?.assets.demoMeshUrl?.endsWith('/overview/terrain.glb')
+    const radius = props.metadata?.assets.demoMeshUrl?.match(/\/(overview|globe)\/terrain\.glb$/)
       ? Math.hypot(Math.max(extent.x, extent.z), extent.y) / 2 : extent.length() / 2;
     const angle = Math.min(camera.fov * Math.PI / 360, Math.atan(Math.tan(camera.fov * Math.PI / 360) * size.width / size.height));
     const distance = radius / Math.sin(angle) * 1.1;
-    const targetPosition = center.clone().add(new THREE.Vector3(0, 0.6, 0.8).multiplyScalar(distance));
-    animationStateRef.current = { isAnimating: true, startPosition: camera.position.clone(), targetPosition,
-      startLookAt: controlsRef.current?.target.clone() ?? center.clone(), targetLookAt: center.clone(),
-      progress: 0, durationMs: 1100, startTime: performance.now() };
+    const targetPosition = center.clone().add(new THREE.Vector3(0, 0.36, 0.933).normalize().multiplyScalar(distance));
+    if (!controlsRef.current?.terrainBounds) {
+      camera.position.copy(targetPosition);
+      controlsRef.current?.target.copy(center);
+      animationStateRef.current = null;
+    } else {
+      animationStateRef.current = { isAnimating: true, startPosition: camera.position.clone(), targetPosition,
+        startLookAt: controlsRef.current.target.clone(), targetLookAt: center.clone(),
+        progress: 0, durationMs: 1100, startTime: performance.now() };
+    }
     camera.near = Math.max(1, radius / 2000);
     camera.far = Math.max(100000, distance + radius * 10);
     camera.updateProjectionMatrix();

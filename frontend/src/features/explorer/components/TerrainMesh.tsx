@@ -76,6 +76,10 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
         if (cancelled) { disposeTerrain(gltf.scene); return; }
         gltf.scene.traverse((child) => {
           if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            const originals = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            mesh.material = new THREE.MeshStandardMaterial({ color: 0x80848b, roughness: 0.95, metalness: 0, side: THREE.FrontSide });
+            for (const material of originals) material.dispose();
             child.castShadow = true;
             child.receiveShadow = true;
           }

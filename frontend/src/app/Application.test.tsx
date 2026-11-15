@@ -48,7 +48,8 @@ describe('live workspace composition', () => {
     expect(api.compare.mock.calls[0][0].scenarios[0].location).toEqual(api.compare.mock.calls[0][0].scenarios[1].location);
     fireEvent.change(screen.getByLabelText('Selected UTC sample'), { target: { value: '1' } });
     expect(screen.getByTestId('selected-utc').textContent).toBe('2026-11-14T01:00:00Z');
-    expect(screen.getByTestId('scene-time').textContent).toBe(screen.getByTestId('selected-utc').textContent);
+    fireEvent.click(screen.getByRole('button', { name: 'Terrain View' }));
+    expect((await screen.findByTestId('scene-time')).textContent).toBe(screen.getByTestId('selected-utc').textContent);
     expect(api.compare).toHaveBeenCalledOnce(); expect(api.analyze).not.toHaveBeenCalled(); expect(api.ephemeris).toHaveBeenCalledOnce();
     expect(screen.getByTestId('comparison-differences').textContent).toContain('Unknown');
   });
@@ -134,4 +135,18 @@ it('defaults to catalog overview and returning to it preserves both scenario dra
     expect((screen.getByLabelText('Longitude B') as HTMLInputElement).value).toBe('45');
     expect(api.analyze).not.toHaveBeenCalled(); expect(api.compare).not.toHaveBeenCalled();
   } finally { loader.mockRestore(); }
+});
+
+it('defaults to fail-closed Globe and preserves results and inputs across representation switches', async () => {
+  render(<Application />); await fillA();
+  expect(screen.getByRole('button', { name: 'Globe View' }).getAttribute('aria-pressed')).toBe('true');
+  expect(screen.getByText(/Reviewed Globe catalog unavailable/)).toBeTruthy();
+  expect((screen.getByRole('checkbox', { name: 'Scientific Sun Lighting' }) as HTMLInputElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Analyze site' }));
+  await screen.findByTestId('analysis-result');
+  const before = screen.getByTestId('analysis-result').textContent;
+  for (const name of ['Terrain View', 'Globe View', 'Terrain View']) fireEvent.click(screen.getByRole('button', { name }));
+  expect(screen.getByTestId('analysis-result').textContent).toBe(before);
+  expect((screen.getByLabelText('Latitude A') as HTMLInputElement).value).toBe('-89.5');
+  expect(api.analyze).toHaveBeenCalledOnce();
 });

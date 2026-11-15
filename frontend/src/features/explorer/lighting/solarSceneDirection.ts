@@ -1,3 +1,4 @@
+import { isGlobe } from '../scene/spherical';
 import type { Coordinates, MapMetadataResponse } from '../../../api/types';
 import { geographicToProjected } from '../scene/projection';
 import { terrainAssetKey, projectedWithinBounds } from '../scene/metadata';
@@ -11,6 +12,7 @@ export function solarSceneDirection(
   location: Coordinates | null,
   sun: { azimuthDeg: number; elevationDeg: number } | null,
 ): [number, number, number] | null {
+  if (isGlobe(metadata)) return null;
   if (!terrainAssetKey(metadata) || !metadata || !location || !sun) return null;
   const { latitude, longitude } = location;
   if (![latitude, longitude, sun.azimuthDeg, sun.elevationDeg].every(Number.isFinite) || latitude <= -90 || latitude > -80 || Math.abs(longitude) > 180 || Math.abs(sun.elevationDeg) > 90) return null;

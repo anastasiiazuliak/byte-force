@@ -23,6 +23,8 @@ function useWorkspace() {
   const [sites, setSites] = useState<LandingSite[]>([]);
   const [metadata, setMetadata] = useState<MapMetadataResponse | null>(null);
   const [patches, setPatches] = useState(exploratoryPatches);
+  const [globe, setGlobe] = useState<Overview | null>(null);
+  const [representation, setRepresentation] = useState<'globe' | 'terrain'>('globe');
   const [overview, setOverview] = useState<Overview | null>(null);
   const [currentSite, setCurrentSite] = useState('');
   const mapIntent = useRef<string | null>(null);
@@ -49,7 +51,7 @@ function useWorkspace() {
         api.health(controller.signal).then(() => {}, e => { messages.push(`Health: ${errorMessage(e)}`); }),
         api.config(controller.signal).then(value => { if (!controller.signal.aborted) setConfig(value); }, e => { messages.push(`Configuration unavailable; conservative local limits apply. ${errorMessage(e)}`); }),
         api.landingSites(controller.signal).then(value => { if (!controller.signal.aborted) setSites(value.sites); }, e => { messages.push(`Catalog unavailable; enter coordinates manually. ${errorMessage(e)}`); }),
-        api.mapMetadata(controller.signal).then(value => { if (!controller.signal.aborted) { setMetadata(value); void loadSiteCatalog(controller.signal, value, o => { if (!controller.signal.aborted) { setOverview(o); if (mapIntent.current === null || mapIntent.current === o.id) { setMetadata(o.metadata); setCurrentSite(o.id); } } }).then(p => { if (!controller.signal.aborted) { setPatches(p); const selected = p.find(patch => patch.id === mapIntent.current); if (selected?.metadata) setMetadata(selected.metadata); } }); } }, e => { messages.push(`Map metadata unavailable; illustrative fallback only. ${errorMessage(e)}`); }),
+        api.mapMetadata(controller.signal).then(value => { if (!controller.signal.aborted) { setMetadata(value); void loadSiteCatalog(controller.signal, value, o => { if (!controller.signal.aborted) { setOverview(o); if (mapIntent.current === null || mapIntent.current === o.id) { setMetadata(o.metadata); setCurrentSite(o.id); } } }, g => { if (!controller.signal.aborted) setGlobe(g); }).then(p => { if (!controller.signal.aborted) { setPatches(p); const selected = p.find(patch => patch.id === mapIntent.current); if (selected?.metadata) setMetadata(selected.metadata); } }); } }, e => { messages.push(`Map metadata unavailable; illustrative fallback only. ${errorMessage(e)}`); }),
       ]);
       if (!controller.signal.aborted) setStartup(messages);
     }).catch(e => { if (!controller.signal.aborted) setStartup([errorMessage(e)]); });
@@ -58,6 +60,7 @@ function useWorkspace() {
   useEffect(() => () => request.current.cancel(), []);
   function invalidate() { request.current.cancel(); setAnalyses([]); setComparison(null); setState('empty'); setError(''); }
   function selectPatch(id: string) {
+    setRepresentation('terrain');
     mapIntent.current = id;
     if (id === overview?.id) { setCurrentSite(id); setMetadata(overview.metadata); return; }
     const patch = patches.find(p => p.id === id); if (!patch) return;
@@ -108,22 +111,31 @@ function useWorkspace() {
       setState('ready');
     } catch (e) { if (run.current()) { setError(errorMessage(e)); setState('error'); } }
   }
-  return { overview, patches, currentSite, selectPatch, prepareCompare, quickCompare, cancel: invalidate, client, config, sites, metadata, startup, view, setView, a, b, change, analyses, comparison, timeUtc, setTime, state, error, ephemerisStatus, submit, retryConnection: () => { invalidate(); setReload(v => v + 1); } };
+  return { globe, representation, setRepresentation, overview, patches, currentSite, selectPatch, prepareCompare, quickCompare, cancel: invalidate, client, config, sites, metadata, startup, view, setView, a, b, change, analyses, comparison, timeUtc, setTime, state, error, ephemerisStatus, submit, retryConnection: () => { invalidate(); setReload(v => v + 1); } };
 }
 function useData() { return useContext(WorkspaceContext)!; }
 function FormSlot() {
   const w = useData();
-  return <form onSubmit={w.submit} aria-busy={w.state === 'loading'}><div className="quickstart"><label>Exploratory patch<select aria-label="Exploratory patch" value={w.currentSite} onChange={e => w.selectPatch(e.target.value)}><option value="">Choose coordinates</option>{w.overview && <option value={w.overview.id}>South Pole Overview</option>}{w.patches.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label><button type="button" disabled={!w.overview} onClick={() => w.overview && w.selectPatch(w.overview.id)}>South Pole Overview</button><small>Coarse whole-pole overview → native 80 m patches on selection. No continuous global high-resolution tiles. Planar map with radial heights, not a globe.</small><small>Exploratory coordinates · not approved landing sites or recommendations.</small><button type="button" onClick={w.prepareCompare}>Prepare patch comparison</button><button type="button" onClick={w.quickCompare} disabled={!w.client}>Quick compare · 2 samples/site</button><small>Quick comparison uses one UTC hour. Unknown visibility is never ranked.</small></div><ScenarioFields id="A" draft={w.a} sites={w.sites} onChange={draft => w.change('A', draft)} />{w.view === 'compare' && <><button type="button" onClick={() => w.change('B', { ...w.a })}>Copy A to B</button><button type="button" onClick={() => { const a = w.a; w.change('A', w.b); w.change('B', a); }}>Swap A ↔ B</button><ScenarioFields id="B" draft={w.b} sites={w.sites} onChange={draft => w.change('B', draft)} /></>}<button className="primary-button" type="submit" disabled={!w.client}>{w.state === 'loading' ? 'Restart analysis' : w.view === 'compare' ? 'Compare scenarios' : 'Analyze site'}</button>{w.state === 'loading' && <button type="button" onClick={w.cancel}>Cancel analysis</button>}<p>Changing inputs cancels pending results. Run analysis explicitly.</p>{w.error && <p role="alert" data-testid="analysis-error">{w.error}</p>}</form>;
+  return <form onSubmit={w.submit} aria-busy={w.state === 'loading'}><div className="quickstart"><label>Exploratory patch<select aria-label="Exploratory patch" value={w.currentSite} onChange={e => w.selectPatch(e.target.value)}><option value="">Choose coordinates</option>{w.overview && <option value={w.overview.id}>South Pole Overview</option>}{w.patches.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label><button type="button" disabled={!w.overview} onClick={() => w.overview && w.selectPatch(w.overview.id)}>South Pole Overview</button><small>Coarse whole-pole overview → native 80 m patches on selection. No continuous global high-resolution tiles. Terrain View is a planar map; Globe View shows a true spherical south-polar cap at 1× height.</small><small>Exploratory coordinates · not approved landing sites or recommendations.</small><button type="button" onClick={w.prepareCompare}>Prepare patch comparison</button><button type="button" onClick={w.quickCompare} disabled={!w.client}>Quick compare · 2 samples/site</button><small>Quick comparison uses one UTC hour. Unknown visibility is never ranked.</small></div><ScenarioFields id="A" draft={w.a} sites={w.sites} onChange={draft => w.change('A', draft)} />{w.view === 'compare' && <><button type="button" onClick={() => w.change('B', { ...w.a })}>Copy A to B</button><button type="button" onClick={() => { const a = w.a; w.change('A', w.b); w.change('B', a); }}>Swap A ↔ B</button><ScenarioFields id="B" draft={w.b} sites={w.sites} onChange={draft => w.change('B', draft)} /></>}<button className="primary-button" type="submit" disabled={!w.client}>{w.state === 'loading' ? 'Restart analysis' : w.view === 'compare' ? 'Compare scenarios' : 'Analyze site'}</button>{w.state === 'loading' && <button type="button" onClick={w.cancel}>Cancel analysis</button>}<p>Changing inputs cancels pending results. Run analysis explicitly.</p>{w.error && <p role="alert" data-testid="analysis-error">{w.error}</p>}</form>;
 }
 function AnalysisSlot() { const w = useData(); return <AnalysisPanel analysis={w.analyses[0]} timeUtc={w.timeUtc} />; }
-function CompareSlot({ site }: { site: 1 | 2 }) { const w = useData(); return <><AnalysisPanel analysis={w.analyses[site - 1]} timeUtc={w.timeUtc} />{site === 2 && w.comparison && <div data-testid="comparison-differences"><h3>Difference B − A</h3>{Object.entries(w.comparison.differences).map(([key,value]) => <p key={key}>{key}: {value != null && value > 0 ? '+' : ''}{metric(value, ' h')}</p>)}</div>}</>; }
+function CompareSlot({ site }: { site: 1 | 2 }) { const w = useData(); return <><AnalysisPanel analysis={w.analyses[site - 1]} timeUtc={w.timeUtc} slot={site === 1 ? 'A' : 'B'} />{site === 2 && w.comparison && <div data-testid="comparison-differences"><h3>Difference B − A</h3>{Object.entries(w.comparison.differences).map(([key,value]) => <p key={key}>{key}: {value != null && value > 0 ? '+' : ''}{metric(value, ' h')}</p>)}</div>}</>; }
 function TimelineSlot() { const w = useData(); return <MissionTimeline analyses={w.analyses} timeUtc={w.timeUtc} onTime={w.setTime} />; }
 function SceneSlot(props: TerrainSceneProps) {
   const w = useData();
+  const [scientific, setScientific] = useState(false);
+  const sceneMetadata = w.representation === 'globe' ? w.globe?.metadata ?? null : props.metadata;
   const analysis = w.analyses[0];
   const sample = analysis?.samples.find(s => Date.parse(s.timeUtc) === Date.parse(w.timeUtc));
-  const direction = solarSceneDirection(props.metadata, analysis?.location ?? null, sample?.sun ?? null);
-  return <Suspense fallback={<p role="status" className="terrain-loading">Preparing 3D explorer…</p>}><LunarTerrainViewer {...props} sunDirectionScene={direction} sunlightLabel={direction ? 'Sun at A · approximate map lighting · not visibility' : 'Illustrative lighting · no validated local sample'} /></Suspense>;
+  const direction = solarSceneDirection(sceneMetadata, analysis?.location ?? null, sample?.sun ?? null);
+  const enabled = w.representation === 'terrain' && Boolean(direction);
+  return <div className="explorer-stage"><div className="explorer-toolbar" aria-label="Explorer view and lighting">
+    <div role="group" aria-label="Representation"><button type="button" aria-pressed={w.representation === 'globe'} onClick={() => w.setRepresentation('globe')}>Globe View</button><button type="button" aria-pressed={w.representation === 'terrain'} onClick={() => w.setRepresentation('terrain')}>Terrain View</button></div>
+    <details className="explorer-guide"><summary>Explore → Choose Site → Analyze</summary><p>Real south-polar cap, 80–90°S, not a complete Moon. Drag to orbit, scroll to zoom; choose A or B before clicking. Set UTC in Site & Time, then Analyze. Select a native patch for detail. Views share coordinates, time and results.</p></details>
+    <label className="lighting-toggle"><input type="checkbox" checked={scientific && enabled} disabled={!enabled} onChange={e => setScientific(e.target.checked)} />Scientific Sun Lighting</label>
+    <span className="lighting-explanation" title={w.representation === 'globe' ? 'Scientific Sun Lighting unavailable on Globe: local map directions are not global Sun vectors.' : 'Scientific Sun Lighting requires a matching cached sample at A on reviewed terrain. Graphic shadows are not visibility.'}>{scientific && enabled ? 'Cached Sun at A · graphic estimate' : 'Exploration Lighting · illustrative fill'}</span>
+  </div>{w.representation === 'globe' && !w.globe ? <p role="status">Reviewed Globe catalog unavailable. Choose Terrain View to inspect the available map.</p> : <Suspense fallback={<p role="status" className="terrain-loading">Preparing 3D explorer…</p>}><LunarTerrainViewer {...props} metadata={sceneMetadata} sunDirectionScene={scientific && enabled ? direction : null} sunlightLabel={scientific && enabled ? 'Sun at A · approximate map lighting · not visibility' : 'Exploration Lighting · illustrative fill'} /></Suspense>}</div>;
+
 }
 const slots: ShellSlots = { TerrainViewer: SceneSlot, ScenarioForm: FormSlot, AnalysisPanel: AnalysisSlot, ComparePanel: CompareSlot, MissionTimeline: TimelineSlot };
 export function Application() {
