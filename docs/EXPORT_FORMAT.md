@@ -14,3 +14,10 @@ Filter by `record_type` to select the rows you need:
 `unknown` represents an undetermined value. An empty cell means the column does not apply to that row. `false` and zero retain their original meaning. Export reflects the API response and uses the API version from the health endpoint when available. Moving the timeline cursor has no effect on the exported samples.
 
 Demo exports carry the `demo / synthetic` label and the `-synthetic` filename suffix. Real mode blocks export of results whose source labels mark them as synthetic. CSV text fields that could be parsed as spreadsheet formulas are prefixed with an apostrophe. Numeric cells keep their sign.
+- `difference` shows B minus A for sunlight, Earth visibility, and simultaneous visibility in hours. Differences preserve the API values, including `unknown`; export does not infer or recompute them.
+
+`unknown` represents an undetermined value. An empty cell means the column does not apply to that row. `false` and zero retain their original meaning. Export reflects the API response and uses the supplied API version when available. The existing application does not retain the health endpoint version, so its exports label the version `unknown`. Moving the timeline cursor has no effect on the exported samples.
+
+Demo exports carry the `demo / synthetic` label and the `-synthetic` filename suffix. Real mode blocks export of results whose source labels mark them as synthetic. CSV text fields that could be parsed as spreadsheet formulas are prefixed with an apostrophe. Numeric cells keep their sign.
+
+Print reports preserve source labels, quality warnings and unknown metrics; “Live API” does not certify scientific validity. Terrain application is reported separately from DEM resolution and visibility method.

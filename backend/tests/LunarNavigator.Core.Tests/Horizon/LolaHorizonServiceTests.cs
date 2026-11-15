@@ -252,6 +252,35 @@ public class LolaHorizonServiceTests
         Assert.Contains(profile.Warnings, w => w.Contains("NoData", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MissingOrNonfiniteRaySamples_NeverClaimCompleteTerrain(bool infinity)
+    {
+        var location = new TerrainLocation(-89.5, 0);
+        var (centerX, centerY) = LunarProjection.ToProjected(location.Latitude, location.Longitude);
+        var terrain = new SyntheticTerrainService((x, y) =>
+            Math.Abs(x - centerX) < 100 && Math.Abs(y - centerY) < 100
+                ? 0f : infinity ? float.PositiveInfinity : float.NaN);
+        var service = new LolaHorizonService(terrain);
+        var options = new HorizonOptions { AzimuthStepDeg = 90, MaxRangeMeters = 800 };
+        var profile = await service.GetProfileAsync(location, options);
+        Assert.False(profile.TerrainApplied);
+        Assert.Contains(profile.Warnings, warning => warning.Contains("NoData"));
+        await service.GetProfileAsync(location, options);
+        Assert.Equal(2, terrain.WindowCallCount);
+    }
+
+    [Fact]
+    public async Task RangeShorterThanStep_DoesNotInventSphereHorizon()
+    {
+        var service = new LolaHorizonService(new SyntheticTerrainService((_, _) => 0f));
+        var profile = await service.GetProfileAsync(new TerrainLocation(-89.5, 0),
+            new HorizonOptions { MaxRangeMeters = 40, RayStepMeters = 80 });
+        Assert.False(profile.TerrainApplied);
+        Assert.Empty(profile.Points);
+    }
+
     [Fact]
     public async Task CachingAndCancellation_WorkAsExpected()
     {

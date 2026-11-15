@@ -61,8 +61,8 @@ public static class LunarProjection
     /// </summary>
     public static (double Col, double Row) ToPixel(double x, double y, LolaDemMetadata metadata)
     {
-        double col = (x - metadata.MinX) / metadata.PixelScaleMeters;
-        double row = (metadata.MaxY - y) / metadata.PixelScaleMeters;
+        double col = (x - metadata.MinX) / metadata.PixelScaleMeters - (metadata.RasterPixelIsArea ? 0.5 : 0);
+        double row = (metadata.MaxY - y) / metadata.PixelScaleMeters - (metadata.RasterPixelIsArea ? 0.5 : 0);
         return (col, row);
     }
 
@@ -71,8 +71,8 @@ public static class LunarProjection
     /// </summary>
     public static (double X, double Y) FromPixel(double col, double row, LolaDemMetadata metadata)
     {
-        double x = metadata.MinX + (col * metadata.PixelScaleMeters);
-        double y = metadata.MaxY - (row * metadata.PixelScaleMeters);
+        double x = metadata.MinX + ((col + (metadata.RasterPixelIsArea ? 0.5 : 0)) * metadata.PixelScaleMeters);
+        double y = metadata.MaxY - ((row + (metadata.RasterPixelIsArea ? 0.5 : 0)) * metadata.PixelScaleMeters);
         return (x, y);
     }
 

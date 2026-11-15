@@ -56,3 +56,7 @@ it('production configuration ignores mock opt-in', async () => {
     expect(fetchMock).toHaveBeenCalled();
   } finally { vi.unstubAllGlobals(); vi.unstubAllEnvs(); }
 });
+
+it('rejects an empty success body rather than publishing a null DTO', async () => {
+  await expect(createApiClient({ transport: async () => new Response('') }).health()).rejects.toMatchObject({ kind: 'decode', message: 'Empty JSON response' });
+});

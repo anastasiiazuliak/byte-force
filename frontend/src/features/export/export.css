@@ -1,3 +1,4 @@
+.export-report-actions, .export-report .report-controls { display: flex; flex-wrap: wrap; gap: 8px; }
 .export-report {
   width: min(720px, calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
@@ -24,6 +25,10 @@
     .result-tools > :not(.export-report) { display: none; }
     .mission-workspace, .result-tools { display: block; padding: 0; min-height: 0; }
   }
+  .app-shell:has(.export-report[open]) > :not(.workspace-notice),
+  .workspace-notice:has(.export-report[open]) > :not(.export-report) { display: none; }
+  .app-shell:has(.export-report[open]),
+  .workspace-notice:has(.export-report[open]) { display: block; padding: 0; border: 0; }
   .export-report[open] {
     position: static;
     margin: 0;

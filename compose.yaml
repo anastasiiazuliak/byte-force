@@ -1,0 +1,31 @@
+services:
+  api:
+    build:
+      context: .
+      target: api
+    environment:
+      MapManifest__ManifestPath: /assets/metadata/map-manifest.json
+      MapManifest__AssetRootPath: /assets
+      MapManifest__MetadataReviewConfirmed: ${MAP_REVIEW_CONFIRMED:-false}
+      Terrain__DemPath: ${DEM_CONTAINER_PATH:-/dem/LDEM_80S_80MPP_ADJ.TIF}
+    volumes:
+      - ${ASSETS_DIR:-./public-assets}:/assets:ro
+      - ${DEM_DIR:-./data/raw}:/dem:ro
+    expose:
+      - "8080"
+  web:
+    build:
+      context: .
+      target: web
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    volumes:
+      - ${ASSETS_DIR:-./public-assets}:/assets:ro
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

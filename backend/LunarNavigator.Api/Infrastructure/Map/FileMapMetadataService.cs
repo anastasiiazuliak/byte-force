@@ -25,6 +25,9 @@ public sealed class FileMapMetadataService(
             var manifest = await JsonSerializer.DeserializeAsync<MapManifest>(stream, JsonOptions, cancellationToken);
             if (manifest is null || manifest.SchemaVersion != 1 || manifest.Metadata is null)
                 throw Unavailable();
+            if (manifest.Metadata.TerrainDataset is null) throw Unavailable();
+            if (manifest.Metadata.TerrainDataset.MetadataVerified && !_settings.MetadataReviewConfirmed)
+                throw Unavailable();
             ValidateMetadata(manifest.Metadata);
             var metadata = manifest.Metadata;
             var assets = metadata.Assets;

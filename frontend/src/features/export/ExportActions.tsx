@@ -21,6 +21,7 @@ export function ExportActions({ run }: { run: ExportRun }) {
   return (
     <>
       <div className="actions" role="group" aria-label="Export results">
+      <div className="export-report-actions" role="group" aria-label="Export results">
         <button type="button" onClick={() => downloadCsv(run)}>Download CSV</button>
         <button type="button" onClick={() => dialog.current?.showModal()}>Print report</button>
       </div>
@@ -31,6 +32,7 @@ export function ExportActions({ run }: { run: ExportRun }) {
         </div>
         <h2 id="export-report-title">Lunar Site Navigator · {run.differences ? 'Comparison' : 'Analysis'} report</h2>
         <p>{run.mode === 'demo' ? 'Demo · Synthetic data' : 'Real data'} · API version {run.apiVersion ?? 'unknown'}</p>
+        <p>{run.mode === 'demo' ? 'Demo · Synthetic data' : 'Live API · quality varies'} · API version {run.apiVersion ?? 'unknown'}</p>
         {run.scenarios.map(({ id, analysis, error }) => (
           <section key={id}>
             <h3>Site {id === 'A' ? '1 (A)' : '2 (B)'}</h3>

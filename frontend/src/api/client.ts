@@ -42,6 +42,7 @@ export function createApiClient({ baseUrl = '/api/v1', transport = globalThis.fe
       throw new ApiClientError('Invalid JSON response', 'decode', response.status, text, { cause });
     }
     if (!response.ok) throw new ApiClientError(`HTTP ${response.status}`, 'http', response.status, data);
+    if (data === null) throw new ApiClientError('Empty JSON response', 'decode', response.status);
     return data as T;
   }
   const client = {

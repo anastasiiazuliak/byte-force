@@ -18,11 +18,12 @@ import { ViewerOverlay } from './ViewerOverlay';
 import { SiteSlotSelector } from './SiteSlotSelector';
 import { WebGLFallback } from './WebGLFallback';
 import { LoadingSkeleton } from './LoadingSkeleton';
+import { terrainAssetKey } from '../scene/metadata';
+import { sampleTerrainSurface, type TerrainSurface } from '../scene/surface';
 import { checkWebGLSupport } from '../scene/webgl';
 import {
   CAMERA_PRESETS,
   DEFAULT_CAMERA_PRESET,
-  getFlyToTransform,
 } from '../scene/camera';
 import type { CameraAnimationState } from '../scene/camera';
 import type { SiteSlot } from '../types';
@@ -67,7 +68,8 @@ export const LunarTerrainViewer = forwardRef<
     selectedA,
     selectedB,
     timeUtc,
-    sunDirectionMoonFixed,
+    sunDirectionScene,
+    sunlightLabel,
     onSelectSite,
     onStatus,
     className,
@@ -90,6 +92,15 @@ export const LunarTerrainViewer = forwardRef<
   const [webglError, setWebglError] = useState<string | undefined>(undefined);
 
   const animationStateRef = useRef<CameraAnimationState | null>(null);
+  const surfaceRef = useRef<TerrainSurface | null>(null);
+  const handleSurface = useCallback((surface: TerrainSurface | null) => { surfaceRef.current = surface; }, []);
+  const finiteSolar = sunDirectionScene?.length === 3 && sunDirectionScene.every(Number.isFinite) && Math.hypot(...sunDirectionScene) > 0;
+  const diagnostics = {
+    'data-sunlight-source': finiteSolar ? 'horizons-local' : 'illustrative',
+    'data-solar-direction': finiteSolar ? JSON.stringify(sunDirectionScene) : undefined,
+    'data-time-utc': timeUtc ?? undefined,
+    'data-selected-asset-key': terrainAssetKey(metadata) ?? undefined,
+  };
   const controlsRef = useRef<any>(null);
 
   useEffect(() => {
@@ -133,33 +144,31 @@ export const LunarTerrainViewer = forwardRef<
     []
   );
 
-  const reset = useCallback(() => {
-    const preset = CAMERA_PRESETS.oblique;
-    triggerAnimationTo(preset.position, preset.target, 900);
-    setCurrentPreset(preset);
-    onCameraPresetChange?.(preset);
-  }, [triggerAnimationTo, onCameraPresetChange]);
-
-  const setTopDown = useCallback(() => {
-    const preset = CAMERA_PRESETS.topDown;
-    triggerAnimationTo(preset.position, preset.target, 900);
-    setCurrentPreset(preset);
-    onCameraPresetChange?.(preset);
-  }, [triggerAnimationTo, onCameraPresetChange]);
-
-  const fitRegion = useCallback(() => {
-    const preset = CAMERA_PRESETS.fitRegion;
-    triggerAnimationTo(preset.position, preset.target, 1100);
-    setCurrentPreset(preset);
-    onCameraPresetChange?.(preset);
-  }, [triggerAnimationTo, onCameraPresetChange]);
+  const fitTerrain = useCallback((topDown = false) => {
+    const surface = surfaceRef.current;
+    const controls = controlsRef.current;
+    if (!surface || !controls) return;
+    const box = new THREE.Box3().setFromObject(surface.group);
+    const center = box.getCenter(new THREE.Vector3());
+    const extent = box.getSize(new THREE.Vector3());
+    const radius = metadata?.assets.demoMeshUrl?.match(/\/(overview|globe)\/terrain\.glb$/)
+      ? Math.hypot(Math.max(extent.x, extent.z), extent.y) / 2 : extent.length() / 2;
+    const camera = controls.object as THREE.PerspectiveCamera;
+    const angle = Math.min(camera.fov * Math.PI / 360, Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect));
+    const offset = new THREE.Vector3(0, topDown ? 1 : 0.36, topDown ? 0.001 : 0.933).normalize().multiplyScalar(radius / Math.sin(angle) * 1.1);
+    triggerAnimationTo(center.clone().add(offset).toArray(), center.toArray(), 900);
+  }, [triggerAnimationTo, metadata?.assets.demoMeshUrl]);
+  const reset = useCallback(() => fitTerrain(), [fitTerrain]);
+  const fitRegion = reset;
+  const setTopDown = useCallback(() => fitTerrain(true), [fitTerrain]);
 
   const flyTo = useCallback(
-    (location: { latitude: number; longitude: number }, elevationM: number = 0) => {
-      const transform = getFlyToTransform(location, elevationM);
-      triggerAnimationTo(transform.position, transform.target, 1200);
+    (location: { latitude: number; longitude: number }) => {
+      const point = sampleTerrainSurface(metadata, surfaceRef.current, location);
+      if (!point) return;
+      triggerAnimationTo([point.x, point.y + 4000, point.z + 6000], [point.x, point.y, point.z], 1200);
     },
-    [triggerAnimationTo]
+    [triggerAnimationTo, metadata]
   );
 
   useImperativeHandle(
@@ -179,6 +188,7 @@ export const LunarTerrainViewer = forwardRef<
         className={`${styles.viewerWrapper} ${className || ''}`}
         style={style}
         data-testid={testId}
+        {...diagnostics}
       >
         <WebGLFallback
           error={webglError}
@@ -196,6 +206,7 @@ export const LunarTerrainViewer = forwardRef<
       className={`${styles.viewerWrapper} ${className || ''}`}
       style={style}
       data-testid={testId}
+        {...diagnostics}
       tabIndex={0}
       role="region"
       aria-label="Interactive 3D Lunar South Pole Terrain Viewer"
@@ -215,13 +226,15 @@ export const LunarTerrainViewer = forwardRef<
         )}
       >
         <SceneCanvas
+          onFitCamera={fitTerrain}
           metadata={metadata}
           selectedA={selectedA}
           selectedB={selectedB}
           activeSlot={activeSlot}
           timeUtc={timeUtc}
-          sunDirectionMoonFixed={sunDirectionMoonFixed}
+          sunDirectionScene={sunDirectionScene}
           onStatus={handleStatusChange}
+          onSurfaceReady={handleSurface}
           onSelectSite={(site) => {
             setOutOfBoundsError(null);
             onSelectSite?.(site);
@@ -260,14 +273,21 @@ export const LunarTerrainViewer = forwardRef<
         <ViewerOverlay
           status={sceneStatus}
           currentPreset={currentPreset}
-          isHorizonsLighting={Boolean(sunDirectionMoonFixed)}
+          isHorizonsLighting={Boolean(sunDirectionScene)}
+          sunlightLabel={sunlightLabel}
           onReset={reset}
           onTopDown={setTopDown}
           onFitRegion={fitRegion}
           onSelectPreset={(presetId) => {
             const preset = CAMERA_PRESETS[presetId];
             if (preset) {
-              triggerAnimationTo(preset.position, preset.target, 1000);
+              if (presetId === 'shackleton') {
+                if (selectedA) flyTo(selectedA);
+                else if (controlsRef.current) {
+                  const c = controlsRef.current;
+                  triggerAnimationTo(c.target.clone().add(c.object.position.clone().sub(c.target).multiplyScalar(0.25)).toArray(), c.target.toArray());
+                }
+              } else fitTerrain(presetId === 'topDown');
               setCurrentPreset(preset);
               onCameraPresetChange?.(preset);
             }

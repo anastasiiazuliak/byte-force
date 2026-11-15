@@ -42,6 +42,54 @@ public sealed class LolaTiffReaderTests
         Assert.True(float.IsNaN(borderElev));
     }
 
+    [Theory]
+    [InlineData(8)]
+    [InlineData(30)]
+    [InlineData(100043)]
+    public void Open_TruncatedBigTiffRejectsIncompleteHeaderIndexOrPayload(int length)
+    {
+        var path = Path.Combine(Path.GetTempPath(), "lunar-truncated-" + Guid.NewGuid() + ".tif");
+        try
+        {
+            File.WriteAllBytes(path, File.ReadAllBytes(GetFixturePath())[..length]);
+            Assert.Throws<InvalidDataException>(() => LolaTiffReader.Open(path));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task Decode_CorruptCompressedTileIsRejectedInsteadOfReturningPooledBytes()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "lunar-corrupt-" + Guid.NewGuid() + ".tif");
+        try
+        {
+            var bytes = File.ReadAllBytes(GetFixturePath());
+            // This synthetic fixture has one inline tile offset in its BigTIFF index.
+            int ifd = checked((int)BitConverter.ToInt64(bytes, 8));
+            int count = checked((int)BitConverter.ToUInt64(bytes, ifd));
+            for (int i = 0; i < count; i++)
+            {
+                int entry = ifd + 8 + i * 20;
+                if (BitConverter.ToUInt16(bytes, entry) != 324) continue;
+                int offset = checked((int)BitConverter.ToInt64(bytes, entry + 12));
+                bytes[offset] = 0;
+                bytes[offset + 1] = 0;
+            }
+            File.WriteAllBytes(path, bytes);
+            using var reader = LolaTiffReader.Open(path);
+            Assert.Throws<InvalidDataException>(() => reader.ReadPixel(256, 256));
+            using var terrain = new LolaTerrainService(reader);
+            var (lat, lon) = LunarProjection.ToGeographic(
+                reader.Metadata.MinX + 256 * reader.Metadata.PixelScaleMeters,
+                reader.Metadata.MaxY - 256 * reader.Metadata.PixelScaleMeters);
+            var window = await terrain.GetWindowAsync(new(new(lat, lon), 1));
+            Assert.False(terrain.IsAvailable);
+            Assert.True(window.ContainsNoData);
+            Assert.NotEmpty(window.Warnings);
+        }
+        finally { File.Delete(path); }
+    }
+
     [Fact]
     public void ReadPixel_OutOfRange_ReturnsNaN()
     {

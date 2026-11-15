@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -8,7 +8,7 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.1">
       <PrivateAssets>all</PrivateAssets>
@@ -19,6 +19,8 @@
     <ProjectReference Include="../../LunarNavigator.Core/LunarNavigator.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="../../LunarNavigator.Tests/Terrain/*.cs" Link="Terrain/Legacy/%(Filename)%(Extension)" />
+    <None Include="../../LunarNavigator.Tests/Terrain/Fixtures/synthetic_lola_sample.tif" Link="Terrain/Fixtures/synthetic_lola_sample.tif" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../../contracts/fixtures/coordinate-control-points.json" Link="Fixtures/coordinate-control-points.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -13,8 +13,10 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
     private readonly LolaDemMetadata metadata;
     private readonly string? initWarning;
     private bool disposed;
+    private volatile bool readFailed;
 
-    public bool IsAvailable => reader != null;
+    public bool IsAvailable => reader != null && !readFailed;
+    public bool HasReviewedDatumAlignment => IsAvailable && reader?.HasReviewedDatumAlignment == true;
     public string ResolvedPath => resolvedPath;
     public LolaDemMetadata Metadata => metadata;
 
@@ -65,7 +67,7 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (reader == null)
+        if (reader == null || readFailed)
         {
             return Task.FromResult(new TerrainHeightResult(
                 null,
@@ -73,11 +75,11 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
                 null,
                 null,
                 false,
-                new[] { initWarning ?? "LOLA DEM provider unavailable." }));
+                new[] { initWarning ?? "LOLA DEM data could not be decoded; terrain is unavailable." }));
         }
 
         // Validate geographic coverage [-90, -80]
-        if (location.Latitude < -90.0 || location.Latitude > -80.0)
+        if (!double.IsFinite(location.Latitude) || !double.IsFinite(location.Longitude) || location.Latitude < -90.0 || location.Latitude > -80.0)
         {
             return Task.FromResult(new TerrainHeightResult(
                 null,
@@ -92,10 +94,7 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
         var (x, y) = LunarProjection.ToProjected(location.Latitude, location.Longitude);
         var (colD, rowD) = LunarProjection.ToPixel(x, y, metadata);
 
-        int col = (int)Math.Round(colD);
-        int row = (int)Math.Round(rowD);
-
-        if (!metadata.ContainsPixel(col, row))
+        if (colD < 0 || colD > metadata.RasterWidth - 1 || rowD < 0 || rowD > metadata.RasterHeight - 1)
         {
             return Task.FromResult(new TerrainHeightResult(
                 null,
@@ -103,28 +102,28 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
                 metadata.VerticalReference,
                 metadata.PixelScaleMeters,
                 false,
-                new[] { $"Location ({location.Latitude}°, {location.Longitude}°) projects to pixel ({col}, {row}) outside raster bounds." }));
+                new[] { $"Location ({location.Latitude}°, {location.Longitude}°) projects outside the DEM sample-center support; extrapolation is not permitted." }));
         }
 
-        float elev = reader.ReadPixel(col, row);
-        if (float.IsNaN(elev) || float.IsInfinity(elev))
+        if (!BilinearDemSurface.TrySample(metadata.RasterWidth, metadata.RasterHeight, colD, rowD,
+            ReadPixel, out double elev))
         {
             return Task.FromResult(new TerrainHeightResult(
                 null,
                 metadata.DatasetName,
                 metadata.VerticalReference,
                 metadata.PixelScaleMeters,
-                true,
-                new[] { "NoData elevation at location." }));
+                false,
+                new[] { readFailed ? "LOLA DEM data could not be decoded; terrain is unavailable." : "NoData elevation at location." }));
         }
 
         return Task.FromResult(new TerrainHeightResult(
-            Math.Round((double)elev, 2),
+            elev,
             metadata.DatasetName,
             metadata.VerticalReference,
             metadata.PixelScaleMeters,
-            true,
-            Array.Empty<string>()));
+            false,
+            new[] { "DEM frame and vertical-reference alignment to Horizons has not been verified." }));
     }
 
     public Task<TerrainWindowResult> GetWindowAsync(
@@ -132,7 +131,7 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (reader == null)
+        if (reader == null || readFailed)
         {
             return Task.FromResult(new TerrainWindowResult(
                 request.CenterLocation,
@@ -143,7 +142,7 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
                 null,
                 null,
                 true,
-                new[] { initWarning ?? "LOLA DEM provider unavailable." }));
+                new[] { initWarning ?? "LOLA DEM data could not be decoded; terrain is unavailable." }));
         }
 
         var (centerX, centerY) = LunarProjection.ToProjected(request.CenterLocation.Latitude, request.CenterLocation.Longitude);
@@ -151,7 +150,9 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
         int centerCol = (int)Math.Round(centerColD);
         int centerRow = (int)Math.Round(centerRowD);
 
-        int rad = Math.Max(1, request.WindowRadiusPixels);
+        if (request.WindowRadiusPixels is < 1 or > 999)
+            throw new ArgumentOutOfRangeException(nameof(request), "DEM window radius must be between 1 and 999 pixels.");
+        int rad = request.WindowRadiusPixels;
         int startCol = centerCol - rad;
         int startRow = centerRow - rad;
         int width = (rad * 2) + 1;
@@ -168,7 +169,7 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
             for (int c = 0; c < width; c++)
             {
                 int curCol = startCol + c;
-                float val = reader.ReadPixel(curCol, curRow);
+                float val = ReadPixel(curCol, curRow);
                 samples[(r * width) + c] = val;
 
                 if (float.IsNaN(val))
@@ -192,7 +193,23 @@ public sealed class LolaTerrainService : ITerrainService, IDisposable
             min == double.MaxValue ? null : Math.Round(min, 2),
             max == double.MinValue ? null : Math.Round(max, 2),
             hasNoData,
-            Array.Empty<string>()));
+            readFailed ? new[] { "LOLA DEM data could not be decoded; terrain is unavailable." } : Array.Empty<string>())
+        {
+            OriginX = LunarProjection.FromPixel(startCol, startRow, metadata).X,
+            OriginY = LunarProjection.FromPixel(startCol, startRow, metadata).Y
+        });
+    }
+
+    private float ReadPixel(int col, int row)
+    {
+        if (readFailed) return float.NaN;
+        try { return reader!.ReadPixel(col, row); }
+        catch (Exception exception) when (exception is IOException or InvalidDataException)
+        {
+            // Reject the dataset after a failed tile read; never use partially decoded elevations.
+            readFailed = true;
+            return float.NaN;
+        }
     }
 
     private static string ResolvePath(string? explicitPath)

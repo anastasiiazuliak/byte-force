@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '../../../..');
 const contract = YAML.parse(fs.readFileSync(path.join(root, 'contracts/openapi.yaml'), 'utf8'));
 const directory = process.argv[2]
   ? path.resolve(process.argv[2])
-  : path.resolve(__dirname, '../bin/Debug/net8.0/ContractResponses');
+  : path.resolve(__dirname, '../bin/Debug/net10.0/ContractResponses');
 const ajv = new Ajv({ strict: false, allErrors: true });
 addFormats(ajv);
 const files = fs.readdirSync(directory).filter(file => file.endsWith('.json'));

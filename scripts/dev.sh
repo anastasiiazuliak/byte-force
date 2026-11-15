@@ -1,8 +1,4 @@
 #!/bin/sh
 set -eu
-# Run from the repository root; keep the process in the foreground for clean shutdown.
-if [ ! -f backend/LunarNavigator.Api/LunarNavigator.Api.csproj ]; then
-    echo 'Run scripts/dev.sh from the repository root.' >&2
-    exit 1
-fi
-exec dotnet run --project backend/LunarNavigator.Api/LunarNavigator.Api.csproj --urls http://localhost:5080
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec python3 "$SCRIPT_DIR/run-local.py" "$@"

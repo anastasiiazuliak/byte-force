@@ -24,7 +24,7 @@ export const WebGLFallback: React.FC<WebGLFallbackProps> = ({
           </div>
         )}
 
-        <div className={styles.fallbackSchematic} aria-label="2D South Polar Schematic">
+        <div className={styles.fallbackSchematic} aria-label="Illustrative polar schematic, not verified geography">
           <svg viewBox="-120 -120 240 240" className={styles.schematicSvg}>
             <circle cx="0" cy="0" r="100" fill="#121820" stroke="#334155" strokeWidth="1.5" strokeDasharray="3 3" />
             <text x="0" y="-104" textAnchor="middle" fill="#64748b" fontSize="7">80°S Boundary</text>
@@ -33,11 +33,11 @@ export const WebGLFallback: React.FC<WebGLFallbackProps> = ({
             <line x1="0" y1="-100" x2="0" y2="100" stroke="#1e293b" strokeWidth="1" />
             <line x1="-100" y1="0" x2="100" y2="0" stroke="#1e293b" strokeWidth="1" />
             <circle cx="0" cy="0" r="7" fill="#0f172a" stroke="#f59e0b" strokeWidth="1.5" />
-            <text x="10" y="3" fill="#f59e0b" fontSize="6" fontWeight="bold">Shackleton Rim (90°S)</text>
+            <text x="10" y="3" fill="#f59e0b" fontSize="6" fontWeight="bold">South pole (schematic)</text>
             <rect x="-12" y="5" width="6" height="14" fill="#38bdf8" rx="2" transform="rotate(25 -10 12)" />
-            <text x="-25" y="24" fill="#38bdf8" fontSize="5">Connecting Ridge</text>
+            <text x="-25" y="24" fill="#38bdf8" fontSize="5">Illustrative relief</text>
             <circle cx="-5" cy="-42" r="5" fill="#475569" stroke="#94a3b8" strokeWidth="1" />
-            <text x="5" y="-40" fill="#94a3b8" fontSize="5">Malapert Massif</text>
+            <text x="5" y="-40" fill="#94a3b8" fontSize="5">Not a geographic map</text>
           </svg>
         </div>
 

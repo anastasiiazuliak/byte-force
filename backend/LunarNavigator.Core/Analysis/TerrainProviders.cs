@@ -18,7 +18,11 @@ public sealed record HorizonProfileResult(
     bool TerrainApplied,
     string? TerrainSource,
     double? ResolutionMeters,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings)
+{
+    // Provider provenance, not a runtime configuration switch. Not part of the response DTO.
+    public bool IsRegionalOnly { get; internal init; }
+}
 
 public interface ITerrainHeightProvider
 {

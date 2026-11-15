@@ -1,13 +1,9 @@
 # API — backend lane 3
 
-<<<<<<< HEAD
-.NET 8; усі проєкти — в `backend/LunarNavigator.sln`. HTTP base: `/api/v1`, JSON camelCase,
-час — UTC ISO-8601 із `Z`. Наукові числа у production надходять тільки з Horizons і підключених перевірених data providers.
-=======
-ASP.NET Core API на .NET 8 у спільному `backend/LunarNavigator.sln`.
-Код — `backend/LunarNavigator.Api`, тести — `backend/tests/LunarNavigator.Api.Tests`.
-Ці маршрути працюють без інтернету, ключів NASA або DEM.
->>>>>>> 69b0eae (moona)
+.NET 10; усі проєкти — в `backend/LunarNavigator.sln`, тести — в `backend/tests/LunarNavigator.Api.Tests`.
+HTTP base `/api/v1`, JSON camelCase, UTC ISO-8601 з `Z`. Health/config/catalog працюють offline;
+analyze/compare потребують NASA Horizons. Без перевіреного terrain повертаються чесні partial/null,
+а не синтетичні наукові результати.
 
 | Задача | Endpoint | Поточна поведінка |
 |---|---|---|
@@ -121,16 +117,17 @@ proposal наведено в docs/contract-change-request.md.
 походження; unsourced тільки explicit DEMO labels. Missing/malformed catalog — 503 INTERNAL_ERROR.
 
 `Terrain__DemPath` optionally connects the existing DATA-01 GeoTIFF reader (absolute or API-content-root relative path).
-With no configured path the unavailable provider remains active. The API adapter exposes available heights while
+Without an explicit path, TerrainFactory checks LUNAR_DEM_PATH / LUNAR_DATA_DIR and the local data/raw default; missing or corrupt input is unavailable. The API adapter exposes available heights while
 sanitizing internal path/error warnings and forcing DatumAlignmentVerified=false: current DATA-01 default metadata
 is not independent proof of frame/datum alignment. A scientifically reviewed provider/adapter must replace this gate
-before terrain visibility can become complete. Terrain/Horizon source files were not modified.
+before terrain visibility can become complete. Final integration wires LolaHorizonService and hardens truncated/corrupt TIFF handling; incomplete profiles never claim verified terrain.
 
 ## BE-06: manifest handoff
 
 `MapManifest__ManifestPath`: JSON envelope `{schemaVersion:1, metadata:<frozen MapMetadataResponse>, requiredAssets:[...]}`.
 Це локальна data-lane handoff proposal, не зміна HTTP response schema. Готовий production manifest не додавався.
 `MapManifest__AssetRootPath`: local deployment root для перевірки існування файлів.
+`MapManifest__MetadataReviewConfirmed` default false: contributor verified flags require independent review confirmation, in addition to all structural/asset checks; do not enable it merely to suppress 503.
 `MapManifest__AssetBaseUrl`: optional HTTPS CDN base; без нього URLs тільки relative/same-origin.
 
 Verified metadata потребує exact Moon south-polar stereographic PROJ definition (`+proj=stere`, `+lat_0=-90`,

@@ -32,6 +32,8 @@ export interface LunarTerrainViewerProps {
   selectedA?: Coordinates | null;
   selectedB?: Coordinates | null;
   timeUtc?: IsoUtc | null;
+  sunDirectionScene?: [number, number, number] | null;
+  sunlightLabel?: string;
   sunDirectionMoonFixed?: [number, number, number] | null;
   onSelectSite?: (site: SceneSelectedSite) => void;
   onStatus?: (status: SceneStatus) => void;
