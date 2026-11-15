@@ -6,6 +6,7 @@ import { TerrainMesh } from './TerrainMesh';
 import { DisplayPlinth } from './DisplayPlinth';
 import { SceneControls } from './SceneControls';
 import { SiteMarkers } from './SiteMarkers';
+import { Starfield } from './Starfield';
 import { DEFAULT_CAMERA_PRESET } from '../scene/camera';
 import type { CameraAnimationState } from '../scene/camera';
 import type { CameraPreset, SceneStatus, SceneSelectedSite, SiteSlot } from '../types';
@@ -139,7 +140,8 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
       onPointerUp={handlePointerUp}
       style={{ width: '100%', height: '100%', outline: 'none' }}
     >
-      <color attach="background" args={['#040608']} />
+      <color attach="background" args={['#000000']} />
+      <Starfield />
 
       <AdaptiveDpr pixelated />
       <Lighting sunDirectionScene={sunDirectionScene} />
