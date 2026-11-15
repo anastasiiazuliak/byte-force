@@ -7,6 +7,7 @@ import { DisplayPlinth } from './DisplayPlinth';
 import { SceneControls } from './SceneControls';
 import { SiteMarkers } from './SiteMarkers';
 import { Starfield } from './Starfield';
+import { SkyBodies } from './SkyBodies';
 import { PolarCamera, PolarGlobe, useGlobeTexture } from './PolarGlobe';
 import { GLOBE_CENTER, globeCloseupPosition, globeFitDistance, globeOverviewPosition } from '../scene/polarGlobe';
 import { DEFAULT_CAMERA_PRESET } from '../scene/camera';
@@ -156,6 +157,7 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
       <AdaptiveDpr pixelated />
       {globe ? <>
         <PolarGlobe texture={globeTexture} />
+        <SkyBodies />
         {globeHasTerrain && globeTexture && <TerrainMesh globeTexture={globeTexture} metadata={metadata}
           onStatus={handleStatus} onMeshClick={handleMeshClick} onSurfaceReady={handleSurface} />}
       </> : <>

@@ -26,8 +26,8 @@ function makeStars() {
     const faint = rank < 0.93;
     const bright = rank > 0.992;
     appearance.set([
-      faint ? 1 : bright ? 1.8 : 1.3,
-      faint ? 0.10 + 0.20 * intensity ** 2 : bright ? 0.55 + 0.23 * intensity : 0.32 + 0.20 * intensity,
+      faint ? 1.35 : bright ? 2.25 : 1.75,
+      faint ? 0.21 + 0.23 * intensity ** 2 : bright ? 0.70 + 0.24 * intensity : 0.44 + 0.22 * intensity,
     ], index * 2);
     index++;
   }

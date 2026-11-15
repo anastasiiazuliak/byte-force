@@ -3,7 +3,7 @@ import { MOON_RADIUS_METERS } from './projection';
 
 export const ACTIVE_LATITUDE = -80;
 export const FADE_LATITUDE = -75;
-export const INACTIVE_BRIGHTNESS = 0.2;
+export const INACTIVE_BRIGHTNESS = 0.34;
 export const GLOBE_CENTER: [number, number, number] = [0, -MOON_RADIUS_METERS, 0];
 // The visual shell sits beneath the reviewed relief so the cap can be rendered and picked directly.
 export const GLOBE_SHELL_RADIUS = MOON_RADIUS_METERS - 12_000;
@@ -54,5 +54,6 @@ export function polarGlobeMaterial(this: MeshStandardMaterial, shader: Parameter
     `)
     .replace('#include <colorspace_fragment>', `#include <colorspace_fragment>
       float inactive = smoothstep(radians(${ACTIVE_LATITUDE.toFixed(1)}), radians(${FADE_LATITUDE.toFixed(1)}), latitude);
-      gl_FragColor.rgb *= mix(1.0, ${INACTIVE_BRIGHTNESS.toFixed(2)}, inactive);`);
+      vec3 mapDetail = sRGBTransferOETF(vec4(diffuseColor.rgb, 1.0)).rgb * 0.26;
+      gl_FragColor.rgb = max(gl_FragColor.rgb, mapDetail) * mix(1.0, ${INACTIVE_BRIGHTNESS.toFixed(2)}, inactive);`);
 }
