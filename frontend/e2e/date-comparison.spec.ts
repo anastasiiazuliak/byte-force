@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import fixture from '../../contracts/fixtures/analyze-partial.json' with { type: 'json' };
+import mapMetadata from '../../contracts/fixtures/map-metadata-unverified.json' with { type: 'json' };
 
 for (const width of [390, 1440]) {
   test(`fixture date comparison preserves drafts and uses elapsed UTC with regional bins at ${width}px`, async ({ page }, testInfo) => {
@@ -10,6 +11,8 @@ for (const width of [390, 1440]) {
     page.on('requestfailed', request => failures.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText}`));
     let comparisons = 0, analyses = 0;
     page.on('request', request => { if (request.url().endsWith('/api/v1/analyze')) analyses++; });
+    // Date comparison does not require the deployment's reviewed-map metadata gate.
+    await page.route('**/api/v1/map/metadata', route => route.fulfill({ json: mapMetadata }));
     await page.route('**/api/v1/compare', route => {
       comparisons++;
       const input = route.request().postDataJSON();
