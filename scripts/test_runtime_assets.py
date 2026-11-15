@@ -24,7 +24,13 @@ class StaticSecurityTests(unittest.TestCase):
         (self.root/'terrain/sample.glb').write_bytes(b'glTF'+b'fixture')
         (self.base/'private.txt').write_text('test-only private data')
         (self.root/'terrain/.env.json').write_text('test-only hidden data')
-        (self.root/'terrain/link.json').symlink_to(self.base/'private.txt')
+        self.symlink_available = True
+        try:
+            (self.root/'terrain/link.json').symlink_to(self.base/'private.txt')
+        except OSError as error:
+            if getattr(error, 'winerror', None) != 1314:
+                raise
+            self.symlink_available = False
         class Quiet(module.Assets):
             def log_message(self,*args):pass
         self.server=http.server.ThreadingHTTPServer(('127.0.0.1',0),functools.partial(Quiet,directory=str(self.root)))
@@ -42,11 +48,18 @@ class StaticSecurityTests(unittest.TestCase):
             self.assertEqual(r.headers['X-Content-Type-Options'],'nosniff')
             self.assertEqual(r.read(4),b'glTF')
     def test_traversal_directory_and_private_files_are_rejected(self):
-        for path in ['/','/terrain/','/.release-review.json','/terrain/../private.txt','/terrain/%2e%2e/private.txt','/terrain/%252e%252e/private.txt','/terrain/link.json','/terrain/%00.glb','/terrain/.env.json']:
+        for path in ['/','/terrain/','/.release-review.json','/terrain/../private.txt','/terrain/%2e%2e/private.txt','/terrain/%252e%252e/private.txt','/terrain/%00.glb','/terrain/.env.json']:
             with self.subTest(path=path),self.assertRaises(urllib.error.HTTPError) as error:
                 urllib.request.urlopen(self.url+path)
             self.assertEqual(error.exception.code,404)
             error.exception.close()
+    def test_symlink_escape_is_rejected(self):
+        if not self.symlink_available:
+            self.skipTest('Windows symbolic links require Developer Mode or the symlink privilege')
+        with self.assertRaises(urllib.error.HTTPError) as error:
+            urllib.request.urlopen(self.url+'/terrain/link.json')
+        self.assertEqual(error.exception.code,404)
+        error.exception.close()
     def test_wrong_dataset_cannot_be_approved_by_filename(self):
         path=self.base/'LDEM_80S_80MPP_ADJ.TIF';path.write_bytes(b'not a reviewed dataset')
         with self.assertRaises(ValueError):checked_dem(path)

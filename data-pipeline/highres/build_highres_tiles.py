@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-P2-03 — High-Resolution (5 m/pixel) Nested Lunar DEM Tile Builder.
+High-Resolution (5 m/pixel) Nested Lunar DEM Tile Builder.
 
 Generates a nested high-detail 3D GLB tile set for a small selected region
 (e.g. Connecting Ridge CR1 landing pad zone) aligned to the base 80 m/px
@@ -123,7 +123,6 @@ def run_highres_pipeline(args) -> None:
     lat_max, lon_max = proj_to_latlon(max_x, max_y)
 
     manifest = {
-        "task": "P2-03",
         "enabled": not args.dry_run,
         "status": "pending_nasa_5mpp_dem_download" if args.dry_run else "ready",
         "optional": True,
@@ -163,7 +162,7 @@ def run_highres_pipeline(args) -> None:
 
 
 def main():
-    p = argparse.ArgumentParser(description="P2-03 5 m/px High-Resolution Nested DEM Tile Builder")
+    p = argparse.ArgumentParser(description="5 m/px High-Resolution Nested DEM Tile Builder")
     p.add_argument("--base-manifest", default="public-assets/metadata/lod-tileset.json")
     p.add_argument("--source-file", help="Local 5 m/px LOLA GeoTIFF file")
     p.add_argument("--source-url", help="Remote 5 m/px LOLA GeoTIFF URL")

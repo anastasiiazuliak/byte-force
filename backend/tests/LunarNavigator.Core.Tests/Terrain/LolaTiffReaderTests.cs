@@ -1,7 +1,7 @@
 using LunarNavigator.Core.Terrain;
 using Xunit;
 
-namespace LunarNavigator.Tests.Terrain;
+namespace LunarNavigator.Core.Tests.Terrain;
 
 public sealed class LolaTiffReaderTests
 {

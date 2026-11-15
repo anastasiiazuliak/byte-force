@@ -38,6 +38,7 @@ Run from the repository root:
 .venv/bin/python scripts/test_repository_guard.py
 .venv/bin/python scripts/test_data_acquisition.py
 .venv/bin/python scripts/test_runtime_assets.py
+.venv/bin/python scripts/test_local_launcher.py
 .venv/bin/python scripts/test_overview.py
 .venv/bin/python scripts/test_spherical_cap.py
 git --no-pager diff --check

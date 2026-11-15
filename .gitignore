@@ -65,11 +65,11 @@ data/raw/*
 *.TIFF
 *.grd
 *.bin
-!backend/LunarNavigator.Tests/Terrain/Fixtures/*.tif
+!backend/tests/LunarNavigator.Core.Tests/Terrain/Fixtures/*.tif
 public-assets/terrain/**/*.glb
 !public-assets/terrain/0/0/0.glb
 
-# Parallel-development frontend, local validation and secret configuration
+# Frontend, local validation and secret configuration
 node_modules/
 dist/
 build/

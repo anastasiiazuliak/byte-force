@@ -6,7 +6,7 @@ import {
   prefersReducedMotion,
 } from '../performance/performanceMonitor';
 
-describe('Performance Monitoring and Quality Tiers (QA-02)', () => {
+describe('Performance Monitoring and Quality Tiers', () => {
   it('provides sensible quality presets for all tiers', () => {
     expect(QUALITY_PRESETS.high.maxDpr).toBe(2.0);
     expect(QUALITY_PRESETS.high.shadowMapSize).toBe(2048);

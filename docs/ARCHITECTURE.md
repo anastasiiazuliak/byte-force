@@ -47,7 +47,7 @@ The canonical API does not supply real orbital distances. The 8R endpoint distan
 
 ## Product scope
 
-The original product goal was a regional site/date comparison with terrain-aware Sun/Earth interpretation. The implemented interface adds full-globe orientation and uses .NET 10 rather than the original .NET 8 proposal. It retains the regional science boundary: finite sampling is not a complete skyline solution. Real-source visibility stays unknown even when regional clearance is present.
+The API computes a regional horizon from finite terrain samples. Global visibility remains unknown even when regional clearance is available.
 
 Do not infer production-wide LOD coverage, verified site imagery, complete illumination windows, automatic landing-site ranking or operational deployment from the presence of UI controls or offline pipeline modules. The current source/epoch/coverage policy is described in [data and science](DATA_AND_SCIENCE.md).
 

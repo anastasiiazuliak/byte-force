@@ -305,7 +305,6 @@ def run_illumination_pipeline(args) -> None:
         })
 
     manifest = {
-        "task": "P2-01",
         "title": "Scientific Lunar Illumination Raster Masks",
         "sourceDataset": SOURCE_DATASET,
         "verticalReference": VERTICAL_REFERENCE,
@@ -329,7 +328,7 @@ def run_illumination_pipeline(args) -> None:
 
 
 def main():
-    p = argparse.ArgumentParser(description="P2-01 Scientific Illumination Mask Generator")
+    p = argparse.ArgumentParser(description="Scientific Illumination Mask Generator")
     p.add_argument("--source-file", help="Local GeoTIFF DEM path")
     p.add_argument("--source-url", help="Remote GeoTIFF URL (HTTP Range)")
     p.add_argument("--lat", type=float, default=-89.45)

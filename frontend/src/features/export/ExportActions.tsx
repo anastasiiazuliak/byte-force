@@ -1,3 +1,4 @@
+import { RegionalSummary } from '../analysis/RegionalSummary';
 import { useRef } from 'react';
 import { canExport, createCsv, type ExportRun } from './exportData';
 import './export.css';
@@ -37,6 +38,7 @@ export function ExportActions({ run }: { run: ExportRun }) {
             <h3>Site {id === 'A' ? '1 (A)' : '2 (B)'}</h3>
             {analysis ? <>
               <p>{analysis.status === 'partial' ? 'Partial results' : 'Complete results'} · {analysis.samples.length} samples</p>
+              <RegionalSummary analysis={analysis} />
               <dl>
                 <dt>Coordinates</dt><dd>{analysis.location.latitude}°, {analysis.location.longitude}°</dd>
                 <dt>Period (UTC)</dt><dd>{analysis.period.startUtc} → {analysis.period.endUtc} · step {analysis.period.stepMinutes} min</dd>

@@ -300,7 +300,7 @@ public class LolaHorizonServiceTests
     }
 
     [Fact]
-    public void Be06MapManifest_ExistsAndMatchesBackendValidationRules()
+    public void MapManifest_ExistsAndMatchesBackendValidationRules()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "public-assets")))
@@ -308,7 +308,7 @@ public class LolaHorizonServiceTests
         Assert.NotNull(dir);
 
         string manifestPath = Path.Combine(dir!.FullName, "public-assets", "metadata", "map-manifest.json");
-        Assert.True(File.Exists(manifestPath), $"BE-06 manifest missing: {manifestPath}");
+        Assert.True(File.Exists(manifestPath), $"Map manifest missing: {manifestPath}");
 
         using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(manifestPath));
         JsonElement root = doc.RootElement;

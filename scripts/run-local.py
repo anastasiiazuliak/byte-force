@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import socket
 import subprocess
 import sys
@@ -20,10 +21,39 @@ from release_assets import validate_runtime
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def start_service(command, cwd, env):
+    if os.name == 'nt':
+        # Windows cannot execute npm.cmd directly through CreateProcess.
+        if command[0] == 'npm':
+            npm = shutil.which('npm.cmd')
+            if npm is None:
+                raise RuntimeError('npm.cmd not found; install Node.js and add it to PATH')
+            command = [env.get('COMSPEC', 'cmd.exe'), '/d', '/s', '/c',
+                       subprocess.list2cmdline([npm, *command[1:]])]
+        return subprocess.Popen(command, cwd=cwd, env=env,
+                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+    return subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True)
+
+
+def stop_service(child, force=False):
+    if os.name == 'nt':
+        # Stop the full tree, including the dotnet host and npm's Vite process.
+        command = ['taskkill', '/PID', str(child.pid), '/T']
+        if force:
+            command.append('/F')
+        subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       check=False)
+    else:
+        os.killpg(child.pid, signal.SIGKILL if force else signal.SIGTERM)
+
+
 def require_free_ports(ports=(5080, 5081, 5173)):
     for port in ports:
         with socket.socket() as probe:
-            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if os.name == 'nt':
+                probe.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+            else:
+                probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
                 probe.bind(('127.0.0.1', port))
             except OSError as error:
@@ -134,7 +164,7 @@ def main():
             (['dotnet', 'run', '--no-launch-profile', '--project',
               str(ROOT / 'backend/LunarNavigator.Api/LunarNavigator.Api.csproj')], ROOT),
             (['npm', 'run', 'dev', '--', '--host', '127.0.0.1', '--port', '5173', '--strictPort'], ROOT / 'frontend')]):
-            children.append(subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True))
+            children.append(start_service(command, cwd, env))
             if index == 0:
                 # Avoid announcing an interactive frontend while its real API is still starting.
                 while True:
@@ -196,7 +226,7 @@ def main():
     finally:
         for child in children:
             if child.poll() is None:
-                os.killpg(child.pid, signal.SIGTERM)
+                stop_service(child)
         if server:
             server.shutdown()
             server.server_close()
@@ -204,7 +234,7 @@ def main():
             try:
                 child.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                os.killpg(child.pid, signal.SIGKILL)
+                stop_service(child, force=True)
                 child.wait(timeout=5)
 
 if __name__ == '__main__':

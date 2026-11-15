@@ -903,7 +903,7 @@ def run_pipeline(args) -> None:
         }
         Path(map_manifest).parent.mkdir(parents=True, exist_ok=True)
         Path(map_manifest).write_text(json.dumps(map_manifest_obj, indent=2), encoding="utf-8")
-        log(f"[build_mesh] wrote BE-06 map manifest: {map_manifest}")
+        log(f"[build_mesh] wrote map manifest: {map_manifest}")
 
     print(f"Done. GLB: {out_glb} ({file_size:,} bytes), "
           f"{len(positions)} verts, {len(indices)//3} tris.")

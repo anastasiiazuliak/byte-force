@@ -1,5 +1,4 @@
 {
-  "task": "P2-01",
   "title": "Scientific Lunar Illumination Raster Masks",
   "sourceDataset": "LDEM_80S_80MPP_ADJ.TIF",
   "verticalReference": "Moon (2015) Sphere R=1737400m",

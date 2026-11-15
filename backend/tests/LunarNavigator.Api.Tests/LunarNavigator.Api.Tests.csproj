@@ -18,6 +18,6 @@
     <ProjectReference Include="../../LunarNavigator.Api/LunarNavigator.Api.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="../../LunarNavigator.Tests/Terrain/Fixtures/synthetic_lola_sample.tif" Link="Fixtures/synthetic_lola_sample.tif" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../LunarNavigator.Core.Tests/Terrain/Fixtures/synthetic_lola_sample.tif" Link="Fixtures/synthetic_lola_sample.tif" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

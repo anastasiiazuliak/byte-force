@@ -50,18 +50,6 @@ button { padding: 0 14px; background: transparent; }
   padding: 12px;
   align-items: start;
 }
-.workspace:has(#comparison) {
-  grid-template-columns: minmax(220px, 1fr) minmax(0, 2.6fr) minmax(235px, 1fr);
-  grid-template-rows: auto 1fr auto;
-  grid-template-areas: "form terrain analysis" "form terrain comparison" "timeline timeline timeline";
-}
-@media (min-width: 801px) {
-  .workspace:has(#comparison):has(#site-time details:not([open])) {
-    grid-template-columns: minmax(235px, 1fr) minmax(0, 3fr) minmax(250px, 1fr);
-    grid-template-rows: auto 1fr auto;
-    grid-template-areas: "form form form" "analysis terrain comparison" "timeline timeline timeline";
-  }
-}
 .scene {
   grid-area: terrain;
   align-self: stretch;
@@ -191,13 +179,13 @@ button { padding: 0 14px; background: transparent; }
   .header-tools button { padding-inline: 8px; }
   .scene { min-height: 290px; padding-bottom: 26px; }
   .terrain-disc { width: min(70%, 250px); }
-  .workspace, .workspace:has(#comparison) {
+  .workspace, .workspace.workspace--compare {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto;
     grid-template-areas: "terrain" "form" "analysis" "timeline";
     min-height: 0;
   }
-  .workspace:has(#comparison) { grid-template-areas: "terrain" "form" "analysis" "comparison" "timeline"; }
+  .workspace.workspace--compare { grid-template-areas: "terrain" "form" "analysis" "comparison" "timeline"; }
   .scene { min-height: 290px; padding-bottom: 26px; }
   .terrain-disc { width: min(70%, 250px); }
   #site-time { border-radius: 14px 14px 8px 8px; }
@@ -329,7 +317,6 @@ th, td { padding: 6px; text-align: left; }
 #timeline p { overflow-wrap: anywhere; }
 @media (max-width: 800px) { .scene { height: 52vh; min-height: 340px; } }
 
-/* Keep PERSON02's palette and panels; give the terrain and reading order room. */
 body { line-height: 1.5; }
 button:disabled { opacity: .55; cursor: not-allowed; }
 .workspace-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; border-bottom: 1px solid var(--border); }
@@ -361,11 +348,11 @@ legend { padding-inline: 6px; font-weight: 650; }
 .skip-link { position: fixed; top: -100px; left: 12px; z-index: 1000; background: var(--panel); color: inherit; padding: 12px; }
 .skip-link:focus { top: 12px; }
 @media (min-width: 801px) and (max-width: 1199px) {
-  .workspace, .workspace:has(#comparison) { grid-template-columns: minmax(250px, 1fr) minmax(0, 2fr); grid-template-areas: 'form terrain' 'analysis comparison' 'timeline timeline'; }
+  .workspace { grid-template-columns: minmax(250px, 1fr) minmax(0, 2fr); grid-template-areas: 'form terrain' 'analysis analysis' 'timeline timeline'; }
   .scene { min-height: 560px; }
 }
 @media (max-width: 800px) {
-  .workspace, .workspace:has(#comparison) { padding: 10px; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+  .workspace, .workspace.workspace--compare { padding: 10px; gap: 12px; grid-template-columns: minmax(0, 1fr); }
   .workspace-notice { padding: 10px 12px; gap: 6px; }
   .scene { min-height: 390px; height: 55svh; padding-bottom: 0; }
   .app-header { gap: 10px; }
@@ -380,7 +367,6 @@ legend { padding-inline: 6px; font-weight: 650; }
 .terrain-loading { padding: 3rem; color: var(--muted); text-align: center; }
 .regional-assessment { color: var(--muted); font-size: .9rem; line-height: 1.5; }
 
-/* Adapt PERSON02's science plots without replacing the integrated workspace. */
 .science-plot { margin: 4px 0; min-width: 0; color: var(--muted); font-size: 12px; }
 .science-plot figcaption { margin-bottom: 8px; }
 .science-plot svg { background: #10131e; border: 1px solid var(--border); border-radius: 6px; }
@@ -425,7 +411,83 @@ legend { padding-inline: 6px; font-weight: 650; }
 .lighting-toggle input[type="checkbox"] { width: 17px; height: 17px; min-height: 0; padding: 0; margin: 0; accent-color: var(--earth); }
 .lighting-explanation { font-size: 11px; color: var(--muted); }
 .sky-registration-status { flex-basis: 100%; font-size: 11px; color: var(--muted); }
+
+/* Give comparison results their own row, independent of the editor's height. */
+.workspace { grid-template-rows: auto auto; }
+.workspace.workspace--compare {
+  grid-template-columns: minmax(270px, 320px) repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto auto auto;
+  grid-template-areas: "form terrain terrain" "form analysis comparison" "timeline timeline timeline";
+}
+.workspace > * { min-width: 0; }
+.scene {
+  display: block;
+  height: clamp(420px, 68svh, 760px);
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #040608;
+}
+.explorer-stage { overflow: hidden; }
+.explorer-stage > [data-testid="lunar-terrain-viewer"] { min-width: 0; overflow: hidden; }
+.panel {
+  border-color: #343d57;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #171d2c, #121725);
+  box-shadow: 0 8px 28px #00000018;
+}
+.panel > details > summary, .panel > h2 {
+  padding: 14px 18px;
+  border-radius: 11px 11px 0 0;
+  background: #202941;
+  letter-spacing: .01em;
+  font-size: 15px;
+}
+.panel > details:not([open]) > summary { border-radius: 11px; }
+.panel-body { font-size: 14px; line-height: 1.65; }
+.panel label { color: #c2cbe0; }
+.panel input, .panel select { background: #101725; border-color: #414d68; padding: 10px; }
+button { transition: background-color 140ms ease, border-color 140ms ease; }
+button:not(:disabled):hover { background-color: #29334e; border-color: #6b7a9f; }
+.primary-button { background: #6655cf; font-weight: 650; }
+.primary-button:not(:disabled):hover { background: #7765e1; }
+.panel article { gap: 12px; overflow-wrap: anywhere; }
+.analysis-result > p:first-child { font-size: 16px; color: #f4f6ff; }
+.analysis-result section { margin: 0; padding-top: 16px; }
+.analysis-result section h3 { color: #e1e7fa; margin-bottom: 8px; line-height: 1.45; }
+.analysis-result section p { margin-block: 8px; }
+.analysis-result details > summary {
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  background: #1d263a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.analysis-result details[open] > summary { margin-bottom: 12px; }
+.quality-banner { line-height: 1.6; background: #ffdc7509; }
+[data-testid="comparison-differences"] { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 13px; overflow-wrap: anywhere; }
+[data-testid="comparison-differences"] h3 { margin-bottom: 10px; }
+
+@media (min-width: 801px) {
+  .workspace--compare #analysis .panel-body,
+  .workspace--compare #comparison .panel-body { max-height: 720px; }
+}
+@media (min-width: 801px) and (max-width: 1199px) {
+  .workspace.workspace--compare {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas: "terrain terrain" "form form" "analysis comparison" "timeline timeline";
+    grid-template-rows: auto auto auto auto;
+  }
+}
 @media (max-width: 800px) {
+  .workspace.workspace--compare {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas: "terrain" "form" "analysis" "comparison" "timeline";
+  }
+  .scene { height: clamp(390px, 58svh, 620px); padding-bottom: 0; }
   .explorer-toolbar { gap: 5px 10px; padding: 7px; }
   .explorer-toolbar button { font-size: 12px; padding: 5px 10px; }
   .lighting-explanation { display: none; }

@@ -3,7 +3,7 @@ using Xunit;
 
 namespace LunarNavigator.Core.Tests.Terrain;
 
-public class P2DataPipelinesTests
+public class DataPipelineManifestTests
 {
     private static string FindRepoRoot()
     {
@@ -30,7 +30,6 @@ public class P2DataPipelinesTests
         using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(path));
         JsonElement r = doc.RootElement;
 
-        Assert.Equal("P2-01", r.GetProperty("task").GetString());
         Assert.Equal("LDEM_80S_80MPP_ADJ.TIF", r.GetProperty("sourceDataset").GetString());
         Assert.Contains("1737400", r.GetProperty("verticalReference").GetString());
 
@@ -64,7 +63,6 @@ public class P2DataPipelinesTests
         JsonElement b = baseDoc.RootElement;
         JsonElement hr = hrDoc.RootElement;
 
-        Assert.Equal("P2-03", hr.GetProperty("task").GetString());
         Assert.True(hr.GetProperty("optional").GetBoolean());
         Assert.Equal(5.0, hr.GetProperty("resolutionMeters").GetDouble());
         Assert.True(hr.GetProperty("verticalDatumNormalizedToBase").GetBoolean());

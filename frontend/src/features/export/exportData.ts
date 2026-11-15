@@ -1,3 +1,4 @@
+import { regionalWindow } from '../analysis/regionalWindow';
 import type { AnalysisResponse, ComparisonDifferences, ScenarioId } from '../../api/types';
 
 export interface ExportScenario {
@@ -27,7 +28,7 @@ const headers = [
   'sun_azimuth_deg', 'sun_elevation_deg', 'sun_horizon_deg', 'sun_clearance_deg', 'sun_visible',
   'earth_azimuth_deg', 'earth_elevation_deg', 'earth_horizon_deg', 'earth_clearance_deg', 'earth_visible',
   'sun_visible_hours', 'earth_visible_hours', 'both_visible_hours', 'sun_visible_percent', 'earth_visible_percent',
-  'ephemeris_source', 'terrain_source', 'terrain_applied', 'dem_resolution_m', 'visibility_method', 'message',
+  'ephemeris_source', 'terrain_source', 'terrain_applied', 'dem_resolution_m', 'visibility_method', 'message', 'regional_sun_percent', 'regional_earth_percent', 'regional_both_percent',
 ] as const;
 type Cell = string | number | boolean | null | undefined;
 type Row = Partial<Record<typeof headers[number], Cell>>;
@@ -66,6 +67,9 @@ export function createCsv(run: ExportRun): string {
       ephemeris_source: quality.ephemerisSource, terrain_source: known(quality.terrainSource),
       terrain_applied: quality.terrainApplied, dem_resolution_m: known(quality.terrainResolutionMeters),
       visibility_method: quality.visibilityMethod,
+      regional_sun_percent: regionalWindow(analysis, 'sun')?.percent,
+      regional_earth_percent: regionalWindow(analysis, 'earth')?.percent,
+      regional_both_percent: regionalWindow(analysis, 'both')?.percent,
     });
     for (const warning of quality.warnings) rows.push({ ...common, record_type: 'warning', scenario: id, status: analysis.status, message: warning });
     for (const { timeUtc, sun, earth } of analysis.samples) {

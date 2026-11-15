@@ -1,5 +1,4 @@
 {
-  "task": "P2-03",
   "enabled": false,
   "status": "pending_nasa_5mpp_dem_download",
   "optional": true,

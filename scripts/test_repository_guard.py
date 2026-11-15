@@ -2,11 +2,12 @@
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-FIXTURE = 'backend/LunarNavigator.Tests/Terrain/Fixtures/synthetic_lola_sample.tif'
+FIXTURE = 'backend/tests/LunarNavigator.Core.Tests/Terrain/Fixtures/synthetic_lola_sample.tif'
 
 class RepositoryGuardTests(unittest.TestCase):
     def setUp(self):
@@ -25,7 +26,7 @@ class RepositoryGuardTests(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
         subprocess.run(['git', '-C', str(self.root), 'add', '.'], check=True)
-        return subprocess.run(['python3', str(self.root / 'scripts/check-repository.py')], capture_output=True)
+        return subprocess.run([sys.executable, str(self.root / 'scripts/check-repository.py')], capture_output=True)
 
     def test_reviewed_fixture_passes(self):
         self.assertEqual(self.run_guard(FIXTURE, (ROOT / FIXTURE).read_bytes()).returncode, 0)

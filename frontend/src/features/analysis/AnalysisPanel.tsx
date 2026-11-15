@@ -1,3 +1,4 @@
+import { RegionalSummary } from './RegionalSummary';
 import { useMemo, useState } from 'react';
 import type { AnalysisResponse } from '../../api/types';
 import { compassPoint, humanWarning, metric, plotGeometry, utcLabel, visibility, type PlotMode } from './analysisHelpers';
@@ -34,6 +35,7 @@ export function AnalysisPanel({ analysis, timeUtc, slot = 'A' }: { analysis?: An
     <p><strong>{analysis.status === 'partial' ? 'Partial analysis' : 'Complete analysis'}</strong> · Slot {slot}</p>
     {synthetic.length > 0 && <p className="quality-banner" role="note">Synthetic test data — not NASA science. {Array.from(new Set(synthetic)).join(' ')}</p>}
     <p className="analysis-time"><time dateTime={timeUtc}>{utcLabel(timeUtc)}</time> · shared selected UTC · exact samples only</p>
+    <RegionalSummary analysis={analysis} />
     <section><h3>1. Astronomical Position</h3><p className="muted">Local sky directions, not a global 3D vector. North 0° · East 90°.</p>
       {!sample && <p>No exact sample at the selected UTC. Positions are not interpolated.</p>}
       <svg className="sky-compass" viewBox="0 0 140 140" role="img" aria-label={`Local sky compass for slot ${slot}: north 0 degrees, east 90 degrees`}>

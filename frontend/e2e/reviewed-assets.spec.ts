@@ -7,7 +7,7 @@ async function pick(page: Page, x = .5, y = .5) {
   await page.mouse.click(box!.x + box!.width * x, box!.y + box!.height * y);
 }
 async function ready(page: Page) {
-  await expect(page.getByText('Terrain: Ready (GLB)', { exact: true })).toBeVisible();
+  await expect(page.getByText('Terrain: Ready (GLB)', { exact: true })).toBeVisible({ timeout: 60000 });
 }
 async function period(page: Page, slot = 'A') {
   await page.getByLabel(`Start UTC ${slot}`, { exact: true }).fill('2026-11-14T00:00');

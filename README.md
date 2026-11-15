@@ -42,6 +42,8 @@ The `&&` chains also work in PowerShell 7. Do not install into Fedora's external
 
 Open **http://127.0.0.1:5173**. The API is at http://127.0.0.1:5080/api/v1/health and the local asset server at http://127.0.0.1:5081. Vite proxies API/static requests. Ports 5173, 5080 and 5081 must be free.
 
+After setup, Windows PowerShell users can also run `.\scripts\run-local.ps1`. This wrapper selects the checkout's `.venv` Python (or local portable Python under `.validation/python`) and optional portable Node under `.validation/node`. It forwards launcher arguments, for example `.\scripts\run-local.ps1 --smoke`.
+
 **Stop:** press Ctrl+C in the launcher terminal; it shuts down its child services. **Quick restart:** `.venv/bin/python scripts/run-local.py` on Linux, or `.venv\Scripts\python.exe scripts/run-local.py` on Windows. It rechecks reviewed runtime assets and independently rebuilds comparison artifacts to verify their identity; it does not download replacement datasets or republish assets. These integrity checks can take a few minutes before the servers start; progress and elapsed time are printed. An occupied port is reported immediately rather than silently starting another instance. Append `--smoke` for a bounded startup check.
 
 **Offline regeneration** with the full DEM already present:
@@ -53,29 +55,13 @@ Open **http://127.0.0.1:5173**. The API is at http://127.0.0.1:5080/api/v1/healt
 
 On Windows replace `.venv/bin/python` with `.venv\Scripts\python.exe`. Offline regeneration requires the texture packages already installed; launching also requires frontend dependencies and .NET restore/build dependencies to be cached. To explicitly omit the optional cartographic visual, add `--no-polar-texture` to `--prepare-runtime`; neutral mesh-normal rendering remains, without changing science semantics. Without the DEM, run the venv Python with `scripts/run-local.py --fallback-assets` for the visibly unverified bundled preview with picking disabled. See [asset acquisition](docs/science/ASSET_ACQUISITION.md) for relief identity and provenance.
 
-## Work with the repository
-
-On a new machine, clone the repository using your GitHub SSH credentials:
-
-```sh
-git clone git@github.com:anastasiiazuliak/byte-force.git
-```
-
-Open the resulting `byte-force/` checkout and run setup from its root. You can choose a different destination directory when cloning; no workstation-specific worktree path is required.
-
-In an existing clone, `git fetch origin` updates remote-tracking refs **without changing your working files**. Inspect `git status` and the incoming changes first; `git merge --ff-only origin/main` updates the current branch only if a fast-forward is possible. Do not merge over uncommitted work or treat fetch as an update of the working tree.
-
-Build, unit, contract and browser-test commands are documented in [development](docs/DEVELOPMENT.md). CI defines the actual checks; no test count or external deployment certification is implied here.
-
 ## Documentation
 
 - [Architecture and implemented scope](docs/ARCHITECTURE.md)
 - [Development, verification and deployment boundaries](docs/DEVELOPMENT.md)
-- [Git publishing and worktree safety](docs/GIT_WORKFLOW.md)
 - [Data, attribution and scientific limits](docs/DATA_AND_SCIENCE.md)
 - [Coordinates and scene transforms](docs/COORDINATES_AND_TILES.md)
 - [Horizons client](docs/horizons.md)
-- [Visual design method](docs/VISUAL_DESIGN.md)
 - [API conventions](docs/API_CONTRACT.md), [canonical OpenAPI](contracts/openapi.yaml), [shared types](contracts/api-types.ts) and [scene contracts](contracts/scene/)
 
 ## License and attribution

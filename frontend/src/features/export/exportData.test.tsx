@@ -17,7 +17,7 @@ function csvRows(csv: string) {
   });
 }
 
-describe('P2-02 exports', () => {
+describe('Analysis exports', () => {
   it('exports each API sample, both scenario summaries and the B minus A duration differences', () => {
     const second: AnalysisResponse = {
       ...partial,

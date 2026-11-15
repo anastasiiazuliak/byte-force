@@ -67,7 +67,7 @@ export function AppShell({ slots, dataMode, scene = emptyScene, state = 'ready',
         {dataMode === 'demo' && ' Demo intervals are illustrative.'}<p>Method: LOLA regional terrain, MOON_ME / DE421, radial height above the 1737.4 km sphere; reviewed UTC 1962–2649. Airless apparent disc centers, not power, thermal safety or communication performance. Sampled profiles do not certify a complete skyline.</p>
       </aside>
       {notice && <div className="workspace-notice">{notice}</div>}
-      <main className="workspace">
+      <main className={`workspace${view === 'compare' ? ' workspace--compare' : ''}`}>
         <section className="scene" id="terrain-scene-slot" aria-label="Lunar terrain">
           <TerrainViewer {...scene} />
         </section>

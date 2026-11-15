@@ -10,7 +10,7 @@ root = Path(__file__).resolve().parents[1]
 files = subprocess.check_output(['git', '-C', str(root), 'ls-files', '-z']).decode().split('\0')
 # Reviewed, small synthetic test input already in the team history; never a raw NASA DEM.
 approved_raster_fixtures = {
-    'backend/LunarNavigator.Tests/Terrain/Fixtures/synthetic_lola_sample.tif':
+    'backend/tests/LunarNavigator.Core.Tests/Terrain/Fixtures/synthetic_lola_sample.tif':
         '82de3a1b5d4c7e73ee4eca19ffff38179f1e072504bb6fd1425a5d4a0fc86f63',
 }
 patterns = [

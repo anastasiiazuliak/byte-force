@@ -19,8 +19,7 @@
     <ProjectReference Include="../../LunarNavigator.Core/LunarNavigator.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="../../LunarNavigator.Tests/Terrain/*.cs" Link="Terrain/Legacy/%(Filename)%(Extension)" />
-    <None Include="../../LunarNavigator.Tests/Terrain/Fixtures/synthetic_lola_sample.tif" Link="Terrain/Fixtures/synthetic_lola_sample.tif" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Terrain/Fixtures/synthetic_lola_sample.tif" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../../contracts/fixtures/coordinate-control-points.json" Link="Fixtures/coordinate-control-points.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
