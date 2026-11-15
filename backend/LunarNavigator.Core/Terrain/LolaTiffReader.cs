@@ -9,7 +9,7 @@ using Microsoft.Win32.SafeHandles;
 namespace LunarNavigator.Core.Terrain;
 
 /// <summary>
-/// High-performance, thread-safe reader for Cloud-Optimized BigTIFF (COG) elevation models (DATA-01).
+/// High-performance, thread-safe reader for Cloud-Optimized BigTIFF (COG) elevation models.
 /// Reads individual 512x512 tiles on-demand using zero-copy positional I/O (RandomAccess)
 /// and maintains an in-memory LRU tile cache to eliminate redundant disk I/O.
 /// </summary>

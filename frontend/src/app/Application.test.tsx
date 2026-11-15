@@ -2,7 +2,8 @@ import * as siteCatalog from './siteCatalog';
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Application } from './Application';
+import { Application, errorMessage as applicationErrorMessage } from './Application';
+import { errorMessage } from './errorMessage';
 import { ApiClientError } from '../api/client';
 import fixture from '../../../contracts/fixtures/analyze-partial.json';
 const api = vi.hoisted(() => ({ health: vi.fn(), config: vi.fn(), landingSites: vi.fn(), mapMetadata: vi.fn(), analyze: vi.fn(), compare: vi.fn(), ephemeris: vi.fn() }));
@@ -21,6 +22,9 @@ async function fillA() {
   fireEvent.change(screen.getByLabelText('Longitude A'), { target: { value: '0' } });
 }
 describe('live workspace composition', () => {
+  it('retains the entry-point error formatter export', () => {
+    expect(applicationErrorMessage).toBe(errorMessage);
+  });
   it('shows indeterminate progress until the analysis finishes', async () => {
     let finish!: (value: typeof fixture) => void;
     api.analyze.mockImplementation(() => new Promise(resolve => { finish = resolve; }));

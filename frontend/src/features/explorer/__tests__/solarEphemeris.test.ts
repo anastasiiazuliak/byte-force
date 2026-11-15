@@ -6,7 +6,7 @@ import {
 } from '../lighting/solarEphemeris';
 import type { EphemerisSample } from '../../../api/types';
 
-describe('Solar Ephemeris and Lighting Interpolation (FE3D-04)', () => {
+describe('Solar Ephemeris and Lighting Interpolation', () => {
   it('interpolates unit vectors with slerp without magnitude loss', () => {
     const v0: [number, number, number] = [1, 0, 0];
     const v1: [number, number, number] = [0, 1, 0];

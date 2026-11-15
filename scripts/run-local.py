@@ -19,6 +19,17 @@ from release_assets import validate_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 
+
+def require_free_ports(ports=(5080, 5081, 5173)):
+    for port in ports:
+        with socket.socket() as probe:
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                probe.bind(('127.0.0.1', port))
+            except OSError as error:
+                raise RuntimeError(f'Cannot use port {port}: {error}. Stop the existing launcher with Ctrl+C before restarting; do not start a second instance.') from error
+
+
 class Assets(http.server.SimpleHTTPRequestHandler):
     extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,
                       '.glb': 'model/gltf-binary', '.webp': 'image/webp'}
@@ -77,7 +88,16 @@ def main():
     reviewed = ROOT / '.validation/runtime-assets'
     selected = args.assets or (ROOT/'public-assets' if args.fallback_assets else reviewed if reviewed.exists() else ROOT/'public-assets')
     assets = selected.resolve(strict=True)
-    receipt = validate_runtime(assets) if (assets/'.release-review.json').exists() else None
+    try:
+        require_free_ports()
+    except RuntimeError as error:
+        parser.error(str(error))
+    receipt = None
+    if (assets/'.release-review.json').exists():
+        print('Checking NASA source and generated asset integrity. This can take a few minutes; no new download is started.', flush=True)
+        started = time.monotonic()
+        receipt = validate_runtime(assets)
+        print(f'Asset checks completed in {time.monotonic() - started:.1f} seconds.', flush=True)
     if receipt:
         print('Reviewed native LOLA asset proof verified; regional/global visibility remains unknown.', flush=True)
     else:
@@ -105,11 +125,7 @@ def main():
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     try:
-        # Refuse occupied ports instead of accidentally smoke-testing another process.
-        for port in (5080, 5081, 5173):
-            with socket.socket() as probe:
-                probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                probe.bind(('127.0.0.1', port))
+        require_free_ports()
         server = http.server.ThreadingHTTPServer(('127.0.0.1', 5081),
             functools.partial(Assets, directory=str(assets)))
         threading.Thread(target=server.serve_forever, daemon=True).start()

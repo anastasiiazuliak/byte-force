@@ -30,7 +30,7 @@ public sealed record TerrainWindowResult(
 }
 
 /// <summary>
-/// Core contract for querying digital elevation data from lunar terrain models (DATA-01).
+/// Core contract for querying digital elevation data from lunar terrain models.
 /// </summary>
 public interface ITerrainService : ITerrainHeightProvider
 {

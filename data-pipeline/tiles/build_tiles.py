@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-DATA-04 — LOD GLB Terrain Mesh & WebP Hillshade Tile Pyramid Builder.
+LOD GLB Terrain Mesh & WebP Hillshade Tile Pyramid Builder.
 
 Generates a multi-zoom XYZ tile pyramid (default z=0..2) for a lunar South Polar
-DEM window in South Polar Stereographic projection (ARC-03, R=1737400 m).
+DEM window in South Polar Stereographic projection (R=1737400 m).
 
 Guarantees:
   - Shared boundary vertices across adjacent tiles at the same zoom level.
@@ -13,7 +13,7 @@ Guarantees:
     levels so tiles never jump vertically when zooming.
   - Co-registered WebP hillshade textures via `cwebp` (pure stdlib PGM fallback
     if `cwebp` is unavailable).
-  - Deterministic output and BE-06 / tiles.schema.json metadata manifests.
+  - Deterministic output and tiles.schema.json metadata manifests.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ import tempfile
 import zlib
 from pathlib import Path
 
-# Reuse BigTIFF reader, projection, and GLB serializer from DATA-03
+# Reuse BigTIFF reader, projection, and GLB serializer from the terrain_mesh module
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "terrain_mesh"))
 from build_mesh import (  # noqa: E402
     ATTRIBUTION,
@@ -376,7 +376,7 @@ def run_tile_pipeline(args) -> None:
     tileset_path.parent.mkdir(parents=True, exist_ok=True)
     tileset_path.write_text(json.dumps(tileset_meta, indent=2), encoding="utf-8")
 
-    # Write BE-06 / tiles.schema.json real metadata fixture if requested
+    # Write tiles.schema.json real metadata fixture if requested
     if args.real_metadata_out:
         real_meta = {
             "schemaVersion": 1,
@@ -430,7 +430,7 @@ def run_tile_pipeline(args) -> None:
 
 
 def main():
-    p = argparse.ArgumentParser(description="DATA-04 LOD GLB/WebP tile pyramid builder")
+    p = argparse.ArgumentParser(description="LOD GLB/WebP tile pyramid builder")
     p.add_argument("--source-file", help="Local GeoTIFF DEM path")
     p.add_argument("--source-url", help="Remote GeoTIFF URL (HTTP Range)")
     p.add_argument("--lat", type=float, default=-89.45)
@@ -442,7 +442,7 @@ def main():
     p.add_argument("--skirt-depth", type=float, default=80.0, help="Perimeter skirt depth in meters (default 80)")
     p.add_argument("--output-dir", default="public-assets", help="Asset root output directory")
     p.add_argument("--real-metadata-out", default="contracts/fixtures/map-metadata-real.json",
-                   help="Output path for BE-06 / real map metadata fixture")
+                   help="Output path for real map metadata fixture")
     p.add_argument("--dry-run", action="store_true", help="Use synthetic elevation grid without downloading DEM")
     run_tile_pipeline(p.parse_args())
 

@@ -1,79 +1,61 @@
-# Data Pipeline (`data-pipeline/`)
+# Offline terrain and cartography pipeline
 
-Offline geospatial processing scripts for the **Byte Force — Lunar Landing Site Navigator** (NASA Space Apps 2026).
+These tools prepare lunar assets outside HTTP requests. For normal local setup, use `scripts/asset-setup.py` at the repository root.
 
-## `terrain_mesh/build_mesh.py` (DATA-03)
+## Supported local workflow
 
-Generates a 3D terrain mesh in binary glTF 2.0 (`.glb`) format and an accompanying JSON manifest directly from the NASA LOLA South Polar DEM (`LDEM_80S_80MPP_ADJ.TIF`, BigTIFF Float32, 80 m/px, South Polar Stereographic `R = 1,737,400 m`).
+From the repository root:
 
-Uses only Python 3.8+ standard library (`struct`, `zlib`, `urllib.request`, `json`) — **no GDAL, numpy, or pip packages required**.
-
-### Features
-
-- Reads both local BigTIFF/GeoTIFF files (`--source-file`) and remote files via HTTP `Range` requests (`--source-url`), fetching only the tiles intersecting the requested window.
-- Decodes TIFF Compression `8` (Deflate/ZLib) and Predictor `3` (IEEE-754 floating-point horizontal differencing, TIFF Tech Note 3).
-- Maps coordinates using the locked **ARC-03** South Polar Stereographic & Three.js scene transform:
-  - `sceneX = projectedX - localOriginX` (East)
-  - `sceneY = elevationMeters - referenceElevationMeters` (Up)
-  - `sceneZ = -(projectedY - localOriginY)` (South)
-- Computes smooth finite-difference vertex normals (`+Y` up), UV texture coordinates, and CCW triangle indices.
-- Writes a valid glTF 2.0 binary `.glb` with `POSITION`, `NORMAL`, `TEXCOORD_0`, and `INDICES` accessors plus `extras.byteForce` metadata.
-- Writes `terrain-manifest.json` with projected bounds, geographic bounds, `meshLocalOrigin`, `referenceElevationMeters`, CRS, and NASA attribution.
-
-### Usage
-
-#### 1. Dry-run (no DEM download required)
-
-```bash
-python data-pipeline/terrain_mesh/build_mesh.py --dry-run --verbose
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r data-pipeline/terrain_mesh/requirements-polar.txt
+.venv/bin/python scripts/asset-setup.py --prepare-runtime
 ```
 
-#### 2. From remote NASA LOLA DEM via HTTP Range requests
+On Windows use `py -3 -m venv .venv`, then `.venv\Scripts\python.exe` in place of `.venv/bin/python`. No activation or system pip installation is needed. Default texture generation requires **NumPy 2.4.6 and Pillow 12.3.0**; core acquisition/native mesh processing uses the standard library.
 
-```bash
-python data-pipeline/terrain_mesh/build_mesh.py \
-  --source-url https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_80S_80MPP_ADJ.TIF \
-  --lat -89.45 \
-  --lon -137.31 \
-  --radius-km 5 \
-  --output public-assets/terrain/0/0/0.glb \
-  --manifest public-assets/metadata/terrain-manifest.json \
-  --verbose
+The setup tool downloads/reuses the identity-checked regional DEM under `data/raw/`, generates candidate assets under `.validation/release-assets/`, and publishes the bound local runtime set under `.validation/runtime-assets/`. Do not overwrite tracked `public-assets/` with generated output.
+
+```sh
+# Rebuild from the complete local source without acquisition.
+.venv/bin/python scripts/asset-setup.py --offline --prepare-runtime
+
+# Explicitly omit optional polar cartography.
+.venv/bin/python scripts/asset-setup.py --offline --prepare-runtime --no-polar-texture
 ```
 
-#### 3. From a local DEM file
+Offline regeneration still needs the source and any selected visual-build dependencies installed. The launcher does not acquire or regenerate assets; see the [root quick start](../README.md#run-locally).
 
-```bash
-python data-pipeline/scripts/download_data.py  # or data/scripts/download_data.py
-python data-pipeline/terrain_mesh/build_mesh.py \
-  --source-file data/raw/LDEM_80S_80MPP_ADJ.TIF \
-  --lat -89.45 \
-  --lon -137.31 \
-  --radius-km 5 \
-  --output public-assets/terrain/0/0/0.glb \
-  --manifest public-assets/metadata/terrain-manifest.json \
-  --verbose
+## Main modules
+
+| Module | Purpose |
+|---|---|
+| `terrain_mesh/build_mesh.py` | Native BigTIFF Float32/Deflate sampling and projected GLB patches with recorded origins |
+| `terrain_mesh/build_overview.py` | Derived regional overview geometry |
+| `terrain_mesh/build_spherical_cap.py` | Derived spherical-cap geometry with separate axes/transform |
+| `terrain_mesh/build_polar_texture.py` | Native-sample averaging and gradient-based cartographic relief |
+| `tiles/`, `highres/`, `illumination/` | Additional offline processing tools; their presence does not certify deployed coverage or scientific visibility |
+
+Projected patches use east/up/negative-north relative to a recorded projected/vertical origin. Preserve those origins, source identities and real triangle bounds when publishing or picking. A direct mesh build is not runtime scientific approval.
+
+Default polar relief is a **2048² RGBA PNG**, served at `/static/polar/relief.png`, with 296.875 m projected cells. It is averaged DEM cartography, not photography, measured reflectance, geometry displacement or a visibility mask. Exact source/output hashes and sizes are in [asset acquisition](../docs/science/ASSET_ACQUISITION.md#default-polar-cartographic-relief).
+
+## Texture unit tests
+
+With the same NumPy/Pillow venv dependencies installed:
+
+```sh
+.venv/bin/python data-pipeline/terrain_mesh/test_polar_texture.py
 ```
 
-### Three.js / React Three Fiber Loading Example
+These tests use standard-library **unittest**; pytest is not required. Synthetic/mocked tests do not establish physical accuracy. See [development](../docs/DEVELOPMENT.md) for the other regression commands; no pass count or CI coverage is implied here.
 
-```ts
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+## Scientific and interface references
 
-const manifest = await fetch("/metadata/terrain-manifest.json").then((r) => r.json());
-const loader = new GLTFLoader();
-const gltf = await loader.loadAsync("/terrain/0/0/0.glb");
-scene.add(gltf.scene);
+- [Source data and attribution](../data/README.md)
+- [Coordinates and sampling](../docs/COORDINATES_AND_TILES.md)
+- [Data and scientific limits](../docs/DATA_AND_SCIENCE.md)
+- [Terrain scientific reference](../docs/science/TERRAIN_SCIENCE_REVIEW.md)
+- [Tile schema](../contracts/tiles.schema.json)
 
-// Recover projected (X, Y) from a Three.js world/mesh point (x, y, z):
-const [originX, originY] = manifest.meshLocalOrigin;
-const projectedX = x + originX;
-const projectedY = originY - z;
-const elevationMeters = y + manifest.referenceElevationMeters;
-```
-
-### Related Contracts & Docs
-
-- [COORDINATES_AND_TILES.md](../docs/COORDINATES_AND_TILES.md)
-- [DATA_SOURCES.md](../docs/DATA_SOURCES.md)
-- [contracts/tiles.schema.json](../contracts/tiles.schema.json)
+The source is NASA PGDA product 90 / Barker et al. (2023), not arbitrary lunar imagery. Finite-range terrain analysis remains regional-only; global visibility is unknown even when regional clearance is numeric.

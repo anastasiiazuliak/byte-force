@@ -1,49 +1,21 @@
-# LOD Tile Pyramid Pipeline (`data-pipeline/tiles/`) — DATA-04
+# Offline terrain tile utility
 
-Generates a multi-zoom **XYZ** pyramid of watertight 3D `.glb` terrain meshes and co-registered `.webp` analytical hillshade textures from the NASA LOLA South Polar DEM (`LDEM_80S_80MPP_ADJ.TIF`).
+`build_tiles.py` builds a bounded XYZ pyramid of projected GLB terrain meshes and analytical hillshade textures from a local LOLA DEM or an HTTP Range source. It is an optional offline utility, not an active continuous-streaming service or the default runtime asset preparation path. For normal setup, use the [pipeline workflow](../README.md).
 
-## Design & Guarantees (ARC-03 / DATA-04)
+## Usage
 
-1. **LOD Levels & Spacing (Default `z = 0..2`, `segments = 32`):**
-   - `z = 0` (`1×1` tile): ~315 m vertex spacing (overview)
-   - `z = 1` (`2×2` tiles): ~157.5 m vertex spacing
-   - `z = 2` (`4×4` tiles): ~78.75 m vertex spacing (matches full 80 m/px LOLA DEM resolution)
-2. **Watertight Seams & Zero Vertical Jump:**
-   - All zoom levels share the exact same `referenceElevationMeters` and `meshLocalOrigin`, preventing vertical popping during zoom transitions.
-   - Adjacent tiles at the same zoom sample identical boundary coordinates via unified bilinear interpolation.
-   - Every tile includes an **80 m vertical perimeter skirt** (`--skirt-depth 80`) to mask T-junction cracks between `z` and `z+1`.
-3. **LROC Imagery Coverage & Fallback:**
-   - LROC NAC/WAC satellite imagery is **not bundled** in the demo pyramid (`lrocImageryAvailable: false`, `surfaceTemplate: null`).
-   - Instead, co-registered analytical Horn hillshade `.webp` tiles (`/tiles/hillshade/{z}/{x}/{y}.webp`) are generated directly from the LOLA DEM without substituting synthetic imagery.
-   - Missing tiles in partial coverage fall back to the parent zoom level (`z-1`) or neutral material.
-4. **Git & Static Hosting Policy:**
-   - Only the root demo tile (`public-assets/terrain/0/0/0.glb`) and metadata manifests (`public-assets/metadata/lod-tileset.json`, `contracts/fixtures/map-metadata-real.json`) are tracked in Git.
-   - Generated zoom `1..N` `.glb` and `.webp` tiles are gitignored and served via static hosting / Nginx.
+Run from the repository root with Python 3:
 
-## CLI Usage
-
-```bash
-# Generate z=0..2 GLB + WebP hillshade pyramid from remote NASA LOLA DEM
-python data-pipeline/tiles/build_tiles.py \
-  --source-url https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_80S_80MPP_ADJ.TIF \
-  --lat -89.45 --lon -137.31 --radius-km 5 \
-  --min-zoom 0 --max-zoom 2 \
-  --output-dir public-assets \
-  --real-metadata-out contracts/fixtures/map-metadata-real.json
-
-# Dry-run with synthetic grid (CI/offline verification)
-python data-pipeline/tiles/build_tiles.py --dry-run --output-dir /tmp/tiles-test
+```sh
+python3 data-pipeline/tiles/build_tiles.py --source-file data/raw/LDEM_80S_80MPP_ADJ.TIF --lat -89.45 --lon -137.31 --radius-km 5 --min-zoom 0 --max-zoom 2 --segments 32 --output-dir .validation/tile-assets --real-metadata-out .validation/tile-assets/map-manifest.json
 ```
 
-## Static Hosting / Nginx Cache Headers
+Use `--source-url` instead of `--source-file` for HTTP Range input. `--dry-run` substitutes synthetic elevations for exercising output generation; it is not scientific validation. Always choose explicit output and metadata paths to avoid overwriting tracked assets or contract fixtures.
 
-```nginx
-location ~* ^/(terrain|tiles)/.+\.(glb|webp)$ {
-    add_header Cache-Control "public, max-age=31536000, immutable";
-    add_header Access-Control-Allow-Origin "*";
-    types {
-        model/gltf-binary glb;
-        image/webp webp;
-    }
-}
-```
+The utility reuses the standard-library BigTIFF reader, projection helpers and GLB serializer in `terrain_mesh/build_mesh.py`. Hillshade encoding uses `cwebp` when available; otherwise it writes PGM files, not WebP. Outputs include `terrain/{z}/{x}/{y}.glb`, hillshade tiles, `metadata/lod-tileset.json`, and the requested map manifest. Without `cwebp`, the declared WebP template does not identify generated textures; inspect actual files before publishing.
+
+## Geometry and validation limits
+
+Tiles share a projected origin and reference elevation across zoom levels. Same-level boundaries use common sampling coordinates; perimeter skirts hide gaps between levels. Default zooms are 0–2, with 32 segments per tile edge and 80 m skirts. These construction choices do not certify source-frame alignment, deployed coverage, or scientific visibility. Hillshade is cartography, not a visibility mask.
+
+Implementation details are in `build_tiles.py`, especially `sample_bilinear`, `build_tile_geometry`, and `run_tile_pipeline`. There is no dedicated tile-pyramid test module in this directory. Related source tests in `scripts/test_overview.py`, `scripts/test_spherical_cap.py`, and `scripts/test_runtime_assets.py` cover other geometry/runtime workflows, not a certification of this utility. Validate generated assets and metadata against the [coordinate conventions](../../docs/COORDINATES_AND_TILES.md) and [tile schema](../../contracts/tiles.schema.json) before use.

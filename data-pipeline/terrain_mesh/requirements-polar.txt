@@ -1,0 +1,3 @@
+# Optional display-only polar texture generation (not scientific mesh processing).
+numpy==2.4.6
+Pillow==12.3.0

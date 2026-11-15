@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useThree } from '@react-three/fiber';
-import { PerspectiveCamera, RepeatWrapping, SRGBColorSpace, TextureLoader, type Texture } from 'three';
+import { DataTexture, PerspectiveCamera, RepeatWrapping, SRGBColorSpace, TextureLoader, type Texture } from 'three';
 import type { OrbitControls } from 'three-stdlib';
 // NASA SVS CGI Moon Kit (SVS 4720), 2025 LROC/LDAM visualization color.
 import asset from '../assets/lroc-color-2k.jpg?url';
@@ -9,15 +9,32 @@ import type { CameraAnimationState } from '../scene/camera';
 
 export function useGlobeTexture(enabled: boolean) {
   const [texture, setTexture] = useState<Texture | null>(null);
+  // SceneCanvas gates DEM mounting on a truthy texture. A neutral context pixel
+  // keeps terrain independent of network/image decoding without changing that caller.
+  const fallback = useMemo(() => {
+    const map = new DataTexture(new Uint8Array([150, 150, 150, 255]), 1, 1);
+    map.colorSpace = SRGBColorSpace;
+    map.needsUpdate = true;
+    return map;
+  }, []);
+  useEffect(() => () => fallback.dispose(), [fallback]);
   useEffect(() => {
     if (!enabled) return;
-    const map = new TextureLoader().load(asset);
-    map.colorSpace = SRGBColorSpace;
-    map.wrapS = RepeatWrapping;
-    setTexture(map);
-    return () => map.dispose();
+    let cancelled = false;
+    setTexture(null);
+    const map = new TextureLoader().load(asset, loaded => {
+      if (cancelled) return;
+      loaded.colorSpace = SRGBColorSpace;
+      loaded.wrapS = RepeatWrapping;
+      setTexture(loaded);
+    }, undefined, () => {
+      if (cancelled) return;
+      setTexture(null);
+      console.warn('SVS context image unavailable; retaining untextured globe and DEM relief.');
+    });
+    return () => { cancelled = true; map.dispose(); };
   }, [enabled]);
-  return enabled ? texture : null;
+  return enabled ? texture ?? fallback : null;
 }
 
 export function PolarGlobe({ texture }: { texture: Texture | null }) {
@@ -25,11 +42,13 @@ export function PolarGlobe({ texture }: { texture: Texture | null }) {
     <>
       <mesh position={GLOBE_CENTER}>
         <sphereGeometry args={[GLOBE_SHELL_RADIUS, 192, 128]} />
-        <meshStandardMaterial color={texture ? '#ffffff' : '#929292'} map={texture} roughness={0.95}
+        <meshStandardMaterial color={texture ? '#b0b0b0' : '#777777'} map={texture} roughness={0.95}
           onBeforeCompile={polarGlobeMaterial} />
       </mesh>
-      <directionalLight position={[-90_000, 15_000, 10_000]} intensity={3.8} color="#fffaf3" />
-      <ambientLight intensity={0.04} color="#ffffff" />
+      {/* Fixed neutral cartographic illumination, not scenario solar lighting. */}
+      <directionalLight position={[-90_000, 55_000, 35_000]} intensity={2.0} color="#ffffff" />
+      <directionalLight position={[65_000, 30_000, -50_000]} intensity={0.45} color="#ffffff" />
+      <ambientLight intensity={0.55} color="#ffffff" />
     </>
   );
 }

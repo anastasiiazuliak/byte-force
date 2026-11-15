@@ -1,4 +1,5 @@
 import type { Coordinates, IsoUtc, MapMetadataResponse } from '../../api/types';
+import type { SkyDirections } from './scene/skyDirections';
 import type {
   SiteSlot,
   SceneStatus,
@@ -35,6 +36,7 @@ export interface LunarTerrainViewerProps {
   timeUtc?: IsoUtc | null;
   sunDirectionScene?: [number, number, number] | null;
   sunlightLabel?: string;
+  skyDirections?: SkyDirections | null;
   sunDirectionMoonFixed?: [number, number, number] | null;
   onSelectSite?: (site: SceneSelectedSite) => void;
   onStatus?: (status: SceneStatus) => void;

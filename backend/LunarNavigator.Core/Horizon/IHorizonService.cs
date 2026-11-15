@@ -4,7 +4,7 @@ namespace LunarNavigator.Core.Horizon;
 
 /// <summary>
 /// Computes 360-degree terrain obstruction profiles (horizon elevation angles)
-/// accounting for lunar spherical curvature and polar azimuth conventions (DATA-02).
+/// accounting for lunar spherical curvature and polar azimuth conventions.
 /// </summary>
 public interface IHorizonService : IHorizonProfileProvider
 {

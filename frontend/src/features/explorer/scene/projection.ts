@@ -1,5 +1,5 @@
 /**
- * Lunar South Polar Stereographic Projection (ARC-03 / Snyder Moon 2015 Sphere)
+ * Lunar South Polar Stereographic Projection (Snyder Moon 2015 Sphere)
  *
  * Ground truth reference: contracts/fixtures/coordinate-control-points.json
  * Backend parity: backend/LunarNavigator.Core/Terrain/LunarProjection.cs

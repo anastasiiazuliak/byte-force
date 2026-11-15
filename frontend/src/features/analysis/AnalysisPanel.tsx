@@ -55,7 +55,7 @@ export function AnalysisPanel({ analysis, timeUtc, slot = 'A' }: { analysis?: An
       {!summaryAvailable ? <p>Visibility summary unavailable: terrain coverage or validation is insufficient to determine visible durations.</p> : <><p>Sun visible: {metric(analysis.summary.sunVisibleHours, ' h')} · {metric(analysis.summary.sunVisiblePercent, '%')}</p><p>Earth visible: {metric(analysis.summary.earthVisibleHours, ' h')} · {metric(analysis.summary.earthVisiblePercent, '%')}</p><p>Both visible: {metric(analysis.summary.bothVisibleHours, ' h')}</p></>}
     </section>
     {analysis.samples.length > 0 && <figure className="science-plot">
-      <label>Chart quantity<select value={mode} onChange={e => { setMode(e.target.value as PlotMode); setHovered(null); }}><option value="altitude">Geometric altitude</option><option value="clearance">Terrain clearance</option></select></label>
+      <label>Chart quantity<select value={mode} onChange={e => { setMode(e.target.value as PlotMode); setHovered(null); }}><option value="altitude">Airless apparent altitude</option><option value="clearance">Terrain clearance</option></select></label>
       <figcaption><span className="sun-key">Sun (yellow, solid)</span> · <span className="earth-key">Earth (blue, dashed)</span><br/>Degrees · zero reference · gaps mean missing data · not confirmed visibility</figcaption>
       <svg viewBox="0 0 360 180" role="img" aria-label={mode === 'altitude' ? 'Sun and Earth altitude over UTC period in degrees' : 'Sun and Earth clearance over UTC period in degrees'}>
         <text x="1" y="15" fill="currentColor">{metric(plot.max, '°')}</text><text x="1" y="174" fill="currentColor">{metric(plot.min, '°')}</text>

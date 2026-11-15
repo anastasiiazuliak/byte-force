@@ -1,5 +1,5 @@
 /**
- * Lunar Terrain Explorer Feature (FE3D-01 / FE3D-02 / FE3D-03 / FE3D-04 / QA-02)
+ * Lunar Terrain Explorer Feature
  *
  * Full 3D Lunar Terrain Explorer suite for NASA Space Apps Challenge 2026.
  */

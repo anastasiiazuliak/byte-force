@@ -1,162 +1,51 @@
-# Lunar Coordinates, Height Datum, Scene Transform & Tile Grid (ARC-03)
+# Coordinates, raster samples and scene transforms
 
-**Проєкт:** Lunar Landing Site Navigator — Byte Force (NASA Space Apps 2026)  
-**Автори/Узгодження:** Людина №4 (Data/Science), Людина №1 (Frontend 3D), Людина №5 (Integrator)  
-**Статус:** **Затверджено (Approved Contract)**  
-**Пов'язані файли:**
-* [contracts/fixtures/coordinate-control-points.json](file:///d:/byte-force/contracts/fixtures/coordinate-control-points.json)
-* [contracts/tiles.schema.json](file:///d:/byte-force/contracts/tiles.schema.json)
-* [docs/DATA_SOURCES.md](file:///d:/byte-force/docs/DATA_SOURCES.md)
+Interface definitions remain in [scene contracts](../contracts/scene/), [tile schema](../contracts/tiles.schema.json) and [coordinate controls](../contracts/fixtures/coordinate-control-points.json). Runtime scientific approval is narrower than a schema-valid transform.
 
----
+## Lunar projection
 
-## 1. Мета та архітектурне призначення
-
-Усунути найризикованішу точку розбіжностей між геопросторовими даними NASA (LOLA DEM), астрометричними розрахунками (JPL Horizons) та візуалізацією тривимірного простору (Three.js / React Three Fiber):
-* **LOLA:** Місячна полярна стереографічна проєкція в метрах, растрові координати пікселів.
-* **Horizons:** Топоцентричні кути $\text{azimuth}^\circ$ та $\text{elevation}^\circ$, спостерігач у системі `coord@301` з координатами $(\text{lon}, \text{lat}, \text{heightKm})$.
-* **Three.js:** Правостороння система координат сцени із віссю $+Y$, спрямованою вгору.
-
-> [!CAUTION]
-> **Жодних земних датумів:** Категорично заборонено використовувати WGS84, Web Mercator (EPSG:3857) чи земні геоїди. Усі розрахунки ведуться на місячній опорній сфері.
-
----
-
-## 2. Математика проєкції та координатний базис
-
-### 2.1. Геодезичні параметри (CRS)
-* **Назва:** `Moon (2015) - Sphere / Ocentric / South Polar`
-* **Опорне тіло:** Сфера Місяця радіусом $R = 1,737,400.0\text{ м}$ ($1737.4\text{ км}$).
-* **Тип проєкції:** Південна полярна стереографічна проєкція (South Polar Stereographic, конформна).
-* **Стандартна паралель істинних масштабів ($\phi_{ts}$):** $-90.0^\circ$ (Південний полюс), масштабний множник $k_0 = 1.0$.
-* **Центральний меридіан ($\lambda_0$):** $0.0^\circ$ (Reference Meridian).
-* **False Easting / Northing:** $0.0\text{ м} / 0.0\text{ м}$.
-* **Діапазон широт:** $[-90.0^\circ, -80.0^\circ]$.
-* **Діапазон довгот:** $[-180.0^\circ, +180.0^\circ]$ або $[0.0^\circ, 360.0^\circ]$.
-
----
-
-### 2.2. Пряме перетворення: $(\text{lat}, \text{lon}) \longrightarrow (X, Y)_{\text{projected}}$
-
-Для широти $\phi \in [-90^\circ, -80^\circ]$ та довготи $\lambda \in [-180^\circ, +180^\circ]$:
-
-1. **Коширота (Colatitude) точки від Південного полюса:**
-   $$\theta = 90^\circ + \phi \quad (\text{де для полюса } \phi = -90^\circ \implies \theta = 0^\circ, \text{ а для } \phi = -80^\circ \implies \theta = 10^\circ)$$
-   У радіанах:
-   $$\theta_{\text{rad}} = \theta \times \frac{\pi}{180}$$
-
-2. **Проєкційний радіус (відстань від Південного полюса на площині):**
-   $$\rho = 2 \cdot R \cdot \tan\left(\frac{\theta_{\text{rad}}}{2}\right)$$
-
-3. **Проєктні декартові координати в метрах:**
-   $$X = \rho \cdot \sin(\lambda_{\text{rad}})$$
-   $$Y = \rho \cdot \cos(\lambda_{\text{rad}})$$
-
-#### Орієнтація проєктних осей $(X, Y)$:
-* $+Y$ спрямована вздовж **Нульового меридіана ($0^\circ$)** у бік видимого боку Місяця («північ» на проєкційній карті).
-* $+X$ спрямована вздовж меридіана **$+90^\circ\text{E}$**.
-* $-Y$ спрямована вздовж меридіана **$180^\circ$** (зворотний бік Місяця).
-* $-X$ спрямована вздовж меридіана **$-90^\circ$ ($90^\circ\text{W}$ або $270^\circ\text{E}$)**.
-
----
-
-### 2.3. Зворотне перетворення: $(X, Y)_{\text{projected}} \longrightarrow (\text{lat}, \text{lon})$
-
-Для заданих $(X, Y)$ у метрах:
-
-1. **Радіус від полюса:**
-   $$\rho = \sqrt{X^2 + Y^2}$$
-
-2. **Особливий випадок (Південний полюс):**
-   Якщо $\rho = 0.0$ (або $\rho < 10^{-6}\text{ м}$):
-   $$\phi = -90.0^\circ, \quad \lambda = 0.0^\circ$$
-
-3. **Коширота та широта:**
-   $$\theta_{\text{rad}} = 2 \cdot \operatorname{atan}\left(\frac{\rho}{2 \cdot R}\right)$$
-   $$\phi = \theta_{\text{rad}} \times \frac{180}{\pi} - 90.0^\circ$$
-
-4. **Довгота:**
-   $$\lambda = \operatorname{atan2}(X, Y) \times \frac{180}{\pi}$$
-   *Нормалізація:* $\lambda \in [-180.0^\circ, +180.0^\circ]$. Для переведення в позитивну систему $[0^\circ, 360^\circ)$:
-   $$\lambda_{360} = (\lambda + 360^\circ) \pmod{360^\circ}$$
-
----
-
-### 2.4. Зв'язок із растром LOLA DEM (Col, Row)
-
-Растр `LDEM_80S_80MPP_ADJ.TIF` має розмір $7600 \times 7600$ пікселів з прив'язкою:
-* Верхній лівий кут (Tiepoint): $(-304,000.0\text{ м}, +304,000.0\text{ м})$
-* Крок пікселя (Pixel scale): $\Delta x = 80.0\text{ м}$, $\Delta y = 80.0\text{ м}$
-
-$$\text{col} = \frac{X - (-304000.0)}{80.0} = \frac{X + 304000.0}{80.0}$$
-$$\text{row} = \frac{304000.0 - Y}{80.0}$$
-
-* Для центру полюса $(X=0, Y=0) \implies \text{col} = 3800.0, \text{row} = 3800.0$.
-
----
-
-## 3. Трансформація у 3D-сцену Three.js (Scene Transform)
-
-У Three.js діє стандартна **правостороння система координат із віссю $+Y$, спрямованою вгору**:
+Use a sphere of radius `R=1737400 m`, south-polar stereographic, central meridian 0°, pole scale 1, zero false easting/northing. Latitude is south-negative; longitude is east-positive. With angles in radians:
 
 ```text
-       +Y (Up: Elevation / Height)
-        |
-        |
-        +------ +X (East: Projected X)
-       /
-      /
-    +Z (South: -Projected Y)
+theta = pi/2 + latitude
+rho = 2 R tan(theta/2)
+easting = rho sin(longitude)
+northing = rho cos(longitude)
+latitude = 2 atan(hypot(easting,northing)/(2R)) - pi/2
+longitude = atan2(easting,northing)
 ```
 
-### 3.1. Відображення осей (Axis Mapping)
+At the exact pole a longitude of zero is a coordinate convention, not an approved azimuth-dependent scientific result. Do not substitute Earth Web Mercator, WGS84 or a terrestrial geoid.
 
-| Напрямок Three.js | Проєктна величина | Опис |
-|---|---|---|
-| **`scene.x`** | $+X_{\text{projected}}$ | Метри на схід (уздовж $+90^\circ\text{E}$) |
-| **`scene.y`** | $H - H_{\text{ref}}$ | Фізична висота рельєфу в метрах над сферою $R=1737.4\text{ км}$ |
-| **`scene.z`** | $-Y_{\text{projected}}$ | Метри на південь (інверсія $Y$, оскільки в Three.js $+Z$ дивиться на спостерігача) |
+## Native reviewed raster
 
-> [!TIP]
-> **Ребейзинг (Floating-Point Precision Rebasing):**  
-> При відображенні локальної ділянки або кратера центр мешу центрується у локальний $(0, 0, 0)$ мешу, а координати зміщення записуються у `meshLocalOrigin: [originX, originY, originZ]`. Це запобігає артефактам тремтіння (Z-fighting) 32-бітних чисел із плаваючою комою у WebGL/GPU.
+The 7600 × 7600 Float32 raster uses 80 m spacing, corner tiepoint `(-304000,+304000)` metres and PixelIsArea. Native sample centers are:
 
-### 3.2. Вертикальний масштаб (Vertical Exaggeration)
-* За замовчуванням: **$1.0$** (істинний фізичний масштаб $1\text{ м} = 1\text{ м}$).
-* Інтерфейс користувача може дозволяти множник (наприклад, $1.5\times$ або $2.0\times$), але **всі наукові розрахунки видимості горизонту виконуються суворо при $1.0$**.
+```text
+easting  = -304000 + 80 (column + 0.5)
+northing =  304000 - 80 (row + 0.5)
+```
 
----
+The footprint is not the same as the domain of interpolable sample centers. Bilinear sampling requires every positively weighted sample to be finite and does not extrapolate the outer half-pixel margin. Native height is radial metres above the reference sphere; Horizons altitude is height divided by 1000 kilometres.
 
-## 4. Конвенція азимутів та особлива точка $-90.0^\circ\text{S}$
+## Scene placement
 
-1. **Визначення азимута:**
-   * $0^\circ$ = Локальна північ (напрямок меридіана в бік зменшення кошироти до екватора).
-   * $90^\circ$ = Локальний схід.
-   * $180^\circ$ = Південь.
-   * $270^\circ$ = Захід.
-2. **Точка точно на полюсі ($-90.0^\circ\text{S}$):**
-   * Будь-який рух від Південного полюса є рухом на північ.
-   * У точці $-90.0^\circ\text{S}$ азимут узгоджується за проєкційною віссю: **напрямок уздовж Нульового меридіана ($0^\circ$) приймається як $0^\circ$ азимута**.
-   * Заборонено використовувати вирази з діленням на $\cos(\text{lat})$ без захисту `Math.abs(cos(lat)) < 1e-9`.
+Projected patch meshes use east/up/south axes. With the manifest's projected/vertical origin:
 
----
+```text
+sceneX = easting - originEastingM
+sceneY = radialHeightM - verticalOriginM
+sceneZ = -(northing - originNorthingM)
+```
 
-## 5. Схема сітки тайлів (Tile Grid & LOD)
+Restore the origin before mapping a picked triangle back to geographic coordinates. Picking approval is tied to exact source/mesh identity, real triangles and preserved transforms, not a fallback plane. Spherical-cap geometry has its own declared axes/transform; do not apply the planar patch transform to it. Full-globe background geometry does not extend reviewed DEM coverage.
 
-* **Схема іменування:** `XYZ` (корінь `0/0/0.glb`).
-  * $Z = 0$: вся робоча область $608\text{ км} \times 608\text{ км}$ ($X \in [-304\text{ км}, +304\text{ км}]$, $Y \in [-304\text{ км}, +304\text{ км}]$).
-  * На кожному наступному рівні зуму $Z+1$ плитка ділиться на $2 \times 2$ квадранти.
-* **Шляхи до статичних ресурсів:**
-  * Меш рельєфу: `/terrain/{z}/{x}/{y}.glb`
-  * Відмив рельєфу (Hillshade): `/tiles/hillshade/{z}/{x}/{y}.webp`
-  * Супутникові знімки (LROC): `/tiles/imagery/{z}/{x}/{y}.webp`
-* **Безшовність (Watertight LOD):**
-  * Для усунення щілин між різними рівнями деталізації меші тайлів повинні мати спільні граничні вершини або захисні вертикальні спідниці (**skirts**) глибиною $50\text{–}100\text{ м}$.
+## Sky direction markers
 
----
+Camera-anchored Sun/Earth ornaments are removed. Before Analyze, no sky bodies are shown. A Globe marker requires a real, exact cached Analyze sample at the shared UTC and optional Site A/B reference, verified Globe geometry, JPL provenance and finite observer height. Do not substitute a nearby time, stale scenario or fabricated observer height.
 
-## 6. Верифікація та контрольні точки (Ground Truth)
+For airless apparent azimuth `a` (north through east) and elevation `h`, the unit ENU direction is `(cos(h) sin(a), cos(h) cos(a), sin(h))`. Rotate this local direction using the reference site's east/north/up basis into Moon_ME, then map Moon_ME `(X, Y, Z)` to scene `(Y, -Z, -X)`. These are world-direction markers, not camera-relative ornaments. Short arrows at the selected site indicate actual bearing.
 
-Усі формули перевірені автоматичними тестами на контрольних точках NASA Artemis:
-* **Помилка зворотного перетворення (Round-trip error):** $< 10^{-14}\text{ градусів}$ ($< 1\text{ мікроміліметр}$).
-* Повний JSON із координатами для unit-тестів: [coordinate-control-points.json](file:///d:/byte-force/contracts/fixtures/coordinate-control-points.json).
+The canonical API supplies no real orbital distances. Endpoint distance **8R** (with `R` the scene lunar radius) and symbol radii are display-only, not actual celestial positions, phase or physical scale. Markers can be offscreen or occluded; never force always-onscreen placement. TerrainView uses a compass and cached Sun lighting, not global vector endpoints. Direction rendering and lighting do not establish terrain clearance or visibility; global science visibility remains unknown.
+
+Tile URL and schema interfaces describe supported interchange, not proof that a complete multi-LOD regional pyramid or co-registered image texture is deployed. Current reviewed local publication includes three native patches plus derived overview and spherical assets. See [data and science](DATA_AND_SCIENCE.md) for scope and [scientific reference](science/TERRAIN_SCIENCE_REVIEW.md) for exact identities and model limitations.

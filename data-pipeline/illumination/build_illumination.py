@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-P2-01 — Scientific Lunar Illumination & Shadow Raster Mask Generator.
+Scientific Lunar Illumination & Shadow Raster Mask Generator.
 
 Computes physically-based Sun visibility masks from LOLA DEM elevations,
 accounting for lunar spherical curvature (R = 1,737,400 m), far-field terrain
-obstructions, and ARC-03 polar azimuth conventions.
+obstructions, and polar azimuth conventions.
 
 Outputs RGBA WebP tiles at:
   public-assets/illumination/{timeKey}/{z}/{x}/{y}.webp
@@ -44,7 +44,7 @@ from build_tiles import sample_bilinear  # noqa: E402
 
 
 def _polar_local_basis(obs_x: float, obs_y: float) -> tuple[float, float, float, float]:
-    """ARC-03 polar North (0 deg) and East (90 deg) unit vectors in projected (X, Y)."""
+    """polar North (0 deg) and East (90 deg) unit vectors in projected (X, Y)."""
     rho = math.hypot(obs_x, obs_y)
     if rho <= 1e-6:
         return 0.0, 1.0, 1.0, 0.0

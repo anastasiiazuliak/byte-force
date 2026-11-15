@@ -8,6 +8,7 @@ import { SceneControls } from './SceneControls';
 import { SiteMarkers } from './SiteMarkers';
 import { Starfield } from './Starfield';
 import { SkyBodies } from './SkyBodies';
+import type { SkyDirections } from '../scene/skyDirections';
 import { PolarCamera, PolarGlobe, useGlobeTexture } from './PolarGlobe';
 import { GLOBE_CENTER, globeCloseupPosition, globeFitDistance, globeOverviewPosition } from '../scene/polarGlobe';
 import { DEFAULT_CAMERA_PRESET } from '../scene/camera';
@@ -30,6 +31,7 @@ export interface SceneCanvasProps {
   activeSlot?: SiteSlot;
   timeUtc?: IsoUtc | null;
   sunDirectionScene?: [number, number, number] | null;
+  skyDirections?: SkyDirections | null;
   sunDirectionMoonFixed?: [number, number, number] | null;
   onSurfaceReady?: (surface: TerrainSurface | null) => void;
   onStatus?: (status: SceneStatus) => void;
@@ -51,6 +53,7 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
   activeSlot = 'A',
   timeUtc: _timeUtc,
   sunDirectionScene,
+  skyDirections,
   onStatus,
   onSurfaceReady,
   onSelectSite,
@@ -157,7 +160,7 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
       <AdaptiveDpr pixelated />
       {globe ? <>
         <PolarGlobe texture={globeTexture} />
-        <SkyBodies />
+        <SkyBodies directions={skyDirections} />
         {globeHasTerrain && globeTexture && <TerrainMesh globeTexture={globeTexture} metadata={metadata}
           onStatus={handleStatus} onMeshClick={handleMeshClick} onSurfaceReady={handleSurface} />}
       </> : <>

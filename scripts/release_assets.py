@@ -20,6 +20,13 @@ def overview_builder():
     return module
 
 
+def texture_builder():
+    spec = importlib.util.spec_from_file_location('release_texture', ROOT/'data-pipeline/terrain_mesh/build_polar_texture.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def spherical_builder():
     spec = importlib.util.spec_from_file_location('release_cap', ROOT/'data-pipeline/terrain_mesh/build_spherical_cap.py')
     module = importlib.util.module_from_spec(spec)
@@ -131,7 +138,7 @@ def checked_dem(path):
     return path
 
 
-def prepare_runtime(dem, candidates=None, output=None):
+def prepare_runtime(dem, candidates=None, output=None, polar_texture=True):
     dem=checked_dem(dem)
     candidates=Path(candidates or ROOT/'.validation/release-assets').resolve(strict=True)
     output=Path(output or ROOT/'.validation/runtime-assets').resolve()
@@ -176,10 +183,14 @@ def prepare_runtime(dem, candidates=None, output=None):
     # Legacy static smoke URL remains an alias, with the same reviewed bytes.
     alias=output/'terrain/0/0/0.glb';alias.parent.mkdir(parents=True,exist_ok=True)
     shutil.copyfile(output/'static/connecting-ridge/terrain.glb',alias)
+    texture = texture_builder().generate(dem, output/'static/polar/relief.png') if polar_texture else None
+    if not polar_texture:
+        for name in ('relief.png', 'relief.json'):
+            (output/'static/polar'/name).unlink(missing_ok=True)
     receipt={'schemaVersion':1,'reviewId':REVIEW_ID,'demPath':str(dem),'sourceBytes':DEM_SIZE,'sourceLocalSha256':DEM_SHA,
       'publisherChecksumAvailable':False,'sourceFrame':'MOON_ME_DE421','heightDefinition':'radial_distance_m_minus_1737400',
       'approvalScope':['radial-height-datum','native-mesh-coordinate-mapping'],'globalSkylineCompletenessVerified':False,
-      'physicalGroundTruthVerified':False,'sources':SOURCES,'patches':proofs,'texture':None,'overview':overview,'sphericalMesh':spherical}
+      'physicalGroundTruthVerified':False,'sources':SOURCES,'patches':proofs,'texture':texture,'overview':overview,'sphericalMesh':spherical}
     atomic_write(output/'.release-review.json',encoded(receipt))
     validate_runtime(output)
     atomic_write(output/'compose.env', (f'ASSETS_DIR={output}\nDEM_DIR={dem.parent}\nDEM_CONTAINER_PATH=/dem/{dem.name}\nMAP_REVIEW_CONFIRMED=true\n').encode())
@@ -192,6 +203,11 @@ def validate_runtime(output):
     if receipt.get('reviewId') != REVIEW_ID or receipt.get('sourceLocalSha256') != DEM_SHA or receipt.get('sourceBytes') != DEM_SIZE or receipt.get('globalSkylineCompletenessVerified') is not False or receipt.get('physicalGroundTruthVerified') is not False:
         raise ValueError('Runtime approval receipt is not this reviewed product')
     dem = checked_dem(receipt['demPath'])
+    texture = output/'static/polar/relief.png'
+    if receipt.get('texture') is not None:
+        texture_builder().verify(dem, texture, receipt['texture'])
+    elif texture.exists() or texture.with_suffix('.json').exists():
+        raise ValueError('Unbound polar texture in runtime assets')
     # Recompute every sample, triangle and normal from the verified source, not receipt booleans.
     with tempfile.TemporaryDirectory(dir=output) as temporary:
         expected_mesh = Path(temporary)/'overview.glb'

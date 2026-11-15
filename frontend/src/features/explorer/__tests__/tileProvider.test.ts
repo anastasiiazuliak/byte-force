@@ -9,7 +9,7 @@ import {
 } from '../tiles/tileProvider';
 import type { TileCoord, TileNode } from '../tiles/tileTypes';
 
-describe('3D Tile Provider and LOD Hierarchy (FE3D-02)', () => {
+describe('3D Tile Provider and LOD Hierarchy', () => {
   it('formats and parses tile keys reliably', () => {
     const coord: TileCoord = { z: 2, x: 1, y: 3 };
     const key = getTileKey(coord);

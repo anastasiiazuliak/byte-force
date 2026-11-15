@@ -6,7 +6,8 @@ import type { SceneStatus } from '../types';
 import { createSouthPoleDioramaGeometry } from '../scene/proceduralDem';
 import { terrainAssetKey } from '../scene/metadata';
 import { createLunarMaterial } from '../scene/materials';
-import { polarGlobeMaterial } from '../scene/polarGlobe';
+import { createPolarSurfaceMaterial } from '../scene/polarSurface';
+import { isGlobe } from '../scene/spherical';
 
 export interface TerrainMeshProps {
   metadata?: MapMetadataResponse | null;
@@ -32,7 +33,26 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
   const surfaceCallback = useRef(onSurfaceReady);
   surfaceCallback.current = onSurfaceReady;
   const assetKey = terrainAssetKey(metadata);
+  const spherical = isGlobe(metadata);
   const meshRef = useRef<THREE.Mesh>(null);
+  const polarTexture = useRef<THREE.Texture | null>(null);
+  useEffect(() => {
+    if (!spherical) return;
+    let cancelled = false;
+    const map = new THREE.TextureLoader().load('/static/polar/relief.png', loaded => {
+      if (cancelled) return;
+      loaded.flipY = true;
+      loaded.colorSpace = THREE.NoColorSpace; // Custom shader performs display-gray decoding.
+      polarTexture.current = loaded;
+      currentScene.current?.traverse(child => {
+        const mesh = child as THREE.Mesh;
+        if (mesh.isMesh) for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+          material.userData.setPolarTexture?.(loaded);
+        }
+      });
+    }, undefined, () => { /* Optional cartography: neutral normal shading remains available. */ });
+    return () => { cancelled = true; polarTexture.current = null; map.dispose(); };
+  }, [spherical]);
 
   // Display-only contributed asset; geographic picking still requires verified metadata.
   const demoMeshUrl = metadata?.assets?.demoMeshUrl ?? '/terrain/0/0/0.glb';
@@ -81,9 +101,8 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
           if ((child as THREE.Mesh).isMesh) {
             const mesh = child as THREE.Mesh;
             const originals = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-            mesh.material = new THREE.MeshStandardMaterial({ color: globeTexture ? 0xffffff : 0x80848b,
-              map: globeTexture, roughness: 0.95, metalness: 0, side: THREE.FrontSide });
-            if (globeTexture) mesh.material.onBeforeCompile = polarGlobeMaterial;
+            mesh.material = spherical ? createPolarSurfaceMaterial(polarTexture.current) : new THREE.MeshStandardMaterial({
+              color: 0x80848b, roughness: 1, metalness: 0, side: THREE.FrontSide });
             for (const material of originals) material.dispose();
             child.castShadow = true;
             child.receiveShadow = true;
@@ -96,7 +115,7 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
         loadedKey.current = assetKey;
         surfaceCallback.current?.(gltf.scene, assetKey);
         setLoadedGltfScene(gltf.scene);
-        if (previous) disposeTerrain(previous, globeTexture);
+        if (previous) disposeTerrain(previous);
         setIsLoadingGltf(false);
         onStatus?.('ready');
       },
@@ -115,9 +134,9 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
       cancelled = true;
       surfaceCallback.current?.(null, null);
     };
-  }, [demoMeshUrl, assetKey, onStatus, globeTexture]);
+  }, [demoMeshUrl, assetKey, onStatus, spherical]);
 
-  useEffect(() => () => { if (currentScene.current) disposeTerrain(currentScene.current, globeTexture); }, [globeTexture]);
+  useEffect(() => () => { if (currentScene.current) disposeTerrain(currentScene.current); }, []);
 
   if (loadedGltfScene) {
     return (
@@ -132,7 +151,8 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
     );
   }
 
-  if (globeTexture) return null;
+  // Never show invented diorama relief in place of a spherical DEM that failed to load.
+  if (spherical || globeTexture) return null;
   return (
     <mesh
       ref={meshRef}

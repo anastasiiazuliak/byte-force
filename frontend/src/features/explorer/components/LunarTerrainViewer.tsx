@@ -22,6 +22,7 @@ import { LoadingSkeleton } from './LoadingSkeleton';
 import { terrainAssetKey } from '../scene/metadata';
 import { sampleTerrainSurface, type TerrainSurface } from '../scene/surface';
 import { checkWebGLSupport } from '../scene/webgl';
+import { skyBodyPosition } from '../scene/skyDirections';
 import {
   CAMERA_PRESETS,
   DEFAULT_CAMERA_PRESET,
@@ -72,6 +73,7 @@ export const LunarTerrainViewer = forwardRef<
     timeUtc,
     sunDirectionScene,
     sunlightLabel,
+    skyDirections,
     onSelectSite,
     onStatus,
     className,
@@ -102,6 +104,12 @@ export const LunarTerrainViewer = forwardRef<
     'data-solar-direction': finiteSolar ? JSON.stringify(sunDirectionScene) : undefined,
     'data-time-utc': timeUtc ?? undefined,
     'data-selected-asset-key': terrainAssetKey(metadata) ?? undefined,
+    'data-sky-registration': skyDirections ? 'measured-site-directions' : 'unavailable',
+    'data-sky-site': skyDirections?.slot,
+    'data-sky-origin': skyDirections ? JSON.stringify(skyDirections.origin) : undefined,
+    'data-sky-time-utc': skyDirections?.timeUtc,
+    'data-sun-world-position': skyDirections ? JSON.stringify(skyBodyPosition(skyDirections.origin, skyDirections.sun)) : undefined,
+    'data-earth-world-position': skyDirections ? JSON.stringify(skyBodyPosition(skyDirections.origin, skyDirections.earth)) : undefined,
   };
   const controlsRef = useRef<any>(null);
 
@@ -243,6 +251,7 @@ export const LunarTerrainViewer = forwardRef<
           activeSlot={activeSlot}
           timeUtc={timeUtc}
           sunDirectionScene={sunDirectionScene}
+          skyDirections={skyDirections}
           onStatus={handleStatusChange}
           onSurfaceReady={handleSurface}
           onSelectSite={(site) => {

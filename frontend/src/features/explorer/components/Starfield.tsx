@@ -1,75 +1,49 @@
 import { memo, useMemo } from 'react';
-import { Float32BufferAttribute } from 'three';
-
-const STAR_COUNT = 16_000;
-
-function makeStars() {
-  let seed = 641_519;
-  const random = () => {
-    seed = (Math.imul(1_664_525, seed) + 1_013_904_223) >>> 0;
-    return seed / 4_294_967_296;
-  };
-  const directions = new Float32Array(STAR_COUNT * 3);
-  const appearance = new Float32Array(STAR_COUNT * 2);
-
-  for (let index = 0; index < STAR_COUNT;) {
-    const latitude = random() * 2 - 1;
-    // Rejection sampling adds a mild density increase near a tilted sky plane.
-    if (random() > 0.72 + 0.28 * Math.exp(-35 * latitude * latitude)) continue;
-    const longitude = random() * 2 * Math.PI;
-    const radius = Math.sqrt(1 - latitude * latitude);
-    const x = radius * Math.cos(longitude);
-    directions.set([0.8 * x - 0.6 * latitude, 0.6 * x + 0.8 * latitude, radius * Math.sin(longitude)], index * 3);
-
-    const rank = random();
-    const intensity = random();
-    const faint = rank < 0.93;
-    const bright = rank > 0.992;
-    appearance.set([
-      faint ? 1.35 : bright ? 2.25 : 1.75,
-      faint ? 0.21 + 0.23 * intensity ** 2 : bright ? 0.70 + 0.24 * intensity : 0.44 + 0.22 * intensity,
-    ], index * 2);
-    index++;
-  }
-  return {
-    position: new Float32BufferAttribute(directions, 3),
-    appearance: new Float32BufferAttribute(appearance, 2),
-  };
-}
+import { useFrame } from '@react-three/fiber';
+import { ignoreSkyRaycast, makeStarData } from './skyVisuals';
 
 const vertexShader = `
-  attribute vec2 appearance;
+  attribute vec3 appearance;
+  uniform float pixelRatio;
   varying float brightness;
-
+  varying vec3 tint;
   void main() {
-    // Rotate sky directions with the view while ignoring camera translation.
     vec4 clip = projectionMatrix * vec4(mat3(viewMatrix) * position, 1.0);
     gl_Position = clip.xyww;
-    gl_PointSize = appearance.x;
+    gl_PointSize = min(appearance.x * pixelRatio, 7.0);
     brightness = appearance.y;
+    tint = appearance.z < 0.5
+      ? mix(vec3(0.65,0.78,1.0),vec3(1.0),appearance.z*2.0)
+      : mix(vec3(1.0),vec3(1.0,0.76,0.53),(appearance.z-0.5)*2.0);
   }
 `;
-
 const fragmentShader = `
   varying float brightness;
-
+  varying vec3 tint;
   void main() {
     float radius = length(gl_PointCoord - vec2(0.5));
     if (radius > 0.5) discard;
-    float intensity = brightness * (1.0 - smoothstep(0.24, 0.5, radius));
-    gl_FragColor = vec4(vec3(intensity), 1.0);
+    float core = exp(-radius * radius * 17.0);
+    float edge = 1.0 - smoothstep(0.34, 0.5, radius);
+    gl_FragColor = vec4(tint * brightness * core * edge, 1.0);
+    #include <colorspace_fragment>
   }
 `;
 
 export const Starfield = memo(function Starfield() {
-  const attributes = useMemo(makeStars, []);
+  const data = useMemo(() => makeStarData(), []);
+  const uniforms = useMemo(() => ({ pixelRatio: { value: 1 } }), []);
+  useFrame(({ gl }) => {
+    // Keep apparent sizes legible without multiplying mobile fill cost by full DPR.
+    uniforms.pixelRatio.value = Math.min(gl.getPixelRatio(), 1.6);
+  });
   return (
-    <points frustumCulled={false}>
+    <points name="illustrative-starfield" frustumCulled={false} raycast={ignoreSkyRaycast}>
       <bufferGeometry>
-        <primitive object={attributes.position} attach="attributes-position" />
-        <primitive object={attributes.appearance} attach="attributes-appearance" />
+        <bufferAttribute attach="attributes-position" args={[data.position, 3]} />
+        <bufferAttribute attach="attributes-appearance" args={[data.appearance, 3]} />
       </bufferGeometry>
-      <shaderMaterial vertexShader={vertexShader} fragmentShader={fragmentShader} depthWrite={false} toneMapped={false} />
+      <shaderMaterial uniforms={uniforms} vertexShader={vertexShader} fragmentShader={fragmentShader} depthWrite={false} toneMapped={false} />
     </points>
   );
 });

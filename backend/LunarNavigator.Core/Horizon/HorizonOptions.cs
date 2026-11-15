@@ -1,7 +1,7 @@
 namespace LunarNavigator.Core.Horizon;
 
 /// <summary>
-/// Configuration parameters for 360-degree lunar terrain horizon computation (DATA-02).
+/// Configuration parameters for 360-degree lunar terrain horizon computation.
 /// </summary>
 public sealed record HorizonOptions
 {

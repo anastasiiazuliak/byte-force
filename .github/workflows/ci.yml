@@ -6,6 +6,18 @@ on:
 permissions:
   contents: read
 jobs:
+  cartography:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install polar cartography dependencies
+        run: python -m pip install -r data-pipeline/terrain_mesh/requirements-polar.txt
+      - name: Synthetic cartography unit tests (no NASA assets; mocked regeneration)
+        run: python data-pipeline/terrain_mesh/test_polar_texture.py
   frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 10

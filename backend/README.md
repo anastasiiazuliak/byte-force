@@ -1,70 +1,44 @@
-# Lunar Navigator backend (.NET 10)
+# Lunar Navigator backend
 
-Один solution: `backend/LunarNavigator.sln`. Назва проєкту, assembly, папки та базового namespace
-збігається; усі вони починаються з `LunarNavigator`.
+The .NET 10 solution is `backend/LunarNavigator.sln`. Root and backend `global.json` select stable 10.0.100 with `latestFeature` roll-forward; all projects target `net10.0`.
 
-```text
-backend/
-  LunarNavigator.Api/                 HTTP endpoints, config, catalog, public DTOs
-  LunarNavigator.Core/                Analysis, terrain/horizon interfaces and unavailable providers
-  LunarNavigator.Horizons/            NASA JPL Horizons HTTP client
-  LunarNavigator.Models/              Shared lunar observer/observation models
-  tests/
-    LunarNavigator.Api.Tests/         HTTP, CORS, catalog and provider DI tests
-    LunarNavigator.Core.Tests/        Coordinate control points and data-lane tests
-    LunarNavigator.Horizons.Tests/    Horizons requests, responses and cancellation
-    LunarNavigator.Models.Tests/      Model validation
-  samples/
-    LunarNavigator.Horizons.Sample/   Explicit live NASA request
-  LunarNavigator.sln
-  global.json
-```
+| Project | Responsibility |
+|---|---|
+| `LunarNavigator.Api` | HTTP endpoints, validation, configuration and provider composition |
+| `LunarNavigator.Core` | Analysis, comparison, coordinates, terrain and regional horizon services |
+| `LunarNavigator.Horizons` | Typed NASA/JPL Horizons requests and response parsing |
+| `LunarNavigator.Models` | Shared observer/observation models |
+| `tests/` | API, Core, Horizons and Models regression suites |
+| `samples/LunarNavigator.Horizons.Sample` | Deliberate live NASA query |
 
-## Запуск із кореня репозиторію
+## Build and test
+
+From the repository root:
 
 ```sh
 dotnet restore backend/LunarNavigator.sln
-dotnet build backend/LunarNavigator.sln --no-restore
-dotnet test backend/LunarNavigator.sln --no-build
-dotnet run --project backend/LunarNavigator.Api --urls http://localhost:5080
+dotnet build backend/LunarNavigator.sln --configuration Release --no-restore
+dotnet test backend/LunarNavigator.sln --configuration Release --no-build
 ```
 
-Для одного модуля:
+For the complete local application, use the [root setup and launcher](../README.md#run-locally), which prepares proof-bound data and configures API/static paths. For API-only development:
 
 ```sh
-dotnet test backend/tests/LunarNavigator.Api.Tests
-dotnet test backend/tests/LunarNavigator.Core.Tests
-dotnet test backend/tests/LunarNavigator.Horizons.Tests
-dotnet test backend/tests/LunarNavigator.Models.Tests
+dotnet run --project backend/LunarNavigator.Api --no-launch-profile --urls http://127.0.0.1:5080
 ```
 
-Потрібен .NET 10 SDK; root і backend `global.json` вибирають `8.0.100` з `latestFeature`.
-Усі проєкти мають target `net10.0`. У solution тести зібрані в окремій папці `tests`.
+API-only startup does not provision static assets or approve arbitrary terrain. Health checks server liveness, not NASA availability or scientific readiness. Analyze/compare use Horizons; requests need upstream network access unless served by a cache or a test substitute.
 
-BE-01 реалізує health, config і landing-sites; деталі — у [README API](LunarNavigator.Api/README.md).
-Каталог містить явно позначені DEMO-точки. Health перевіряє тільки вебсервер.
-Horizons клієнт ще не підключений до analyze/compare. Наукові алгоритми під час перейменування не змінювалися.
+## Scientific boundary
 
-## Terrain / Horizon handoff
+The configured terrain adapter recognizes only the exact reviewed DEM identity/geotags and supported epoch range. Valid samples may supply regional horizon and clearance; real-source global visibility and summaries remain unknown and results partial. Missing, unreviewed or unsupported terrain does not become synthetic science.
 
-`LunarNavigator.Core.Analysis.ITerrainHeightProvider` і `IHorizonProfileProvider` приймають координати
-та CancellationToken. Типи лишаються в `LunarNavigator.Core/Analysis/TerrainProviders.cs`.
-Реалізації слід додавати в `LunarNavigator.Core/Terrain/` і `Horizon/`, тести — у
-`tests/LunarNavigator.Core.Tests/Terrain/`. Контракт HTTP не змінювався.
+The optional Moon-fixed endpoint requires a verified provider; the default provider is unavailable. Local solar-angle display lighting is not proof that this global-vector capability exists.
 
-API реєструє unavailable-провайдери через TryAddSingleton: unknown elevation — null, профіль порожній,
-terrainApplied/datumVerified — false, з попередженнями. Реальні дані мають пройти перевірку датуму й покриття.
-Тест реєстрації провайдерів у DI залишається в Api.Tests, окремо від перевірок їхньої геометрії.
+- [API operations and configuration](LunarNavigator.Api/README.md)
+- [API conventions](../docs/API_CONTRACT.md) and [canonical OpenAPI](../contracts/openapi.yaml)
+- [Development and HTTP-schema validation](../docs/DEVELOPMENT.md)
+- [Horizons client and live sample](../docs/horizons.md)
+- [Scientific source and quality policy](../docs/DATA_AND_SCIENCE.md)
 
-Coordinate fixture копіюється з `contracts/fixtures/coordinate-control-points.json` до вихідної
-папки Core.Tests; тест не залежить від кількості батьківських папок. Тести не звертаються до NASA.
-
-## Live sample
-
-Лише після явного дозволу на живий зовнішній запит:
-
-```sh
-dotnet run --project backend/samples/LunarNavigator.Horizons.Sample
-```
-
-Наукові обмеження клієнта — у [Horizons guide](../docs/horizons.md).
+Unit/contract fixtures do not certify physical accuracy. Current results belong to the current test run; this guide does not freeze test counts or claim an externally validated deployment.

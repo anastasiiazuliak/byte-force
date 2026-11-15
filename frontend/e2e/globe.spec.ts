@@ -34,7 +34,10 @@ test('default actual Globe GLB, sphere A/B picks and surface markers', async ({ 
   await expect(page.getByRole('button', { name: /^Site A:/ })).toBeVisible();
   await page.getByRole('button', { name: 'Compare', exact: true }).click();
   await page.getByRole('button', { name: /^Site B(?:\s|$)/ }).click();
+  // The full-globe context is not pickable outside the reviewed polar footprint.
   await pick(page, .6, .52);
+  await expect(page.getByLabel('Latitude B', { exact: true })).toHaveValue('');
+  await pick(page, .54, .52);
   const b = await page.getByLabel('Latitude B', { exact: true }).inputValue();
   expect(b).not.toBe(''); expect(Number(b)).toBeGreaterThanOrEqual(-90); expect(Number(b)).toBeLessThanOrEqual(-80);
   expect(b).not.toBe(a);

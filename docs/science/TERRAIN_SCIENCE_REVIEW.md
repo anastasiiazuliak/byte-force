@@ -1,8 +1,8 @@
-# PR15 terrain scientific review
+# Terrain scientific reference
 
-Review checkout: `.audit/final-integration`, `feature/final-integration`, migration base `27c414e`. Updated review ID: **PR15-BARKER2023-LDEM80S80-2026-11-15**.
+Identity-bound review ID: **PR15-BARKER2023-LDEM80S80-2026-11-15**. The identifier is retained because runtime proofs refer to it; it is not a general approval of other assets.
 
-**Decision:** the NTRS manuscript/PDS/PGDA generating-method chain closes the previously unmet vertical-definition criterion. The exact complete DEM below is now automatically approved for radial-height alignment after same-open-handle SHA-256 and full native geotag checks, with analysis applicability restricted to **1962-01-01T00:00:00Z ≤ UTC < 2650-01-01T00:00:00Z**. There is no operator boolean to approve another DEM. Regional horizon and regional clearance are returned, but global visibility and summaries remain unknown and status remains partial. All three specifically identified meshes below pass native vertex proof and are approved for their **projected coordinate/height mapping only**, conditional on the parent deploying those exact bytes and preserving their transforms. This does not approve complete skyline visibility, site recommendations, physical accuracy ground truth, or non-overlapping LROC texturing.
+**Decision:** the NTRS manuscript/PDS/PGDA generating-method chain closes the previously unmet vertical-definition criterion. The exact complete DEM below is now automatically approved for radial-height alignment after same-open-handle SHA-256 and full native geotag checks, with analysis applicability restricted to **1962-01-01T00:00:00Z ≤ UTC < 2650-01-01T00:00:00Z**. There is no operator boolean to approve another DEM. Regional horizon and regional clearance are returned, but global visibility and summaries remain unknown and status remains partial. All three specifically identified meshes below pass native vertex proof and are approved for their **projected coordinate/height mapping only**, conditional on deployment of those exact bytes and preservation of their transforms. This does not approve complete skyline visibility, site recommendations, physical accuracy ground truth, or non-overlapping LROC texturing.
 
 ## Evidence and identity (not a publisher checksum)
 
@@ -10,7 +10,7 @@ Review checkout: `.audit/final-integration`, `feature/final-integration`, migrat
 * Product 81, <https://pgda.gsfc.nasa.gov/products/81>, capture `1.txt`: “MOON_ME reference frame of ephemeris DE421.” It describes different high-resolution products and must not independently certify this raster's vertical reference.
 * Capture provenance and local hashes are in `.validation/official-docs/sources.json`. Original captures were not changed by this review.
 * DEM: <https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_80S_80MPP_ADJ.TIF>, **189158392 bytes**, SHA-256 **82030dcbdd7c4bb0c7d858e9b4b293b9f2cda5a543ba31ec0f42784bd6beee5a**. `.validation/release-assets/dem-receipt.json` explicitly says publisher checksum unavailable. This hash identifies the local artifact; do not call it an official checksum or independent authenticity proof.
-* Receipt reports 310 Deflate tiles across four resolution levels. This review's C# test actually decompresses all **225 native/full-resolution** 512×512 tiles, not all overview levels. Python acquisition validation covers all 310. Seven native Float32 samples were independently reconstructed using Python stdlib `zlib`, inverse horizontal differencing and byte-plane reconstruction, and compared bit-for-bit with C#. `.validation/science-native-controls.json` records the controls. Examples: `(3800,3800)` = `1282.298095703125` m, bits `44a0498a`; `(3500,3500)` = `-1315.710205078125` m, bits `c4a476ba`. This establishes decoder agreement, **not independent physical height accuracy**.
+* Receipt reports 310 Deflate tiles across four resolution levels. The native-reader C# test decompresses all **225 native/full-resolution** 512×512 tiles, not all overview levels. Python acquisition validation covers all 310. Seven native Float32 samples were independently reconstructed using Python stdlib `zlib`, inverse horizontal differencing and byte-plane reconstruction, and compared bit-for-bit with C#. `.validation/science-native-controls.json` records the controls. Examples: `(3800,3800)` = `1282.298095703125` m, bits `44a0498a`; `(3500,3500)` = `-1315.710205078125` m, bits `c4a476ba`. This establishes decoder agreement, **not independent physical height accuracy**.
 
 ## Horizons frame, signs and height mathematics
 
@@ -40,7 +40,7 @@ For a reference ellipsoid, `tan(phi_c) = (b²/a²) tan(phi_g)` on the surface. H
 
 ### Closed vertical-definition criterion: authoritative generating-method chain
 
-Read `.validation/vertical-review/FINDINGS.md`, the page-preserving `Barker2023-layout.txt`, and the actual predecessor label. Authoritative sources:
+Optional local evidence includes the page-preserving manuscript extraction and predecessor label under `.validation/vertical-review/`. Authoritative sources:
 
 1. NASA NTRS <https://ntrs.nasa.gov/citations/20230014419>, accepted manuscript with final changes <https://ntrs.nasa.gov/api/citations/20230014419/downloads/BarkernewviewSTIupdated.pdf>, Barker et al. 2023, DOI <https://doi.org/10.3847/PSJ/acf3e1>.
    * **Printed/PDF p. 4 Table 1:** `LDEM_80S_80M` → `LDEM_80S_80MPP_ADJ`, 80 m/pix. This is the exact product mapping, not an analogy to a different DEM.
@@ -79,7 +79,7 @@ The backend now reads the raster-type GeoKey and accounts for the half-pixel off
 
 Stereographic coordinates use `rho=2R tan((90°+latitude)/2)`, `x=rho sin(longitude)`, `y=rho cos(longitude)`. East-positive longitude increases toward +X on the 0° meridian. Local scale is `sec²(colatitude/2)`: at 80°S it is about 1.00765, not exactly one. Previously straight projected rays and `psi=projected_distance/R` mixed map distance with surface distance. Rays now follow great circles using Cartesian north/east tangent bases, project each destination to the raster, and use **surface arc distance** for `psi`. Snapped window origins are carried explicitly so observer offsets from the nearest pixel are retained. The window allocation includes a 2% projection-scale margin over the supported south-polar region and 60 km maximum range; it is not a universal projection bound.
 
-### Consistent observer/ray interpolation (sampling P0 follow-up)
+### Consistent observer/ray interpolation
 
 `BilinearDemSurface.TrySample` now defines **both** the observer height returned by `LolaTerrainService.GetElevationAsync` and the DEM heights sampled along horizon rays. The previous nearest-pixel/centimeter-rounded observer height was inconsistent with bilinear ray heights: on sloping terrain it could introduce a spurious first-step height difference and a high near-field horizon. Point lookup no longer uses `Math.Round` to choose the height pixel and does not round the result to 0.01 m. The rounded pixel used to center a raster **window** is unchanged; its explicit projected origin still positions the observer correctly within that window.
 
@@ -113,7 +113,7 @@ No solar limb/finite-disc illumination fraction, irradiance, panel orientation, 
 
 Before allocations: ≤4096 IFD entries; ≤1,000,000 array entries/tiles; raster axes ≤1,000,000; decoded tile and compressed payload ≤16 MiB each. Tile grid products are calculated in 64-bit arithmetic. Reject unsupported array element types, non-scalar dimensions/layout tags, invalid BigTIFF header fields, non-Float32/non-single-band/non-Deflate layouts and unsupported predictors. No missing-dimension fallback fabricates a valid index. Missing predictor uses TIFF's no-predictor default. Compressed output must have exactly the declared decoded size. The tile cache is capped at 64 MiB of sample payload and decoding is serialized to prevent concurrent cache misses multiplying scratch allocations. Reader windows are limited to 4,000,000 pixels; service windows to radius 999 pixels. These are per-reader bounds, not a process-wide HTTP admission-control guarantee. Existing positional-I/O bounds checks and corrupt/truncated-payload rejection remain.
 
-## Exact operational handoff
+## Runtime configuration and asset identity
 
 ### DEM/API: automatic known-product review, no boolean override
 
@@ -130,13 +130,13 @@ API content root: `backend/LunarNavigator.Api`. Configure:
 }
 ```
 
-Equivalent `Terrain__DemPath=/home/izachoc/workspace/ByteForce/.audit/final-integration/data/raw/LDEM_80S_80MPP_ADJ.TIF`; existing `LUNAR_DEM_PATH` fallback also works. Alignment now automatically activates **only** for the reviewed identity/geotags above, irrespective of map metadata review configuration. A regenerated/repacked TIF with different bytes is unapproved even if scientifically equivalent: it needs its own identity/metadata review. There is no `DatumAlignmentVerified` configuration setting and no receipt containing `approved=true` that can bypass this check.
+The equivalent environment key is `Terrain__DemPath`; set it to the source path in your checkout. The existing `LUNAR_DEM_PATH` fallback also works. Alignment now automatically activates **only** for the reviewed identity/geotags above, irrespective of map metadata review configuration. A regenerated/repacked TIF with different bytes is unapproved even if scientifically equivalent: it needs its own identity/metadata review. There is no `DatumAlignmentVerified` configuration setting and no receipt containing `approved=true` that can bypass this check.
 
-### Scoped mesh/picking approval and parent receipt contract
+### Scoped mesh/picking approval and deployment receipt
 
 `ReviewedMeshNativeProofTests` independently checked all **15,876 vertices per mesh / 47,628 total** using the C# native reader for the reviewed DEM. Every projected X/Y sample center and absolute radial height agrees within **0.001 m** after applying the declared scene origin; the checks also pin GLB identity, basic GLB/accessor layout, no hidden node transforms, and 93,750 indices per mesh. Existing acquisition mesh-validation receipts provide additional structure checks. This is **native asset/coordinate consistency**, not independent physical ground truth or guaranteed DEM accuracy.
 
-The following exact artifacts are approved for local projected-coordinate/height picking when the parent preserves their declared transforms and restricts picking to actual mesh triangles, not a fallback plane outside the mesh:
+The following exact artifacts are approved for local projected-coordinate/height picking when the deployment preserves their declared transforms and restricts picking to actual mesh triangles, not a fallback plane outside the mesh:
 
 | Patch | GLB SHA-256 (local identity) | Scene origin: easting, northing, radial-height offset (m) |
 |---|---|---|
@@ -152,76 +152,16 @@ Current input manifest identities (the original map manifests still have review 
 | near-shackleton | `604c626609f1e1d607507223c387c4e6499be07b5d3f10137dd7e93d8b8ed23c` | `f776abfcfa8590f6233a3ac3e7693abc0b044e46e65dae7f5484ebb9b17b9649` |
 | near-de-gerlache | `a10cbfd8fa022d2260d99de0bdd180a2fc3a099895882acb26da592dffe95a5f` | `2bac9f4fd54bd3a8af1174c1ba4ab0f0130bfe69d6928e9739b395fff5841a09` |
 
-These pin the reviewed **input** metadata. A deployment manifest with changed approval flags/URLs has a new hash: parent must record and verify that final hash separately, not reuse the input hash.
+These pin the reviewed **input** metadata, not the published runtime manifests. Runtime publication changes URLs and metadata flags and therefore requires new final hashes. `scripts/asset-setup.py --prepare-runtime` and `scripts/release_assets.py` bind the deployment to the source and native mesh proofs. `scripts/run-local.py` validates the published receipt before enabling reviewed map configuration. See [asset acquisition](ASSET_ACQUISITION.md) for supported commands.
 
-Artifacts/manifests live under `.validation/release-assets/<patch>/`. Axes: scene X east, scene Y radial elevation above `verticalOriginM`, scene Z south. Inverse: `easting=sceneX+originEastingM`, `northing=originNorthingM-sceneZ`, `height=sceneY+verticalOriginM`; then inverse spherical stereographic. Native grid samples have the half-pixel registration given above. Interpolated triangle picks are model-interpolated locations, not measured new LOLA spots. The footprint is a local projected representation, not a claim of an exact curved physical surface in a flat scene.
+For new meshes, approval does not follow from the source filename or copying an old receipt. Require the same source DEM identity, complete native vertex/triangle/transform validation against actual samples (including PixelIsArea), no NoData substitution, manifest/source/mesh hash binding and boundary-limited picking. The fixed-current-mesh C# test intentionally rejects different mesh hashes; new artifacts need a dedicated proof. Source consistency remains separate from global visibility. The acquired NAC image does not overlap these patches; do not apply it as their photographic texture. The separate default polar-cap cartographic relief averages native DEM heights and derives gradient shading; it is not photography, does not displace geometry and does not change this review's regional-only/unknown-global visibility policy. Its exact artifact identity and Python build requirements are documented in [asset acquisition](ASSET_ACQUISITION.md#default-polar-cartographic-relief).
 
-**GLB triangle interpolation versus the API's bilinear model:** the current GLB represents each native grid cell by two planar triangles split along the top-right/bottom-left diagonal. Raycast-interpolated scene heights therefore need not equal the API's bilinear height between native vertices. They agree at vertices, on cell edges, and everywhere for a planar linear-slope cell. With fractional coordinates `(u,v)` and `D=h00-h10-h01+h11`, bilinear minus triangle height is `D*u*v` for `u+v≤1`, or `D*(1-u)*(1-v)` for `u+v≥1`; its magnitude is at most `|D|/4` within that cell. This is a difference between two visualization/analysis interpolants, **not** a bound on physical terrain error. A synthetic nonplanar-cell test explicitly checks the mismatch. Native mesh-coordinate approval remains valid, but a subcell picked triangle height must not be described as an independently measured height or forced to equal the backend bilinear observer height. Horizontal coordinates and source sample identities are unchanged.
+## Reproducible scientific controls
 
-**Parent-generated review receipt fields** (local attestation/proof; not an official publisher document):
+`ReviewedMeshNativeProofTests` checks current native mesh identities and vertex mapping. `RealTerrainScienceTests` exercises the identified DEM and regional analysis; these checks are opt-in rather than proof supplied by ordinary synthetic CI. Local evidence includes native Float32 control samples, source captures and bilinear model outputs. Optional ignored receipts may be absent on a fresh clone; source URLs and identity requirements above remain the scientific reference.
 
-```json
-{
-  "schemaVersion": 1,
-  "reviewId": "PR15-BARKER2023-LDEM80S80-2026-11-15",
-  "sourceDataset": "LDEM_80S_80MPP_ADJ",
-  "sourceBytes": 189158392,
-  "sourceLocalSha256": "82030dcbdd7c4bb0c7d858e9b4b293b9f2cda5a543ba31ec0f42784bd6beee5a",
-  "publisherChecksumAvailable": false,
-  "sourceFrame": "MOON_ME_DE421",
-  "heightDefinition": "radial_distance_m_minus_1737400",
-  "horizonsUtcStartInclusive": "1962-01-01T00:00:00Z",
-  "horizonsUtcEndExclusive": "2650-01-01T00:00:00Z",
-  "meshLocalSha256": "EXACT_SHA256_FOR_THIS_PATCH",
-  "terrainManifestLocalSha256": "HASH_OF_THE_EXACT_MANIFEST_REVIEWED",
-  "mapManifestLocalSha256": "HASH_OF_FINAL_DEPLOYMENT_MANIFEST",
-  "nativeVertexProof": {
-    "allVerticesChecked": true,
-    "vertexCount": 15876,
-    "triangleCount": 31250,
-    "toleranceMeters": 0.001,
-    "sampleRegistration": "RasterPixelIsArea centers",
-    "sceneAxes": ["east", "up", "south"],
-    "sceneOriginMeters": [0, 0, 0],
-    "sampleBoundsProjectedMeters": {},
-    "proofLog": ".validation/science-vertical-tests.log"
-  },
-  "approvalScope": ["radial-height-datum", "native-mesh-coordinate-mapping"],
-  "globalSkylineCompletenessVerified": false,
-  "physicalGroundTruthVerified": false,
-  "texture": null
-}
-```
+For real-source tests, set `SCIENCE_REAL_DEM` to the identified TIFF and `SCIENCE_MESH_ROOT` to the generated `.validation/release-assets` directory. `SCIENCE_LIVE_API=1` separately enables NASA calls; `SCIENCE_LOG_DIRECTORY` optionally selects a local log directory. Then run `dotnet test backend/LunarNavigator.sln --no-restore -c Release`. Omit the live opt-in for offline testing. These settings select test inputs, not production approval overrides.
 
-The example's mesh/manifest hashes, origin and bounds are **required per-artifact values**, not constants or acceptable placeholders. Parent must compute hashes of the final deployment files, copy actual origins/sample bounds from the reviewed manifest, validate that the proof describes those same bytes, and pin the receipt to them. This receipt is a handoff specification, not a newly implemented receipt-loader bypass in the backend. An identity-bearing local receipt must not be described as a publisher checksum.
+One recorded numerical control uses latitude −89°, longitude +25°, UTC 2026-11-14 00:00–00:10 with a 10-minute step. The bilinear observer height is −1075.1733520528821 m (Horizons altitude −1.0751733520528821 km). First Sun apparent elevation is 1.355011298°, regional horizon 10.868216436799301°, clearance −9.5132051387993°. First Earth elevation is −3.751226658°, regional horizon 7.6420759835053°, clearance −11.3933026415053°. Both global visibility values and summaries remain null, with partial status and `quality.terrainApplied=false`. These are recorded model outputs, not independent measured ground truth or a promise that a live upstream response is immutable.
 
-For **current** exact meshes, after that deployment verification the parent may produce deployment-only map manifests with `metadata.terrainDataset.metadataVerified=true`, `metadata.render.sceneTransform.validated=true`, and any lane-specific `scientific_review_confirmed=true` explicitly scoped to coordinate/datum mapping. Preserve exact projection (`+proj=stere +lat_0=-90 +lon_0=0 +R=1737400 +units=m +no_defs`), `sourceFrame=MOON_ME`, 80 m resolution, reviewed origin, and bounded real mesh URL. Do not promote these flags to a global-visibility claim.
-
-Example parent API configuration for connecting-ridge **after** deploying the approved manifest/assets:
-
-```json
-{
-  "Terrain": { "DemPath": "../../data/raw/LDEM_80S_80MPP_ADJ.TIF" },
-  "MapManifest": {
-    "ManifestPath": "../../.validation/release-assets/connecting-ridge/map-manifest.json",
-    "AssetRootPath": "../../.validation/release-assets",
-    "MetadataReviewConfirmed": true
-  }
-}
-```
-
-Current URL `/connecting-ridge/terrain.glb` resolves under that asset root; equivalent paths/URLs for the other patches must preserve their own manifests/transforms. `MetadataReviewConfirmed` remains the existing deployment attestation gate; **it is not** the DEM datum gate or a new cryptographically enforced receipt validator. Parent must perform the identity/native-proof checks before setting it. This review did not edit deployment manifests, activate scene picking, or wire a static asset server.
-
-For **new meshes**, approval does not follow merely from the same source filename or copying this receipt. Require the same source DEM identity, complete native vertex/triangle/transform validation against actual samples (including PixelIsArea), no NoData substitution, manifest/source/mesh hash binding, appropriate boundary-limited picking, and a new per-artifact receipt. The fixed-current-mesh C# test intentionally rejects different mesh hashes; extend/run a dedicated proof for new artifacts before approval. Full visibility remains separate. Official acquired NAC does not overlap these patches: keep texture null.
-
-## Executed validation and observed regional results
-
-* Final `.validation/science-bilinear-tests.log`: .NET 10 Release solution run with real DEM, current meshes and real NASA API enabled: **202 passed, 1 skipped**. Core tests 91, API tests 87, Horizons tests 19, Models tests 5. The skipped test is the older separate live-Horizons test; the new live analyze/compare test ran. No csproj changes. The parent's optional `ITerrainHeightProvider` capability wiring in `FoundationConfig` and public `ConfiguredTerrainHeightProvider.HasReviewedDatumAlignment` remain untouched.
-* Identity tests verify the known complete DEM approves, a changed compressed payload does not, a changed native geotag does not, and a truncated complete file does not. All 225 native-resolution tiles decode, and seven Python/C# Float32 controls agree bit-for-bit. Acquisition's separate all-310-level tile validation is not misrepresented as C# overview coverage.
-* Synthetic tests cover positive/negative regional clearance, clipped rays, sampled NoData, and UTC applicability boundaries. Neither positive nor negative regional clearance becomes a global visibility boolean. Out-of-era periods do not request a horizon or use aligned altitude. Original unreviewed-provider tests still pass.
-* Actual NASA-backed POST `/api/v1/analyze` and `/api/v1/compare` run through production DI/test host, with no terrain/ephemeris stub. Full 360-point actual regional profile and numeric regional clearances are asserted; null visibility and summary propagation is asserted. `.validation/science-live-{analyze,compare}.json` contain the responses.
-* **Separate real Kestrel process**, not only the test factory: actual production DLL on loopback, real DEM, real NASA calls, no overrides except DEM path and false map-review gate. Bounded Python harness started it, posted analyze/compare, asserted results, and terminated it in `finally`. Logs: `.validation/science-kestrel-host.log`; responses `.validation/science-kestrel-{analyze,compare}.json`.
-* Actual request: −89° / +25°, `2026-11-14T00:00:00Z` to `00:10:00Z`, 10-minute step. Observer bilinear radial height **−1075.1733520528821 m** (Horizons receives **−1.0751733520528821 km**). First Sun apparent elevation **1.355011298°**, regional horizon **10.868216436799301°**, regional clearance **−9.5132051387993°**. First Earth elevation **−3.751226658°**, regional horizon **7.6420759835053°**, regional clearance **−11.3933026415053°**. The earlier nearest-center height was −1076.99 m; these updated numbers supersede that sampling-model run. **Both visibility values null; all summary values null; partial status; quality.terrainApplied=false.** These are model outputs, not independent physical ground truth. Identical comparison scenarios intentionally reuse cache to minimize NASA requests, not to establish site rankings.
-* Reproduction environment: `SCIENCE_REAL_DEM=<absolute identified TIF>`, `SCIENCE_MESH_ROOT=<absolute .validation/release-assets>`, `SCIENCE_LIVE_API=1`, optionally `SCIENCE_LOG_DIRECTORY=<absolute .validation>`, then `/usr/lib64/dotnet/dotnet test backend/LunarNavigator.sln --no-restore -c Release`. Omit network/asset opt-ins for ordinary CI; opt-in tests report skipped rather than silently pass. `ReviewedMeshNativeProofTests` and `RealTerrainScienceTests` select those checks individually.
-* Historical pre-vertical-review logs remain under `.validation/science-solution-tests.log` and `science-live-api-tests.log`; `science-vertical-tests.log` records the prior datum-policy run; use **science-bilinear-tests.log** for the final consistent observer/ray sampling run. Native controls and original source captures remain unchanged.
-* `git diff --check` passed. No Git staging, commits, branch changes, data/script/frontend/launcher edits were performed by this review. Mesh deployment and client/UI communication of **regional-only** quality remain the parent/scene owner's responsibility; consumers must not infer verified global visibility from numeric clearance or map-picking approval.
+Current validation results belong to the current test run, not to a historical pass count in this reference. No external deployment, global skyline completeness or physical site suitability is certified by these controls.

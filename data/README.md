@@ -1,84 +1,36 @@
-# Lunar Landing Site Navigator — Data Directory
+# Lunar source data
 
-Цей каталог містить інструменти та локальні файли геопросторових даних (DEM та зображення) для проєкту **Lunar Landing Site Navigator**.
+`data/raw/` holds local, ignored source rasters and acquisition receipts. Do not commit raw DEMs, downloaded imagery or generated assets. Use the repository-root setup tool rather than manually copying a raster into tracked assets.
 
-> [!IMPORTANT]
-> **Не комітити сирі растрові файли (`.TIF`, `.TIFF`, `.grd`, `.glb`) у Git!**
-> Каталог `data/raw/` додано до `.gitignore`. Кожен учасник команди або середовище розгортання/CI завантажує дані за допомогою скрипта або вказує шлях через змінну середовища.
+## Prepare data and runtime assets
 
----
+From the repository root, after installing Node.js 22 and stable .NET 10:
 
-## Структура каталогу
-
-```text
-data/
-├── README.md               # Цей документ
-├── raw/                    # Локальне сховище сирих TIF (ігнорується Git)
-│   └── .gitkeep
-└── scripts/
-    ├── download_data.py    # Python CLI для перевірки та завантаження даних NASA
-    └── download_data.ps1   # PowerShell версія для Windows
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r data-pipeline/terrain_mesh/requirements-polar.txt
+.venv/bin/python scripts/asset-setup.py --prepare-runtime
 ```
 
----
+On Windows create the environment with `py -3 -m venv .venv` and replace `.venv/bin/python` with `.venv\Scripts\python.exe`. No activation is required. Use the venv, not system pip, on Fedora/PEP 668-managed systems.
 
-## Швидкий старт для учасників команди
+Setup acquires/reuses and validates the full regional DEM, creates native patches and derived overview/spherical assets, and publishes proof-bound files under ignored `.validation/runtime-assets/`. Default polar relief generation requires the pinned NumPy/Pillow packages. Add `--no-polar-texture` to explicitly omit that optional visual. With the complete source and dependencies already present, add `--offline` for regeneration without acquisition.
 
-### 1. Перевірка доступності на сервері NASA (без завантаження 180 МБ)
+See the [root quick start](../README.md#run-locally) for frontend installation, launching, ports and restarting, and [asset acquisition](../docs/science/ASSET_ACQUISITION.md) for detailed integrity checks and optional NAC acquisition.
 
-```bash
-# Python
-python data/scripts/download_data.py --verify-only
+## Source identity and interpretation
 
-# або PowerShell
-.\data\scripts\download_data.ps1 -VerifyOnly
-```
+The reviewed source is `LDEM_80S_80MPP_ADJ.TIF`: 80 m LOLA radial heights for 80–90°S, 7600² Float32 samples in a spherical south-polar stereographic projection, MOON_ME/DE421 frame. Its length is **189,158,392 bytes** and local SHA-256 is `82030dcbdd7c4bb0c7d858e9b4b293b9f2cda5a543ba31ec0f42784bd6beee5a`. This is an identity hash, not a publisher checksum. A familiar filename does not approve another source.
 
-### 2. Завантаження даних у `data/raw/`
+Heights are metres above the 1,737,400 m reference sphere. The runtime launcher supplies the reviewed source path to the API; direct API configuration uses `Terrain__DemPath`. Do not assume a manually configured path alone establishes scientific approval.
 
-```bash
-# Python (завантажить LDEM_80S_80MPP_ADJ.TIF та HILL)
-python data/scripts/download_data.py --download
+The default polar PNG is DEM-derived cartographic relief, not photography or new geometry. Optional acquired LROC NAC imagery does not overlap the three native patches and is not their texture. Regional horizon/clearance does not certify global visibility, landing suitability, power or a radio link.
 
-# Лише основний DEM (180 МБ)
-python data/scripts/download_data.py --download --dem-only
+## Attribution and references
 
-# PowerShell
-.\data\scripts\download_data.ps1 -Download
-```
+- NASA Goddard PGDA [product 90](https://pgda.gsfc.nasa.gov/products/90), *A New View of the Lunar South Pole from LOLA*.
+- Barker et al. (2023), *The Planetary Science Journal* 4, 183, [doi:10.3847/PSJ/acf3e1](https://doi.org/10.3847/PSJ/acf3e1).
+- Data DOI: [10.60903/gsfcpgda-lola-spole](https://doi.org/10.60903/gsfcpgda-lola-spole).
+- [Data and science](../docs/DATA_AND_SCIENCE.md), [coordinate conventions](../docs/COORDINATES_AND_TILES.md), and [identity-bound scientific reference](../docs/science/TERRAIN_SCIENCE_REVIEW.md).
 
----
-
-## Змінні середовища (Environment Variables)
-
-Бекенд та офлайн-пайплайни читають шлях до даних за такими правилами:
-
-1. `LUNAR_DEM_PATH` — прямий абсолютний або відносний шлях до основного файлу DEM, наприклад:
-   ```env
-   LUNAR_DEM_PATH=D:\byte-force\data\raw\LDEM_80S_80MPP_ADJ.TIF
-   ```
-2. `LUNAR_DATA_DIR` — каталог із набором растрових даних:
-   ```env
-   LUNAR_DATA_DIR=D:\byte-force\data\raw
-   ```
-3. **За замовчуванням (Default Fallback):** Якщо змінні не задані, використовується локальний каталог проєкту `<repo_root>/data/raw/LDEM_80S_80MPP_ADJ.TIF`.
-
----
-
-## Офіційні джерела NASA PGDA
-
-| Назва файлу | Опис | Розмір | Формат | Джерело |
-|---|---|---|---|---|
-| `LDEM_80S_80MPP_ADJ.TIF` | LOLA Південний полюс (80°S–90°S), 80 м/px, висоти в метрах | 189,158,392 байт (~180.4 МБ) | Cloud-Optimized GeoTIFF (BigTIFF, Float32) | [NASA PGDA Product 90](https://pgda.gsfc.nasa.gov/products/90) |
-| `LDEM_80S_80MPP_ADJ_HILL.TIF` | Хілшейд LOLA для 80°S–90°S (45° кут, 45° азимут) | 88,474,342 байт (~84.4 МБ) | Cloud-Optimized GeoTIFF (BigTIFF, Byte) | [NASA PGDA Product 90](https://pgda.gsfc.nasa.gov/products/90) |
-
-Повний опис проєкції, контрольних точок та наукових параметрів див. у [docs/DATA_SOURCES.md](../docs/DATA_SOURCES.md).
-
----
-
-## Атрибуція та ліцензійні умови
-
-Будь-ласка, посилайтеся на офіційну публікацію LOLA Science Team при використанні даних:
-* **Стаття:** Barker et al., 2023 *Planet. Sci. J.*, 4, 183. [DOI: 10.3847/PSJ/acf3e1](https://doi.org/10.3847/PSJ/acf3e1)
-* **Data DOI:** [10.60903/gsfcpgda-lola-spole](https://doi.org/10.60903/gsfcpgda-lola-spole)
-* **Curator:** Erwan Mazarico, NASA Goddard Space Flight Center (GSFC).
+Retain provider acknowledgements and check source-specific redistribution terms; the repository code license does not relicense third-party data.

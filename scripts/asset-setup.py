@@ -105,6 +105,7 @@ def main():
     parser.add_argument('--dem', type=Path, default=ROOT/'data/raw/LDEM_80S_80MPP_ADJ.TIF')
     parser.add_argument('--output', type=Path, default=ROOT/'.validation/release-assets')
     parser.add_argument('--prepare-runtime', action='store_true', help='Publish only the identity-bound reviewed meshes for the local launcher')
+    parser.add_argument('--no-polar-texture', action='store_true', help='Skip optional DEM cartography; runtime uses neutral mesh normals. Otherwise --prepare-runtime requires requirements-polar.txt.')
     parser.add_argument('--offline', action='store_true', help='Validate/build existing data without network')
     parser.add_argument('--capture-docs', action='store_true')
     parser.add_argument('--acquire-nac', action='store_true', help='Small georeferenced official LROC NAC example; not a texture for these mesh sites')
@@ -173,7 +174,7 @@ def main():
         (output/'candidate-paths.env').write_text(f'LUNAR_DEM_PATH={args.dem.resolve()}\nLUNAR_CANDIDATE_ASSETS={output}\n')
     if args.prepare_runtime:
         from release_assets import prepare_runtime
-        runtime = prepare_runtime(args.dem, output)
+        runtime = prepare_runtime(args.dem, output, polar_texture=not args.no_polar_texture)
         summary['reviewedRuntimeRoot'] = str(runtime)
         (output/'asset-receipt.json').write_text(json.dumps(summary, indent=2)+'\n')
     print(json.dumps(summary, indent=2))

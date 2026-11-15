@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DATA-03 — Offline NASA LOLA DEM → 3D GLB terrain mesh pipeline.
+Offline NASA LOLA DEM → 3D GLB terrain mesh pipeline.
 
 Reads a window from the LOLA South-Polar DEM (BigTIFF / GeoTIFF, Float32,
 80 m/px, South Polar Stereographic, R=1737400 m) and writes a binary glTF 2.0
@@ -45,7 +45,7 @@ from pathlib import Path
 from typing import Optional
 
 # ---------------------------------------------------------------------------
-# Constants matching ARC-03 / DATA-01 (locked by team contract)
+# Constants matching the canonical lunar terrain contract
 # ---------------------------------------------------------------------------
 MOON_RADIUS_M: float = 1_737_400.0
 # LOLA DEM header values (verified from real file)
@@ -62,7 +62,7 @@ VERTICAL_REFERENCE = "Moon (2015) Sphere R=1737400m"
 
 
 # ---------------------------------------------------------------------------
-# Projection helpers (South Polar Stereographic, ARC-03 formula)
+# Projection helpers (South Polar Stereographic)
 # ---------------------------------------------------------------------------
 
 def latlon_to_proj(lat_deg: float, lon_deg: float) -> tuple[float, float]:
@@ -916,7 +916,7 @@ def run_pipeline(args) -> None:
 def main():
     parser = argparse.ArgumentParser(
         prog="build_mesh",
-        description="Offline LOLA DEM → 3D GLB terrain mesh (DATA-03). "
+        description="Offline LOLA DEM → 3D GLB terrain mesh. "
                     "Uses only Python stdlib — no GDAL required.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
@@ -942,9 +942,9 @@ def main():
                         help="Output manifest JSON path.")
     parser.add_argument("--map-manifest", metavar="PATH",
                         default="public-assets/metadata/map-manifest.json",
-                        help="Output BE-06 compatible MapManifest JSON path.")
+                        help="Output compatible MapManifest JSON path.")
     parser.add_argument("--demo-url", default="/terrain/0/0/0.glb",
-                        help="Relative asset URL for BE-06 demoMeshUrl. Default: /terrain/0/0/0.glb")
+                        help="Relative asset URL for demoMeshUrl. Default: /terrain/0/0/0.glb")
     parser.add_argument("--dry-run", action="store_true",
                         help="Generate a synthetic mesh (no DEM needed); "
                              "prints what would be done without writing GLB.")

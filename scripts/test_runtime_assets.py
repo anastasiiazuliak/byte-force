@@ -32,6 +32,10 @@ class StaticSecurityTests(unittest.TestCase):
         self.url=f'http://127.0.0.1:{self.server.server_port}'
     def tearDown(self):
         self.server.shutdown();self.server.server_close();self.thread.join();self.temp.cleanup()
+    def test_launcher_rejects_an_existing_service_before_asset_validation(self):
+        with self.assertRaisesRegex(RuntimeError, 'Stop the existing launcher'):
+            module.require_free_ports((self.server.server_port,))
+
     def test_glb_mime_and_nosniff(self):
         with urllib.request.urlopen(self.url+'/terrain/sample.glb') as r:
             self.assertEqual(r.headers.get_content_type(),'model/gltf-binary')

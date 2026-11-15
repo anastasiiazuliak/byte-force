@@ -1,7 +1,7 @@
 namespace LunarNavigator.Core.Terrain;
 
 /// <summary>
-/// Mathematical transformations for the Lunar South Polar Stereographic projection (ARC-03 / DATA-01).
+/// Mathematical transformations for the Lunar South Polar Stereographic projection.
 /// Reference frame: Moon (2015) - Sphere / Ocentric / South Polar.
 /// Datum: Sphere with radius R = 1,737,400.0 meters (1,737.4 km).
 /// Standard parallel: -90.0° (true scale at South Pole, k0 = 1.0).

@@ -4,7 +4,7 @@ namespace LunarNavigator.Core.Terrain;
 
 /// <summary>
 /// Production implementation of <see cref="ITerrainService"/> and <see cref="ITerrainHeightProvider"/>
-/// backed by NASA LOLA South Pole DEM GeoTIFF (DATA-01).
+/// backed by NASA LOLA South Pole DEM GeoTIFF.
 /// </summary>
 public sealed class LolaTerrainService : ITerrainService, IDisposable
 {

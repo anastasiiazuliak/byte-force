@@ -85,7 +85,38 @@ test('live reviewed DEM profile and local Horizons light follow cached UTC', asy
     await expect(page.getByLabel('Latitude A', { exact: true })).toHaveValue(coordinates);
     await expect(viewer).toHaveAttribute('data-time-utc', /01:00:00/);
     await expect(article).toContainText('JPL Horizons');
-    if (mode === 'Globe View') await expect(page.getByLabel('Scientific Sun Lighting', { exact: true })).toBeDisabled();
+    if (mode === 'Globe View') {
+      await expect(page.getByLabel('Scientific Sun Lighting', { exact: true })).toBeDisabled();
+      await expect(viewer).toHaveAttribute('data-sky-registration', 'measured-site-directions');
+      await expect(viewer).toHaveAttribute('data-sky-site', 'A');
+      const sunWorld = await viewer.getAttribute('data-sun-world-position');
+      const earthWorld = await viewer.getAttribute('data-earth-world-position');
+      const origin = JSON.parse((await viewer.getAttribute('data-sky-origin'))!) as number[];
+      const sunPosition = JSON.parse(sunWorld!) as number[];
+      const up = [origin[0], origin[1] + 1737400, origin[2]];
+      const direction = sunPosition.map((value, i) => value - origin[i]);
+      const elevationSine = direction.reduce((sum, value, i) => sum + value * up[i], 0) / Math.hypot(...direction) / Math.hypot(...up);
+      expect(elevationSine).toBeCloseTo(Math.sin(result.samples[1].sun.elevationDeg * Math.PI / 180), 7);
+      await page.getByRole('button', { name: 'Close-up (2)', exact: true }).click();
+      await page.waitForTimeout(500);
+      await expect(viewer).toHaveAttribute('data-sun-world-position', sunWorld!);
+      await expect(viewer).toHaveAttribute('data-earth-world-position', earthWorld!);
+      const canvas = viewer.locator('canvas');
+      await canvas.scrollIntoViewIfNeeded();
+      const box = (await canvas.boundingBox())!;
+      await page.mouse.move(box.x + box.width * .5, box.y + box.height * .5);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width * .58, box.y + box.height * .54, { steps: 8 });
+      await page.mouse.up();
+      await expect(viewer).toHaveAttribute('data-sun-world-position', sunWorld!);
+      await expect(viewer).toHaveAttribute('data-earth-world-position', earthWorld!);
+      await page.getByRole('slider', { name: 'Selected UTC sample' }).fill('0');
+      await expect(viewer).not.toHaveAttribute('data-sun-world-position', sunWorld!);
+      await expect(viewer).toHaveAttribute('data-sky-time-utc', /00:00:00/);
+      await page.getByRole('slider', { name: 'Selected UTC sample' }).fill('1');
+      await expect(viewer).toHaveAttribute('data-sun-world-position', sunWorld!);
+      await page.screenshot({ path: '../.validation/measured-sky-closeup.png', fullPage: true });
+    }
   }
   expect(requests).toBe(0);
   await page.screenshot({ path: '../.validation/reviewed-horizons-lighting.png', fullPage: true });

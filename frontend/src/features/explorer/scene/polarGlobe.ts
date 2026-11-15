@@ -3,7 +3,7 @@ import { MOON_RADIUS_METERS } from './projection';
 
 export const ACTIVE_LATITUDE = -80;
 export const FADE_LATITUDE = -75;
-export const INACTIVE_BRIGHTNESS = 0.34;
+export const INACTIVE_BRIGHTNESS = 0.55;
 export const GLOBE_CENTER: [number, number, number] = [0, -MOON_RADIUS_METERS, 0];
 // The visual shell sits beneath the reviewed relief so the cap can be rendered and picked directly.
 export const GLOBE_SHELL_RADIUS = MOON_RADIUS_METERS - 12_000;
@@ -42,7 +42,8 @@ export function polarGlobeMaterial(this: MeshStandardMaterial, shader: Parameter
       vec3 radial = normalize(lunarRadial);
       float latitude = -asin(clamp(radial.y, -1.0, 1.0));
       #ifdef USE_MAP
-        float u = 0.5 + atan(radial.x, -radial.z) / (2.0 * PI);
+        // Longitude is undefined at the exact pole; never evaluate atan(0, 0).
+        float u = dot(radial.xz, radial.xz) < 1e-12 ? 0.5 : 0.5 + atan(radial.x, -radial.z) / (2.0 * PI);
         float v = 0.5 + latitude / PI;
         // Wrap the UV derivatives at the antimeridian to avoid a blurred seam.
         vec2 du = dFdx(vec2(u, v));
@@ -52,8 +53,8 @@ export function polarGlobeMaterial(this: MeshStandardMaterial, shader: Parameter
         diffuseColor *= textureGrad(map, vec2(u, v), du, dv);
       #endif
     `)
-    .replace('#include <colorspace_fragment>', `#include <colorspace_fragment>
+    .replace('#include <opaque_fragment>', `
       float inactive = smoothstep(radians(${ACTIVE_LATITUDE.toFixed(1)}), radians(${FADE_LATITUDE.toFixed(1)}), latitude);
-      vec3 mapDetail = sRGBTransferOETF(vec4(diffuseColor.rgb, 1.0)).rgb * 0.26;
-      gl_FragColor.rgb = max(gl_FragColor.rgb, mapDetail) * mix(1.0, ${INACTIVE_BRIGHTNESS.toFixed(2)}, inactive);`);
+      outgoingLight *= mix(0.65, ${INACTIVE_BRIGHTNESS.toFixed(2)}, inactive);
+      #include <opaque_fragment>`);
 }

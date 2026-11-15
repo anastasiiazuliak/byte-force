@@ -1,147 +1,80 @@
-# Regional asset acquisition and science-review handoff
+# Asset acquisition and regeneration
 
-All commands below run from the `feature/final-integration` worktree root.
-No global lunar raster is automatically downloaded. No application configuration,
-tracked GLB, or scientific approval is changed. Python stdlib is sufficient.
+Run commands from the repository root using the private Python environment created in the [README setup](../../README.md#run-locally). Acquisition/core mesh tools use the standard library, but **default `--prepare-runtime` now also builds polar relief and requires NumPy 2.4.6 and Pillow 12.3.0**, pinned in [requirements-polar.txt](../../data-pipeline/terrain_mesh/requirements-polar.txt). No global lunar raster is downloaded.
 
-## Reproduce
+Linux dependency setup (safe for Fedora/PEP 668):
 
 ```sh
-python scripts/asset-setup.py --capture-docs --acquire-nac --write-launch-env
-python scripts/validate-data.py
-python scripts/test_data_acquisition.py
+python3 -m venv .venv
+.venv/bin/python -m pip install -r data-pipeline/terrain_mesh/requirements-polar.txt
 ```
 
-To rebuild without network access:
+On Windows use `py -3 -m venv .venv`, then `.venv\Scripts\python.exe -m pip install -r data-pipeline/terrain_mesh/requirements-polar.txt`. Replace `.venv/bin/python` below with `.venv\Scripts\python.exe`; no activation or execution-policy change is needed.
+
+## Prepare local reviewed runtime assets
 
 ```sh
-python scripts/asset-setup.py --offline --write-launch-env
+.venv/bin/python scripts/asset-setup.py --prepare-runtime
+.venv/bin/python scripts/run-local.py
 ```
 
-`--dem` selects the local regional source. `--output` must remain under this
-worktree's ignored `.validation/` tree. The optional `candidate-paths.env` is only
-a path handoff, not an automatically loaded application configuration. Runtime
-promotion and scientific approval are separate human/integration decisions.
-Existing downloader flags remain available, e.g.
-`python data/scripts/download_data.py --download --dem-only`.
-The optional hillshade is a DEM-derived visualization, not camera imagery.
+The first command acquires/reuses the complete regional DEM, validates it, builds regional/native assets and publishes the identity-bound runtime set under `.validation/runtime-assets`. The second validates/selects existing assets and launches local services; it does not acquire them.
 
-## Download safeguards
+Offline regeneration requires the complete source already present and the Python texture dependencies installed:
 
-`data/scripts/acquisition.py` probes expected object length and ETag/Last-Modified,
-then uses four concurrent 256 KiB range requests. Each response must be 206 with
-exact Content-Range, Content-Length, body length, and matching validators.
-Strong ETag is preferred for If-Range; a weak ETag is not used as a strong
-validator, so Last-Modified is used instead while both headers are checked.
-Missing validators, ignored ranges, changed identity, and short/oversized ranges
-fail closed. Retries are bounded (four attempts, exponential 1/2/4 second sleeps,
-capped at eight seconds); socket timeout is 35 seconds by default. These are
-per-operation bounds, not a total-download deadline. Interrupted runs can be
-repeated to make meaningful progress.
+```sh
+.venv/bin/python scripts/asset-setup.py --offline --prepare-runtime
+```
 
-An unreceipted legacy source/partial is compared **in its entirety** against
-remote byte ranges before reuse. Incompatible bytes are preserved and rejected,
-never concatenated. Resume sidecars bind the partial to URL, size, ETag and
-Last-Modified. Ordered, flushed and fsynced writes leave a contiguous partial
-when a later request fails. Workers buffer only a small batch, not the full DEM.
-The final `.part` is atomically renamed after length, optional official checksum,
-and supplied TIFF validator pass. Local SHA-256 is explicitly **not** a publisher
-checksum. Previously completed objects can be reused after remote header identity,
-local SHA-256 and structural validation checks.
+To explicitly omit optional cartographic relief, add `--no-polar-texture` to `--prepare-runtime` (online or offline). This skips the NumPy/Pillow-dependent visual build and uses neutral mesh-normal rendering; it does not change DEM analysis or visibility policy.
 
-`data/scripts/validation.py` checks the BigTIFF header, bounded IFD/tag pointers,
-IFD cycles, every indexed tile's file extent, complete Deflate streams and decoded
-lengths across all overview levels. The regional validator additionally checks
-7,600 × 7,600 Float32 single-band samples, 80 m scale, tiepoint, lunar spherical
-south-polar stereographic geokeys, metres, and explicit NoData. This does not
-constitute independent scientific or publisher-checksum approval.
+Optional evidence capture and the separate small NAC image:
 
-## Actual acquisition on 2026-11-15
+```sh
+.venv/bin/python scripts/asset-setup.py --capture-docs --acquire-nac --write-launch-env
+.venv/bin/python scripts/validate-data.py
+.venv/bin/python scripts/test_data_acquisition.py
+```
 
-Official catalog: <https://pgda.gsfc.nasa.gov/products/90>, *A New View of the Lunar
-South Pole from LOLA*. Product 81 documents the separate 5 m/pixel 87–90 S mosaic;
-it was consulted, not downloaded. Cite Barker et al. (2023), Planet. Sci. J. 4,
-183, DOI `10.3847/PSJ/acf3e1`; data DOI `10.60903/gsfcpgda-lola-spole`.
+`--dem` selects a local source. `--output` is restricted to the ignored `.validation/` tree. Candidate path files are not automatically loaded configuration or scientific approval. `--prepare-runtime` performs the separate exact-identity publication checks; it cannot approve an arbitrary DEM or mesh.
 
-The existing 7,340,032-byte regional DEM prefix was remotely compared before
-reuse. The first large-range bounded attempt was slow; smaller parallel ranges
-then completed the **entire 189,158,392-byte regional product**. No selective COG
-fallback or global download was necessary.
+## Download integrity
 
-| Resource | Actual bytes | Worktree-relative location |
-|---|---:|---|
-| Full official regional DEM, 80–90 S | 189,158,392 | `data/raw/LDEM_80S_80MPP_ADJ.TIF` |
-| Map-projected official LROC NAC science image | 1,411,548 | `data/raw/M1188426614LE_20MPP.TIF` |
-| Connecting Ridge mesh | 884,556 | `.validation/release-assets/connecting-ridge/terrain.glb` |
-| Near-Shackleton mesh | 884,516 | `.validation/release-assets/near-shackleton/terrain.glb` |
-| Near-de-Gerlache mesh | 884,556 | `.validation/release-assets/near-de-gerlache/terrain.glb` |
+Acquisition probes length and ETag/Last-Modified, then uses bounded parallel range requests. Responses require exact 206 status, Content-Range, length and matching object identity. Strong ETag is preferred for If-Range; weak ETags are not cryptographic checksums. Retries and socket timeouts are bounded per operation, not by a single total-download deadline.
 
-DEM local SHA-256:
-`82030dcbdd7c4bb0c7d858e9b4b293b9f2cda5a543ba31ec0f42784bd6beee5a`.
-Server ETag: `W/"b4653f8-189326141f0"`.
-Last-Modified: `Fri, 07 Jul 2023 22:03:02 GMT`.
-No official reference checksum was found in the consulted catalogs; an ETag is
-not treated as a cryptographic publisher checksum.
+Resume sidecars bind partial bytes to the source identity. Legacy prefixes are compared in full against remote ranges before reuse. Incompatible bytes are preserved and rejected, not concatenated. Ordered writes and atomic finalization prevent treating an incomplete file as complete. Finalization requires length, any supplied official checksum and TIFF validation; a computed local SHA-256 is not a publisher checksum.
 
-### LROC limitation
+The regional validator checks BigTIFF pointers, cycles, tile extents, Deflate decoded lengths, 7600² Float32 samples, 80 m scale, tiepoint, spherical south-polar geokeys, metres and NoData. Runtime publication additionally binds source/mesh identities and transforms to the [scientific reference](TERRAIN_SCIENCE_REVIEW.md).
 
-The curated LROC page <https://lroc.im-ldi.com/images/downloads> offers very large
-polar/global mosaics and a regional annotated map archive; neither was silently
-downloaded or assumed to be a georeferenced texture. The small NAC product above
-is explicitly linked by the PGDA product 90 catalog as an actual NAC I/F image
-map-projected on the 20 m DEM, not the similarly named simulated MODEL image.
-Its official URL is
-<https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/M1188426614LE_20MPP.TIF>.
+## Sources and outputs
 
-Its TIFF geokeys match the DEM CRS, scale is 20 m, dimensions are 856 × 4,380,
-and footprint is easting `[40240.8582, 57360.8582]`, northing
-`[81615.1333, 169215.1333]` metres. It does **not** overlap the generated sites.
-It is retained as a georeferenced scientific image with its own receipt, but no
-texture/photos are invented or applied. Verified overlapping site texture remains
-**unavailable** in this acquisition.
+Official source: [PGDA product 90](https://pgda.gsfc.nasa.gov/products/90), [regional DEM](https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_80S_80MPP_ADJ.TIF). Cite Barker et al. (2023), [doi:10.3847/PSJ/acf3e1](https://doi.org/10.3847/PSJ/acf3e1), data DOI `10.60903/gsfcpgda-lola-spole`. [Product 81](https://pgda.gsfc.nasa.gov/products/81) describes a separate higher-resolution mosaic, not this downloaded source.
 
-## Exact review receipts (ignored)
+The DEM is 189,158,392 bytes; its local identity SHA-256 is `82030dcbdd7c4bb0c7d858e9b4b293b9f2cda5a543ba31ec0f42784bd6beee5a`. No official publisher checksum is asserted.
 
-- `.validation/dem-receipt.json`: standalone full DEM validation.
-- `.validation/release-assets/dem-receipt.json`: source geotags, NoData, validated
-  overview/tile counts, local SHA-256, URL, acquisition ETag and Last-Modified.
-- `.validation/release-assets/lroc-receipt.json`: actual NAC geotags, matching CRS,
-  bounds, NoData, compressed-block validation, URL/validators/hash and usage limit.
-- `.validation/release-assets/asset-receipt.json`: mesh paths, sizes, hashes,
-  individual projected origins and bounds.
-- `.validation/release-assets/{connecting-ridge,near-shackleton,near-de-gerlache}/terrain-manifest.json`:
-  geographic/footprint bounds, actual sample bounds, projected origin including
-  vertical reference elevation, axes, source receipt/hash, and no-texture reason.
-- Each site also has `mesh-validation.json`: GLB chunk/buffer/index checks and
-  every vertex matched back to its native DEM sample and pixel-centre position
-  within 1 mm Float32 tolerance (not independent scientific validation).
-- The corresponding `map-manifest.json` files are **candidate** runtime manifests;
-  `validated`, `metadataVerified`, and scientific review are not auto-approved.
-- `data/raw/*.acquisition.json`: transport identity receipts beside raw products.
-- `.validation/official-docs/sources.json`: URLs, response headers, capture times
-  and local HTML hashes. `0.html`/`0.txt` = product 90; `1.html`/`1.txt` = product
-  81; `2.html`/`2.txt` = LROC curated downloads. Text is extracted from captured
-  official HTML, not paraphrased scientific claims.
+Each of the three native patches contains 15,876 vertices and 31,250 triangles from a 126² native sample window, using pixel centers and a recorded projected/vertical origin. No synthetic filling is performed; NoData/nonfinite source samples fail the build. Derived overview and spherical assets have separate proof metadata and are not native-resolution terrain everywhere.
 
-Each mesh contains 15,876 vertices and 31,250 triangles from a 126 × 126 native
-sample window. No resampling, scientific-value adjustment, or synthetic filling
-is performed. Source NoData/nonfinite samples cause a build failure. The TIFF's
-RasterPixelIsArea convention puts samples half a pixel from the corner tiepoint;
-mesh positions use those centres. Footprint bounds and sample-position bounds
-are explicitly distinguished. Scene axes are east/up/south and height is rebased
-by the recorded reference elevation; raw science values remain unchanged.
+The optional [NAC image](https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/M1188426614LE_20MPP.TIF) is a genuine map-projected I/F image, not the similarly named simulated MODEL product. It has 20 m spacing, dimensions 856 × 4380 and projected footprint easting `[40240.8582,57360.8582]`, northing `[81615.1333,169215.1333]` metres. It does **not** overlap the generated patches, so it is not used as their texture. [LROC downloads](https://lroc.im-ldi.com/images/downloads) are not silently acquired or assumed co-registered.
 
-## Validation scope
+## Default polar cartographic relief
 
-`test_data_acquisition.py` uses a loopback HTTP stub only: range success, safe
-legacy reuse, incompatible-prefix preservation, unreceipted partial resume,
-changed identity, ignored/malformed/truncated responses, bounded retry/backoff,
-checksum mismatch, and validation-before-finalization. Local BigTIFF fixtures
-exercise block corruption and out-of-file pointers; mesh tests cover rebasing
-and NoData rejection. No tests depend on NASA availability.
+`--prepare-runtime` builds and verifies `.validation/runtime-assets/static/polar/relief.png`, served at **`/static/polar/relief.png`**:
 
-Full-source validation (310 Deflate tiles over five IFD levels), three real-data
-pipeline builds, and all-vertex GLB/source comparisons passed locally.
-Scientific accuracy, source-frame interpretation, landing-site suitability,
-texture co-registration and runtime promotion remain for science/integration
-review. Every generated science-review flag remains false.
+| Property | Current artifact |
+|---|---|
+| Encoding | 2048 × 2048 RGBA PNG |
+| Projected cell spacing | 296.875 m |
+| PNG length | 1,802,787 bytes |
+| PNG SHA-256 | `e078d2f169ef03b367ac0cf06257010e776c68e9846bee5e9c582216e2b08523` |
+| Source length | 189,158,392 bytes |
+| Source SHA-256 | `82030dcbdd7c4bb0c7d858e9b4b293b9f2cda5a543ba31ec0f42784bd6beee5a` |
+
+The texture averages actual native DEM samples and derives cartographic tonal relief from height gradients. Transparent pixels exclude unsupported coverage/NoData and missing gradient support; there is no invented fill. It is **not photography**, measured reflectance, additional geometry displacement, a time-dependent illumination mask or scientific visibility evidence. The polar cap uses the DEM cartographic material; muted whole-globe SVS context is not verified polar imagery. These local artifact hashes bind reproducibility, not publisher authenticity or ground-truth accuracy.
+
+Texture tests use standard-library unittest with the same pinned NumPy/Pillow dependencies; no pytest installation is needed. Run the venv Python with `data-pipeline/terrain_mesh/test_polar_texture.py`; see [development](../DEVELOPMENT.md#repository-and-asset-regression-checks). No test pass or CI coverage is implied by this reproduction guide.
+
+## Local provenance
+
+Ignored outputs include `.validation/release-assets/` source receipts, per-patch manifests and mesh-validation records; `.validation/runtime-assets/` contains the published set and its bound review receipt. Optional official-page captures and URL/header/hash records live under `.validation/official-docs/`; raw transport sidecars live alongside `data/raw/` sources.
+
+Receipts establish local transport identity, structure and geometry/source consistency, not independent physical accuracy, landing suitability or global skyline completeness. A new machine regenerates these files. Source acknowledgements and limitations remain in [data and science](../DATA_AND_SCIENCE.md).

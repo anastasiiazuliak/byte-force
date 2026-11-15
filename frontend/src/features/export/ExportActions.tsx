@@ -20,8 +20,7 @@ export function ExportActions({ run }: { run: ExportRun }) {
   if (!canExport(run)) return <p className="muted">Export unavailable for this data source.</p>;
   return (
     <>
-      <div className="actions" role="group" aria-label="Export results">
-      <div className="export-report-actions" role="group" aria-label="Export results">
+      <div className="actions export-report-actions" role="group" aria-label="Export results">
         <button type="button" onClick={() => downloadCsv(run)}>Download CSV</button>
         <button type="button" onClick={() => dialog.current?.showModal()}>Print report</button>
       </div>
@@ -31,7 +30,7 @@ export function ExportActions({ run }: { run: ExportRun }) {
           <button type="button" onClick={() => window.print()}>Print / Save PDF</button>
         </div>
         <h2 id="export-report-title">Lunar Site Navigator · {run.differences ? 'Comparison' : 'Analysis'} report</h2>
-        <p>{run.mode === 'demo' ? 'Demo · Synthetic data' : 'Real data'} · API version {run.apiVersion ?? 'unknown'}</p>
+
         <p>{run.mode === 'demo' ? 'Demo · Synthetic data' : 'Live API · quality varies'} · API version {run.apiVersion ?? 'unknown'}</p>
         {run.scenarios.map(({ id, analysis, error }) => (
           <section key={id}>
@@ -45,7 +44,7 @@ export function ExportActions({ run }: { run: ExportRun }) {
                 <dt>Earth visibility</dt><dd>{measure(analysis.summary.earthVisibleHours, 'h')} ({measure(analysis.summary.earthVisiblePercent, '%')})</dd>
                 <dt>Both visible</dt><dd>{measure(analysis.summary.bothVisibleHours, 'h')}</dd>
                 <dt>Ephemeris</dt><dd>{analysis.quality.ephemerisSource}</dd>
-                <dt>Terrain</dt><dd>{analysis.quality.terrainApplied ? 'Applied' : 'Not applied'} · {analysis.quality.terrainSource ?? 'Unknown source'}</dd>
+                <dt>Terrain</dt><dd>{analysis.quality.terrainApplied ? 'Visibility model applied' : analysis.horizon?.points.length ? 'Regional skyline sampled; global visibility unresolved' : 'No usable terrain solution'} · {analysis.quality.terrainSource ?? 'Unknown source'}</dd>
                 <dt>DEM resolution</dt><dd>{measure(analysis.quality.terrainResolutionMeters, 'm')}</dd>
                 <dt>Visibility method</dt><dd>{analysis.quality.visibilityMethod}</dd>
               </dl>

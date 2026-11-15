@@ -7,7 +7,7 @@ namespace LunarNavigator.Core.Horizon;
 
 /// <summary>
 /// Computes 360-degree terrain horizon elevation profiles from LOLA DEM data,
-/// accounting for lunar spherical curvature and South Polar azimuth conventions (DATA-02).
+/// accounting for lunar spherical curvature and South Polar azimuth conventions.
 /// </summary>
 public sealed class LolaHorizonService : IHorizonService
 {
@@ -429,7 +429,7 @@ public sealed class LolaHorizonService : IHorizonService
         double rho = Math.Sqrt((obsX * obsX) + (obsY * obsY));
         if (rho <= 1e-6)
         {
-            // ARC-03 South Pole (-90 deg) convention: 0 deg azimuth aligns with 0 deg meridian (+Y)
+            // South Pole (-90 deg) convention: 0 deg azimuth aligns with 0 deg meridian (+Y)
             return (0.0, 1.0, 1.0, 0.0);
         }
 
