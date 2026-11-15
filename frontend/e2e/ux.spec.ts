@@ -22,6 +22,12 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 
     await page.getByLabel('Latitude A', { exact: true }).fill('-89');
     await expect(page.getByLabel('Exploratory patch', { exact: true })).toHaveValue('');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (viewport.width > 800) {
+      const formPanel = page.locator('#site-time .panel-body');
+      expect(await formPanel.evaluate(el => el.clientHeight <= Math.max(560, Math.min(innerHeight * .8, 900)) + 1 && el.scrollHeight > el.clientHeight)).toBe(true);
+      await page.getByRole('button', { name: 'Compare scenarios', exact: true }).scrollIntoViewIfNeeded();
+      await expect(page.getByRole('button', { name: 'Compare scenarios', exact: true })).toBeVisible();
+    }
     await page.getByRole('button', { name: 'Learn', exact: true }).click();
     await expect(page.locator('#learn')).toContainText('Unknown visibility is not zero visible time');
   });

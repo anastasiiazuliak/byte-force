@@ -2,7 +2,7 @@
 
 ## Поточний статус і джерела правди
 
-**PR15 OPEN**, та сама `.audit/final-integration` worktree. Root bootstrap не змінює цих інструкцій. Фінальний release SHA, push та GitHub CI confirmation очікуються від координатора; не переносити старий `955…`/FINAL report на цей стан. Остаточні commands/counts: [RELEASE_TEST_REPORT.md](RELEASE_TEST_REPORT.md), із завершеними локальними результатами та окремими pending gates. Цей документ не оголошує pending tests passed.
+**PR15 OPEN**, та сама `.audit/final-integration` worktree. Root bootstrap не змінює цих інструкцій. Release code `dfd0a62285be7ddf7c07a39a0589ecfc42cc8624` запушено; push і PR workflows завершилися успішно, **8/8 checks**. Додаткове desktop form-height polishing і звіт проходять окремий фінальний push; не переносити старий `955…`/FINAL report на цей стан. Остаточні commands/counts: [RELEASE_TEST_REPORT.md](RELEASE_TEST_REPORT.md), із завершеними локальними результатами та окремими pending gates. Цей документ не оголошує pending tests passed.
 
 Review basis: [terrain science](../science/TERRAIN_SCIENCE_REVIEW.md), [asset acquisition](../science/ASSET_ACQUISITION.md), [3D](../3d/release-review.md), [UX](UX_REVIEW.md), актуальні `asset-setup.py`, `release_assets.py`, `run-local.py` та release evidence координатора. Старі review-local counts і candidate-only handoff описи слід читати в межах їхнього етапу; runtime promotion нині реалізований окремим proof-checked publisher.
 
@@ -16,7 +16,7 @@ Review basis: [terrain science](../science/TERRAIN_SCIENCE_REVIEW.md), [asset ac
 | API terrain | Unknown terrain, partial | Actual regional horizon/clearance; **global visibility усе ще unknown/partial** |
 | Picking | Disabled unreviewed preview | Proof-published 3 meshes, actual GLB triangle A/B picks/markers/patch switch |
 | Світло | Fixed artistic | Cached Horizons topocentric local-light estimate; не global Moon-fixed, endpoint 503 |
-| UI/tests | Приблизно 45 frontend / 162 backend | 74 frontend tests / 12 files після selective export port; backend 203 passed / 0 skipped; browser 13 passed до нових live export assertions |
+| UI/tests | Приблизно 45 frontend / 162 backend | 74 frontend tests / 12 files після selective export port; backend 203 passed / 0 skipped; browser 13 passed, включно live CSV/print assertions |
 | Performance | Main ~1225 KB / 345 KB gzip | Main ~254 KB / 80 KB gzip; lazy 3D 983 KB warning збережений |
 | Deploy | Не перевірено | Config validated, daemon permission denied; build/runtime/external deploy досі не виконано |
 
@@ -58,12 +58,12 @@ Actual triangle picking і surface markers/focus для A/B; stale/in-flight/unv
 | Frontend після selective export port | **74 tests / 12 files**; contracts **6** — subset, не додаткові tests |
 | Backend HTTP/OpenAPI schema | **12 passed**, actual pipeline із synthetic science providers, не live NASA |
 | Python | 13 acquisition + 4 runtime + 7 guard = **24 offline cases** |
-| Combined browser | **13 passed** у `.validation/final-browser.log`: 6 intercepted, 2 live scientific NASA paths, 5 local startup/geometry/control cases; не 13 live science tests |
+| Combined browser | **13 passed** у `.validation/final-browser-release.log`: 6 intercepted, 2 live scientific NASA paths, 5 local startup/geometry/control cases; не 13 live science tests |
 | Post-analysis UX | Intercepted synthetic responses, widths **390/768/1024/1440**; не live NASA layout evidence |
 | Launcher smoke | **PASS**, `.validation/final-smoke.log`; HTTP/GLB/proof/startup/shutdown, не science test |
-| Pending live export browser | 13-case log передує доданим CSV/print assertions; rerun currently testing, **не заявляємо passed** |
+| Live export browser | Final rerun **13 passed (56.6 s)**, включно actual CSV download/content та print-dialog/media assertions; не physical print/PDF |
 | Docker | Config validated only; daemon permission denied, no sudo, build/runtime не перевірено |
-| GitHub/release | PR15 OPEN; final SHA/push/CI confirmation pending, не merged/deployed |
+| GitHub/release | PR15 OPEN; code `dfd0a62` push/PR **8/8 checks passed**. Фінальні form-height/docs checks перевіряються окремо; не merged/deployed |
 
 ## Readiness checklist
 
@@ -72,15 +72,15 @@ Actual triangle picking і surface markers/focus для A/B; stale/in-flight/unv
 - [x] Actual reviewed mesh interaction і локальне cached sunlight з чесними regional/Unknown labels.
 - [x] [Точні запуск/cleanup інструкції](DEPLOYMENT.md), [pitch/demo/credits](DEMO.md).
 - [x] Завершені backend 203/0, browser 13 та [RELEASE_TEST_REPORT](RELEASE_TEST_REPORT.md), з межами evidence.
-- [ ] Нові live export browser assertions: completed rerun pending; фінальні SHA/push та GitHub CI confirmation pending.
+- [x] Live export browser assertions і desktop bounded form scrolling: final 13-case rerun passed; code `dfd0a62` GitHub 8/8 passed.
 - [ ] Docker image build/runtime smoke з дозволеним daemon access; external hosting тільки після окремого дозволу, TLS/storage/access review.
 - [ ] Повна global skyline/visibility — **не закрито цим релізом**. Додаткова overlapping site texture unavailable.
 - [ ] Людський licensing/credits/rules review, video/public URL verification і NASA submission/receipt.
 
 Deadline: **15 листопада 23:55 Europe/Kyiv**; planning checkpoint, переданий координатором: **12:10**. Це не автоматично оновлюваний час. Пріоритет до дедлайну — final evidence, чесний regional walkthrough і human submission, не приховане розширення scientific claims.
 
-П’ять внесків збережено: №1 3D, №2 UI (Khrystyna authored source), №3 Backend/Horizons, №4 LOLA/Data/HUM-02, №5 Integration/CI/QA. [README attribution/license](../../README.md#автори-джерела-й-ліцензії), [TEAM_ASSIGNMENTS](../../TEAM_ASSIGNMENTS.md). Code MIT не замінює review умов конкретних NASA/PDS/LROC assets. Жодних commits або submission дій цей documentation update не виконує.
+П’ять внесків збережено: №1 3D, №2 UI (Khrystyna authored source), №3 Backend/Horizons, №4 LOLA/Data/HUM-02, №5 Integration/CI/QA. [README attribution/license](../../README.md#автори-джерела-й-ліцензії), [TEAM_ASSIGNMENTS](../../TEAM_ASSIGNMENTS.md). Code MIT не замінює review умов конкретних NASA/PDS/LROC assets. Submission, merge та external deployment не виконувалися.
 
 ## Selective UI/export audit
 
-Новий UI range `a75d443..8394de2` має паралельний `MissionApp` / shared interfaces і **не merged wholesale**. Existing integrated shell/contracts retained. P2-02 export serializer/actions/tests/docs selectively ported зі збереженням teammate attribution (Khrystyna / UI source). CSV та print report доступні після Analyze/Compare; [format](../EXPORT_FORMAT.md). Frontend tests не підміняють pending live export browser rerun. Старі `FINAL_*` reports — historical snapshots; current evidence: [RELEASE_TEST_REPORT](RELEASE_TEST_REPORT.md).
+Новий UI range `a75d443..8394de2` має паралельний `MissionApp` / shared interfaces і **не merged wholesale**. Existing integrated shell/contracts retained. P2-02 export serializer/actions/tests/docs selectively ported зі збереженням teammate attribution (Khrystyna / UI source). CSV та print report доступні після Analyze/Compare; [format](../EXPORT_FORMAT.md). Live export assertions пройшли в завершеному browser rerun; frontend unit tests не підміняють цей доказ. Старі `FINAL_*` reports — historical snapshots; current evidence: [RELEASE_TEST_REPORT](RELEASE_TEST_REPORT.md).

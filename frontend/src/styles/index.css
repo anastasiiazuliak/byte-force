@@ -205,8 +205,8 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .panel article > *, .panel article details { min-width: 0; }
 .analysis-warnings p { padding-inline: 10px; }
 @media (min-width: 801px) {
-  /* Results must not enlarge the terrain row when warnings or samples expand. */
-  #analysis .panel-body, #comparison .panel-body { max-height: max(560px, min(80svh, 900px)); overflow: auto; scrollbar-gutter: stable; }
+  /* Long forms and results must not push the timeline far below the terrain. */
+  #site-time .panel-body, #analysis .panel-body, #comparison .panel-body { max-height: max(560px, min(80svh, 900px)); overflow: auto; scrollbar-gutter: stable; }
 }
 .panel small, form > p { color: var(--muted); font-size: 12px; }
 .quickstart { display: grid; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }

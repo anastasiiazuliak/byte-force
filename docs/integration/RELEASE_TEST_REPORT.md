@@ -1,6 +1,6 @@
 # Release test report — 2026-11-15
 
-Current evidence for `.audit/final-integration` / PR15. This supersedes the historical `FINAL_*` reports, not their attribution or incident history. Local passing checks do **not** establish a pushed release SHA, passing GitHub CI, merge, deployment, or submission. **Final Git push/SHA and post-push CI confirmation remain pending.**
+Current evidence for `.audit/final-integration` / PR15. This supersedes the historical `FINAL_*` reports, not their attribution or incident history. Local passing checks do **not** establish a pushed release SHA, passing GitHub CI, merge, deployment, or submission. Release code **`dfd0a62285be7ddf7c07a39a0589ecfc42cc8624`** was pushed and passed **8/8 GitHub checks** (push + PR). Final desktop form-height polish and this evidence update follow separately.
 
 ## Runtime and test results
 
@@ -12,7 +12,7 @@ Current evidence for `.audit/final-integration` / PR15. This supersedes the hist
 | Frontend contracts | **6 passed**, subset of frontend suite | Do not add to the 74. Contract fixtures/types are not live NASA science. |
 | Backend HTTP/OpenAPI schema | **12 passed** | Actual middleware/controller response shapes with synthetic scientific test providers; not 12 live NASA responses and not an extra full backend suite. |
 | Python | **13 acquisition + 4 runtime + 7 guard = 24 cases** | Offline validation/regression checks; not 24 downloads or live NASA tests. |
-| Combined browser matrix | **13 passed (56.4 s)** | [final-browser-export.log](../../.validation/final-browser-export.log), including live CSV download/content and print-dialog/media assertions. Breakdown below. |
+| Combined browser matrix | **13 passed (56.6 s)** | [final-browser-release.log](../../.validation/final-browser-release.log), including live CSV download/content and print-dialog/media assertions. Breakdown below. |
 | Launcher smoke | **PASS** | [final-smoke.log](../../.validation/final-smoke.log): SDK/proof verification, HTTP readiness, direct/proxied GLB MIME/signature, process shutdown. Explicitly not a browser/science test. |
 | Docker Compose configuration | **PASS** | Configuration validation only. Docker daemon access **permission denied**; image build, container runtime and deployment remain unverified. |
 
@@ -39,7 +39,7 @@ From the final worktree: `npm test --prefix frontend`, `npm run test:contracts -
 
 ## Remaining gates and scientific limits
 
-- **Pending:** final SHA/push and GitHub CI confirmation. PR15 is intentionally left open; merge/release/submission are separate human actions.
+- **GitHub:** code `dfd0a62` passed [PR run 43705046653](https://github.com/anastasiiazuliak/byte-force/actions/runs/43705046653) and [push run 43705042828](https://github.com/anastasiiazuliak/byte-force/actions/runs/43705042828), all **8 jobs**. CI runs without raw datasets/live opt-ins: **198 backend passed / 5 skipped; 10 browser passed / 3 skipped**. Final desktop form-height/docs follow-up checks must be read for that newer HEAD, not inferred from these runs. PR15 is intentionally left open; merge/release/submission are separate human actions.
 - **Unverified:** Docker image build/runtime (daemon permissions), public deployment, video/public URL, licensing/rules sign-off and human submission receipt.
 - Regional horizon/clearance is an estimate. Visibility and global summaries remain `null`/Unknown, `status=partial`, `quality.terrainApplied=false`. Graphical lighting does not prove visibility, power, thermal or radio-link performance.
 - Resource source URLs, sizes and local/runtime paths remain in [release readiness](RELEASE_READINESS.md#ресурси); scientific provenance remains in [terrain science review](../science/TERRAIN_SCIENCE_REVIEW.md).
