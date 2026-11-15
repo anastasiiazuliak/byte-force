@@ -10,6 +10,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 
     await page.keyboard.press('Tab');
     await expect(page.getByRole('link', { name: 'Skip to site and time' })).toBeFocused();
     await page.keyboard.press('Enter');
+    await page.getByRole('button', { name: 'Terrain View', exact: true }).click();
     await page.getByLabel('Exploratory patch', { exact: true }).selectOption('connecting-ridge');
     await expect(page.getByLabel('Latitude A', { exact: true })).toHaveValue('-89.45');
     await expect(page.getByLabel('Longitude A', { exact: true })).toHaveValue('-137.31');
@@ -52,7 +53,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 
       result.quality.warnings.push(...Array.from({ length: 20 }, (_, i) => `Synthetic layout warning ${i + 1}: distant terrain and sampling uncertainty remain unknown.`));
       return route.fulfill({ json: result });
     });
-    await page.goto('/');
+    await page.goto('/'); await page.getByRole('button', { name: 'Terrain View', exact: true }).click();
     await page.getByLabel('Latitude A', { exact: true }).fill('-89.5');
     await page.getByLabel('Longitude A', { exact: true }).fill('25');
     await page.getByLabel('Start UTC A', { exact: true }).fill('2026-11-14T00:00');
@@ -62,15 +63,17 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 
     const result = page.getByTestId('analysis-result');
     await expect(result).toContainText('SYNTHETIC FIXTURE (NOT NASA)');
     await expect(result).toContainText('far-field visibility unknown');
-    await expect(result).toContainText('Sun visible: Unknown (Unknown)');
-    await expect(result).toContainText('Unknown · altitude');
-    const warnings = result.locator('.analysis-warnings');
+    await expect(result).toContainText('Visibility summary unavailable: terrain coverage or validation is insufficient to determine visible durations.');
+    await expect(result).not.toContainText('Unknown (Unknown)');
+    await expect(result.getByRole('img', { name: /Local sky compass for slot A/ })).toBeVisible();
+    const warnings = result.locator('details').filter({ has: page.getByText(/Technical metadata & quality warnings/) });
     await expect(warnings).not.toHaveAttribute('open');
     await warnings.locator('summary').click();
-    await expect(warnings.getByRole('note').first()).toBeVisible();
+    await expect(warnings.getByText(/Ephemeris:/)).toBeVisible();
     await expect(warnings).toContainText('DO NOT DISPLAY AS REAL SCIENCE');
     await warnings.locator('summary').click();
-    await expect(result.getByRole('img')).toHaveCount(2);
+    await result.getByText('Samples & horizon (degrees, UTC)', { exact: true }).click();
+    await expect(result.getByRole('img')).toHaveCount(3);
     for (const chart of await result.getByRole('img').all()) {
       const fits = await chart.evaluate(svg => {
         const rect = svg.getBoundingClientRect();

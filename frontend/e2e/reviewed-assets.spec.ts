@@ -20,7 +20,7 @@ test('reviewed native geometry: pick A/B, real surface markers and patch replace
   const map = await request.get('/api/v1/map/metadata'); expect(map.status()).toBe(200);
   const data = await map.json(); expect(data.terrainDataset.metadataVerified).toBe(true);
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/'); await page.getByLabel('Exploratory patch', { exact: true }).selectOption('connecting-ridge'); await ready(page);
+  await page.goto('/'); await page.getByRole('button', { name: 'Terrain View', exact: true }).click(); await page.getByLabel('Exploratory patch', { exact: true }).selectOption('connecting-ridge'); await ready(page);
   const viewer = page.getByTestId('lunar-terrain-viewer');
   await expect(viewer).toHaveAttribute('data-selected-asset-key', /connecting-ridge/);
   await pick(page);
@@ -46,7 +46,7 @@ test('reviewed native geometry: pick A/B, real surface markers and patch replace
 
 test('live reviewed DEM profile and local Horizons light follow cached UTC', async ({ page }) => {
   test.skip(process.env.LUNAR_REVIEWED_E2E !== '1' || process.env.LUNAR_RUN_LIVE_E2E !== '1', 'Explicit opt-in required for real DEM and NASA requests.');
-  await page.goto('/'); await page.getByLabel('Exploratory patch', { exact: true }).selectOption('connecting-ridge'); await ready(page); await pick(page); await period(page);
+  await page.goto('/'); await page.getByRole('button', { name: 'Terrain View', exact: true }).click(); await page.getByLabel('Exploratory patch', { exact: true }).selectOption('connecting-ridge'); await ready(page); await pick(page); await period(page);
   const done = page.waitForResponse(response => response.url().endsWith('/api/v1/analyze') && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Analyze site', exact: true }).click();
   const response = await done; expect(response.status()).toBe(200); const result = await response.json();
@@ -55,7 +55,21 @@ test('live reviewed DEM profile and local Horizons light follow cached UTC', asy
   expect(result.samples.every((sample: any) => sample.sun.visible === null && sample.earth.visible === null)).toBe(true);
   expect(Object.values(result.summary).every(value => value === null)).toBe(true);
   const article = page.getByTestId('analysis-result'); await expect(article).toContainText('REGIONAL ESTIMATE');
+  await article.getByText('Samples & horizon (degrees, UTC)', { exact: true }).click();
   await expect(page.getByRole('img', { name: 'Terrain horizon profile: azimuth 0 to 360 degrees' })).toBeVisible();
+  await expect(article.getByRole('img', { name: /Local sky compass for slot A/ })).toBeVisible();
+  await article.getByRole('button', { name: /Inspect sample/ }).first().click();
+  await expect(article.getByRole('tooltip')).toContainText(`Sun ${result.samples[0].sun.elevationDeg.toFixed(2)}° · Earth ${result.samples[0].earth.elevationDeg.toFixed(2)}°`);
+  const compass = article.getByRole('img', { name: /Local sky compass for slot A/ });
+  const sunMarker = compass.locator('g.sun-key circle');
+  const az = result.samples[0].sun.azimuthDeg * Math.PI / 180;
+  expect(Number(await sunMarker.getAttribute('cx'))).toBeCloseTo(70 + 42 * Math.sin(az), 5);
+  expect(Number(await sunMarker.getAttribute('cy'))).toBeCloseTo(70 - 42 * Math.cos(az), 5);
+  await article.getByLabel('Chart quantity').selectOption('clearance');
+  await expect(article.getByRole('img', { name: 'Sun and Earth clearance over UTC period in degrees' })).toBeVisible();
+  await article.getByRole('button', { name: /Inspect sample/ }).first().click();
+  await expect(article.getByRole('tooltip')).toContainText(`Sun ${result.samples[0].sun.clearanceDeg.toFixed(2)}° · Earth ${result.samples[0].earth.clearanceDeg.toFixed(2)}°`);
+  await page.getByLabel('Scientific Sun Lighting', { exact: true }).check();
   const viewer = page.getByTestId('lunar-terrain-viewer'); await expect(viewer).toHaveAttribute('data-sunlight-source', 'horizons-local');
   const first = await viewer.getAttribute('data-solar-direction');
   let requests = 0; page.on('request', r => { if (r.url().includes('/api/v1/')) requests++; });
@@ -63,6 +77,16 @@ test('live reviewed DEM profile and local Horizons light follow cached UTC', asy
   await expect(viewer).not.toHaveAttribute('data-solar-direction', first!);
   await expect(viewer).toHaveAttribute('data-time-utc', /01:00:00/);
   await page.waitForTimeout(300); // Permit the cached visual light's damping frames; no data requests.
+  const coordinates = await page.getByLabel('Latitude A', { exact: true }).inputValue();
+  for (const mode of ['Globe View', 'Terrain View']) {
+    await page.getByRole('button', { name: mode, exact: true }).click();
+    await expect(viewer).toHaveAttribute('data-selected-asset-key', mode === 'Globe View' ? /globe\/terrain.glb/ : /connecting-ridge/);
+    await ready(page);
+    await expect(page.getByLabel('Latitude A', { exact: true })).toHaveValue(coordinates);
+    await expect(viewer).toHaveAttribute('data-time-utc', /01:00:00/);
+    await expect(article).toContainText('JPL Horizons');
+    if (mode === 'Globe View') await expect(page.getByLabel('Scientific Sun Lighting', { exact: true })).toBeDisabled();
+  }
   expect(requests).toBe(0);
   await page.screenshot({ path: '../.validation/reviewed-horizons-lighting.png', fullPage: true });
 });

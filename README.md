@@ -1,12 +1,13 @@
 # Lunar Navigator · ByteForce
 
-Інтегрований Lunar Landing Site Navigator: за замовчуванням source-derived **South Pole Overview** із реального LOLA DEM, ручний перехід до трьох native 80 m дослідницьких patches, UTC-аналіз Сонця/Землі та порівняння A/B на реальних NASA JPL Horizons. Overview — planar polar relief, не curved globe і не автоматична adaptive tile pyramid.
+Інтегрований Lunar Landing Site Navigator: за замовчуванням **Globe View** — source-derived сферичний south-polar cap 80–90°S із реального LOLA DEM, без exaggeration висот чи кривизни. **Terrain View** зберігає planar South Pole Overview і ручний перехід до трьох native 80 m дослідницьких patches; UTC-аналіз Сонця/Землі та A/B використовують NASA JPL Horizons. Це не повний Moon globe і не continuous tile streaming.
 
 > **Поточний результат — regional estimate, не повна global visibility.** Реальні регіональні horizon/clearance доступні, picking і локальне освітлення працюють. Усі `visible` та глобальні summaries залишаються `null`, `status=partial`, `quality.terrainApplied=false`: рельєф за межами 20 km і похибка дискретизації не доведені. Це не рекомендація місця посадки, power prediction чи NASA-certified продукт.
 
 ## Актуальні документи
 
-- [Polar overview: джерело, точне покриття, геометрія, camera/picking, обмеження й reproduction](docs/integration/POLAR_OVERVIEW.md); [selective UI integration audit](docs/integration/POLAR_UI_AUDIT.md).
+- **[Spherical release: scientific method, точні transforms, джерела, reproduction і фінальні локальні докази](docs/integration/SPHERICAL_RELEASE.md)** — поточний Globe default.
+- [Polar overview](docs/integration/POLAR_OVERVIEW.md) — історичний planar stage, не поточний default; [selective UI integration audit](docs/integration/POLAR_UI_AUDIT.md).
 
 - [Release readiness: стан PR15, ресурси, докази та gates](docs/integration/RELEASE_READINESS.md).
 - [Запуск / deployment](docs/integration/DEPLOYMENT.md), [pitch і demo](docs/integration/DEMO.md).
@@ -28,13 +29,13 @@ python3 scripts/asset-setup.py --capture-docs --acquire-nac --prepare-runtime --
 python3 scripts/run-local.py
 ```
 
-Якщо вже перебуваєте в final worktree, пропустіть `cd`. Asset setup автоматично завантажує/відновлює офіційні regional ресурси, валідує, генерує три native meshes і coarse polar overview та публікує proof-bound runtime. **Ручного download не потрібно.** Потрібні мережа й місце на диску; великі assets ignored і не додаються до Git. Повторне складання з наявних даних без мережі:
+Якщо вже перебуваєте в final worktree, пропустіть `cd`. Asset setup автоматично завантажує/відновлює офіційні regional ресурси, валідує, генерує три native meshes, coarse planar overview і spherical cap як release publisher та публікує proof-bound runtime. **Ручного download не потрібно.** Потрібні мережа й місце на диску; великі assets ignored і не додаються до Git. Повторне складання з наявних даних без мережі:
 
 ```sh
 python3 scripts/asset-setup.py --offline --prepare-runtime --write-launch-env
 ```
 
-Одна команда `python3 scripts/run-local.py` запускає frontend **http://127.0.0.1:5173**, API **5080**, static **5081**. Launcher перевіряє .NET 10, published proof і API health до запуску Vite. `Ctrl+C` завершує дочірні процеси; cleanup перевірено. Bounded smoke: `python3 scripts/run-local.py --smoke --timeout 120`. Це історичний launcher-cleanup evidence, не стан поточної сесії: polar browser suite повторно використовує вже запущені користувачем API/static/frontend на **5080/5081/5173** через `LUNAR_E2E_REUSE_SERVER=1`. Ці сервери не зупинялися цим documentation task. Runtime validation регенерує overview з перевіреного source DEM; поточна startup ціна близько **30 s** — integrity/performance tradeoff.
+Одна команда `python3 scripts/run-local.py` запускає frontend **http://127.0.0.1:5173**, API **5080**, static **5081**. Launcher перевіряє .NET 10, published proof і API health до запуску Vite. `Ctrl+C` завершує дочірні процеси; cleanup перевірено. Bounded smoke: `python3 scripts/run-local.py --smoke --timeout 120`. Це історичний launcher-cleanup evidence, не стан поточної сесії: polar browser suite повторно використовує вже запущені користувачем API/static/frontend на **5080/5081/5173** через `LUNAR_E2E_REUSE_SERVER=1`. Ці сервери не зупинялися цим documentation task. Runtime validation перевіряє source-bound assets; попередні ~30 s стосувалися planar stage, не виміряного поточного spherical startup.
 
 Без reviewed runtime launcher використовує unreviewed `public-assets` preview; `--fallback-assets` вибирає його навмисно, із disabled picking. Це не reviewed режим. Windows: рекомендовано WSL через POSIX process groups; [ручний native запуск](docs/integration/DEPLOYMENT.md#windows) описано окремо.
 
@@ -43,9 +44,9 @@ python3 scripts/asset-setup.py --offline --prepare-runtime --write-launch-env
 - `frontend/src/main.tsx` → `app/Application.tsx`: premium React/TypeScript shell, ScenarioForm, analysis/compare, UTC timeline і lazy R3F/Three.js explorer; один typed API client, cancel/stale-response guard.
 - `.NET 10` API/Core/Models/Horizons: усі **9 проєктів**, migration `27c414e`. `global.json`: stable `10.0.100`, `latestFeature`; фактично SDK **10.0.113**, API CoreCLR **10.0.13**. ASP.NET testing **10.0.15**, Test SDK **18.12.0**; Docker/CI також 10.
 - `data/raw/`: повний official LOLA і малий georeferenced LROC NAC; `.validation/release-assets/`: три generated candidates. `release_assets.py` перевіряє identity/native vertex proof і публікує `.validation/runtime-assets/` із hidden bound review receipt.
-- API metadata та `/static/metadata/explorer-sites.json` використовують reviewed mapping. Catalog відкриває `/static/overview/terrain.glb` за замовчуванням; ручний вибір patches завантажує `/static/{site}/terrain.glb`. Overview: **40,001 vertices / 79,600 triangles / 2,236,672 bytes**, native sample centres у перетині 80°S circle і raster coverage **±303960 m**, scene east/up/-north без globe curvature. Browser не завантажує TIFF; GPU-memory benchmark/FPS claim відсутні. Launcher дозволяє map review лише після перевірки proof; DEM datum має окремий exact-body/geotags/same-open-handle/epoch gate, не довільний boolean override.
+- API metadata та `/static/metadata/explorer-sites.json` використовують reviewed mapping. Globe default відкриває `/static/globe/terrain.glb`: **40,001 vertices / 79,304 triangles / 2,233,140 bytes**, R=1737400 m, r=R+h, scene `[MoonY,-MoonZ-R,-MoonX]`, origin South Pole, height/curvature 1×. Native sample centres обмежені перетином 80°S circle і raster coverage **±303960 m**. Terrain View зберігає `/static/overview/terrain.glb` (planar **79,600 triangles**); ручний вибір patches завантажує `/static/{site}/terrain.glb`. Окремий nonpickable DisplayPlinth — **800 vertices / 800 triangles**, «not lunar interior», не science bounds. Browser не завантажує TIFF; GPU-memory benchmark/FPS claim відсутні. Launcher дозволяє map review лише після перевірки proof; DEM datum має окремий exact-body/geotags/same-open-handle/epoch gate, не довільний boolean override.
 - Observer і horizon rays використовують спільну bilinear DEM surface; геодезичні rays, сферична кривизна, 360 азимутів із кроком 1°, radial step 80 m, range 20 km.
-- A/B markers і picking прив’язані до реальних GLB triangles та їх висоти. Cached topocentric Sun azimuth/elevation через local projection Jacobian керують графічним світлом при зміні UTC, без нового API запиту на кожен кадр. Це **не global Moon-fixed**: `/api/v1/ephemeris` лишається 503.
+- A/B markers і picking прив’язані до реальних GLB triangles та їх висоти. Exploration Lighting — нейтральне illustrative fill. Scientific Sun Lighting **disabled на Globe**: local direction не є global vector. Лише на reviewed Terrain cached topocentric Sun at **A** через local projection Jacobian може керувати приблизним графічним світлом при зміні UTC, без нового API запиту на кожен кадр. Це **не global Moon-fixed**: `/api/v1/ephemeris` лишається 503.
 
 ## Наукові межі
 
@@ -57,7 +58,7 @@ LROC NAC **завантажений**, геоприв’язка перевір�
 
 ## Перевірки й release статус
 
-**Поточний polar evidence** (наявні logs, не rerun цим docs task): `.validation/polar-browser.log` — **19 passed**, observed no pageerrors; **rerun після mobile toolbar fixes pending**. `.validation/polar-backend.log` — **203 passed**; `.validation/polar-unit.log` — **78 passed / 12 files**; `.validation/polar-overview-tests.log` — **5 passed / 228.781 s**. Browser run явно reuse user-running 5080/5081/5173 через `LUNAR_E2E_REUSE_SERVER=1`, не доказ stopped servers. Final SHA/push/GitHub CI — coordinator pending. [Детальний scope і команди](docs/integration/POLAR_OVERVIEW.md#existing-test-evidence-and-pending-gates).
+**Поточний spherical evidence** (наявні `.validation/globe-*` logs, не rerun цим docs task): frontend **107 passed / 16 files**, contracts **6** (subset), Playwright final **27 passed** із reviewed/live opt-ins; actual GLB/live NASA/DEM і intercepted synthetic/error/layout cases розділено в [детальному звіті](docs/integration/SPHERICAL_RELEASE.md#actual-final-local-test-evidence). Python **4 cap + 5 overview + 4 runtime + 13 acquisition + 7 guard = 33 passed**. Browser reuse user-running 5080/5081/5173 — явний opt-in, не доказ stopped servers. **Final .NET 10 backend rerun pending coordinator**; попередні **203 passed** не новий spherical rerun. Current spherical work uncommitted; final SHA/push/GitHub CI pending.
 
 Нижче — попередній release-stage evidence, збережений як історичний snapshot, не новий polar rerun:
 
@@ -65,7 +66,7 @@ Full opt-in backend: **203 passed, 0 skipped** (`.validation/final-backend-live.
 
 Після Analyze/Compare доступні **Download CSV** та **Print report / Save PDF**; [export format і Unknown/source labels](docs/EXPORT_FORMAT.md). CSV містить повну API sample series незалежно від timeline cursor. Наявність export/unit tests не означає завершеного live browser export rerun. Новий UI range `a75d443..8394de2` із паралельним `MissionApp`/shared interfaces не merged wholesale: existing shell retained; P2-02 serializer/actions/tests/docs selectively ported зі збереженням teammate attribution (Khrystyna).
 
-Main bundle зменшено приблизно з 1225 KB / 345 KB gzip до **254 KB / 80 KB gzip**; deferred 3D chunk **983 KB** досі має warning, не прихований. Docker daemon permission denied: config validated, **не build/runtime/deploy**. Публічного deployment не виконано.
+Фактичний `.validation/globe-build.log`: main JS **271.79 kB / 85.80 kB gzip**, deferred explorer **987.63 kB / 271.27 kB gzip**, build **6.43 s**; >500 kB chunk warning збережений. GPU-memory/FPS benchmark відсутній; context-loss recovery фактично не тестували. Docker daemon permission denied: config validated, **не build/runtime/deploy**. Публічного deployment не виконано.
 
 ## Автори, джерела й ліцензії
 

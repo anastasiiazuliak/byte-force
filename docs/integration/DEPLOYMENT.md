@@ -2,6 +2,8 @@
 
 PR15 OPEN, той самий final checkout; [release readiness](RELEASE_READINESS.md) — поточний стан, [RELEASE_TEST_REPORT](RELEASE_TEST_REPORT.md) — фінальні результати координатора. Старі FINAL reports історичні.
 
+Поточний default — **Globe View**; [spherical release / scientific method / final local evidence](SPHERICAL_RELEASE.md). Terrain View зберігає planar overview і три native patches. Поточні spherical зміни uncommitted; final backend rerun, push і CI pending coordinator, старі reports не підтверджують ці gates.
+
 ## Передумови й підготовка
 
 Linux/WSL, Python 3.9+, Node.js 22/npm, **stable .NET SDK 10**. Усі 9 .NET projects мігровано (`27c414e`); `global.json` обирає stable 10.0.100 з `latestFeature`, фактично перевірено SDK 10.0.113 та API CoreCLR 10.0.13. .NET 8 не потрібен. Docker/CI target — 10.
@@ -22,7 +24,7 @@ python3 scripts/run-local.py
 python3 scripts/asset-setup.py --offline --prepare-runtime --write-launch-env
 ```
 
-`candidate-paths.env` — path handoff, не approval. `--prepare-runtime` викликає `release_assets.py`: exact identities + native proof, окремі deployment manifests, hidden `.release-review.json`, source/mesh/metadata binding. Candidate manifests самі не активують review. Великі datasets, generated GLB і receipts ignored; Git binaries не додано. [Таблиця ресурсів](RELEASE_READINESS.md#ресурси).
+`candidate-paths.env` — path handoff, не approval. `--prepare-runtime` викликає `release_assets.py`: exact identities + native proof, окремі deployment manifests, hidden `.release-review.json`, source/mesh/metadata binding. Candidate manifests самі не активують review. Release publisher генерує **обидва** source-bound assets: planar `/static/overview/terrain.glb` і spherical `/static/globe/terrain.glb`, metadata/catalog/proofs; offline preparation вище виконує той самий publisher, не лише native patches. Великі datasets, generated GLB і receipts ignored; Git binaries не додано. [Таблиця ресурсів](RELEASE_READINESS.md#ресурси).
 
 ## Один launcher, три сервіси
 
@@ -48,7 +50,7 @@ python3 scripts/run-local.py --smoke --timeout 120
 
 Static server обмежує prefixes/types, відхиляє traversal/symlink escape, приховані й неприйнятні paths, задає `nosniff`, GLB/WebP MIME та no-cache. Це не загальний файловий сервер. WebP MIME не означає site textures: NAC не перекриває patches.
 
-`Ctrl+C`/SIGTERM завершує дочірні process groups; bounded smoke і Playwright cleanup перевірені. Не запускайте одночасно launcher і Playwright webServer на тих самих портах. Після тестів постійних сервісів немає; користувач запускає їх сам.
+`Ctrl+C`/SIGTERM завершує дочірні process groups; bounded smoke і Playwright cleanup перевірені. Не запускайте одночасно launcher і Playwright webServer на тих самих портах. Це стосується лише test-owned launcher. Для вже user-running 5080/5081/5173 Playwright reuse дозволений **тільки явним** `LUNAR_E2E_REUSE_SERVER=1`; reviewed/live cases додатково потребують `LUNAR_REVIEWED_E2E=1 LUNAR_RUN_LIVE_E2E=1`. Recorded spherical browser session reuse не доводить cleanup; user-owned сервери не зупиняти.
 
 ## Windows
 
