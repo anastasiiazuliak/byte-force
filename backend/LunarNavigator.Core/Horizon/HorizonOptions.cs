@@ -8,7 +8,7 @@ public sealed record HorizonOptions
     /// <summary>Angular spacing between azimuth rays in degrees (must divide 360 cleanly or be > 0).</summary>
     public double AzimuthStepDeg { get; init; } = 1.0;
 
-    /// <summary>Maximum ray-marching range in projected meters (far-field horizon limit).</summary>
+    /// <summary>Maximum ray-marching great-circle surface distance in meters; not a global horizon guarantee.</summary>
     public double MaxRangeMeters { get; init; } = 20_000.0;
 
     /// <summary>Step size along each azimuth ray in meters (defaults to DEM pixel scale, e.g. 80 m).</summary>

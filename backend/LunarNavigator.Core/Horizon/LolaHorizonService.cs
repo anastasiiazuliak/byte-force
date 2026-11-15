@@ -70,7 +70,7 @@ public sealed class LolaHorizonService : IHorizonService
         }
 
         double pixelScale = centerHeight.ResolutionMeters is > 0 ? centerHeight.ResolutionMeters.Value : 80.0;
-        int radiusPixels = (int)Math.Ceiling(opts.MaxRangeMeters / pixelScale) + 2;
+        int radiusPixels = (int)Math.Ceiling(opts.MaxRangeMeters * 1.02 / pixelScale) + 2;
 
         var window = await _terrain.GetWindowAsync(
             new TerrainWindowRequest(location, radiusPixels, Stride: 1),
@@ -126,12 +126,14 @@ public sealed class LolaHorizonService : IHorizonService
         double resM = window.ResolutionMeters > 0 ? window.ResolutionMeters : 80.0;
         int cols = window.Columns;
         int rows = window.Rows;
+        Func<int, int, float> readWindowPixel = (column, row) => window.Elevations[row * cols + column];
         double centerCol = (cols - 1) / 2.0;
         double centerRow = (rows - 1) / 2.0;
 
-        // Polar local North & East unit vectors in projected (X, Y) plane (ARC-03)
+        // Retain the observer offset relative to the snapped raster window origin.
         var (obsX, obsY) = LunarProjection.ToProjected(location.Latitude, location.Longitude);
-        var (northX, northY, eastX, eastY) = GetPolarLocalBasis(obsX, obsY);
+        double originX = window.OriginX ?? obsX - centerCol * resM;
+        double originY = window.OriginY ?? obsY + centerRow * resM;
 
         double r0 = LunarProjection.MoonRadiusMeters + centerElevM + opts.ObserverHeightOffsetMeters;
         double rayStep = Math.Max(1.0, opts.RayStepMeters);
@@ -159,19 +161,15 @@ public sealed class LolaHorizonService : IHorizonService
                 break;
             }
 
-            double azRad = azDeg * (Math.PI / 180.0);
-            double dirX = (Math.Cos(azRad) * northX) + (Math.Sin(azRad) * eastX);
-            double dirY = (Math.Cos(azRad) * northY) + (Math.Sin(azRad) * eastY);
-
             double maxElevDeg = -90.0;
             bool hasValidSample = false;
 
             for (double dist = rayStep; dist <= maxRange; dist += rayStep)
             {
-                double dx = dist * dirX;
-                double dy = dist * dirY;
-                double colF = centerCol + (dx / resM);
-                double rowF = centerRow - (dy / resM); // projected +Y points up, raster row increases down
+                var destination = Destination(location, azDeg, dist);
+                var (sampleX, sampleY) = LunarProjection.ToProjected(destination.Latitude, destination.Longitude);
+                double colF = (sampleX - originX) / resM;
+                double rowF = (originY - sampleY) / resM;
 
                 if (colF < 0 || colF > cols - 1 || rowF < 0 || rowF > rows - 1)
                 {
@@ -179,7 +177,7 @@ public sealed class LolaHorizonService : IHorizonService
                     break;
                 }
 
-                if (!TrySampleBilinear(window.Elevations, cols, rows, colF, rowF, out double sampleElevM))
+                if (!BilinearDemSurface.TrySample(cols, rows, colF, rowF, readWindowPixel, out double sampleElevM))
                 {
                     encounteredNoData = true;
                     continue;
@@ -210,6 +208,8 @@ public sealed class LolaHorizonService : IHorizonService
         {
             $"Horizon profile: azStep={opts.AzimuthStepDeg:0.##} deg, rayStep={rayStep:0.#} m, maxRange={maxRange / 1000.0:0.#} km, lunarSphereR={LunarProjection.MoonRadiusMeters:0} m."
         };
+        warnings.Add("Observer and ray heights use the same bilinear DEM surface model; subpixel physical accuracy is not established.");
+        warnings.Add("Finite-range sampled horizon only: unsampled ridges and terrain beyond maxRange may obstruct the target; clear samples are not proof of global visibility.");
         if (encounteredNoData)
         {
             warnings.Add("Some ray samples contained DEM NoData and were skipped.");
@@ -228,7 +228,26 @@ public sealed class LolaHorizonService : IHorizonService
             TerrainApplied: !timedOut && !encounteredNoData && !clippedRay && points.Count == rayCount,
             TerrainSource: terrainSource ?? "NASA LOLA DEM",
             ResolutionMeters: resM,
-            Warnings: warnings);
+            Warnings: warnings) { IsRegionalOnly = true };
+    }
+
+    /// <summary>Great-circle destination on the reference sphere; azimuth is north through east.</summary>
+    public static TerrainLocation Destination(TerrainLocation observer, double azimuthDeg, double distanceMeters)
+    {
+        double lat = observer.Latitude * Math.PI / 180;
+        double lon = observer.Longitude * Math.PI / 180;
+        double az = azimuthDeg * Math.PI / 180;
+        double psi = distanceMeters / LunarProjection.MoonRadiusMeters;
+        // Cartesian tangent basis avoids the longitude singularity at the South Pole.
+        double x = Math.Cos(lat) * Math.Cos(lon), y = Math.Cos(lat) * Math.Sin(lon), z = Math.Sin(lat);
+        double tx = -Math.Cos(az) * Math.Sin(lat) * Math.Cos(lon) - Math.Sin(az) * Math.Sin(lon);
+        double ty = -Math.Cos(az) * Math.Sin(lat) * Math.Sin(lon) + Math.Sin(az) * Math.Cos(lon);
+        double tz = Math.Cos(az) * Math.Cos(lat);
+        double dx = x * Math.Cos(psi) + tx * Math.Sin(psi);
+        double dy = y * Math.Cos(psi) + ty * Math.Sin(psi);
+        double dz = z * Math.Cos(psi) + tz * Math.Sin(psi);
+        return new TerrainLocation(Math.Atan2(dz, Math.Sqrt(dx * dx + dy * dy)) * 180 / Math.PI,
+            Math.Atan2(dy, dx) * 180 / Math.PI);
     }
 
     internal static (double NorthX, double NorthY, double EastX, double EastY) GetPolarLocalBasis(double obsX, double obsY)
@@ -248,32 +267,6 @@ public sealed class LolaHorizonService : IHorizonService
         return (northX, northY, eastX, eastY);
     }
 
-    private static bool TrySampleBilinear(float[] grid, int cols, int rows, double colF, double rowF, out double elevation)
-    {
-        int c0 = (int)Math.Floor(colF);
-        int r0 = (int)Math.Floor(rowF);
-        int c1 = Math.Min(cols - 1, c0 + 1);
-        int r1 = Math.Min(rows - 1, r0 + 1);
-
-        float v00 = grid[(r0 * cols) + c0];
-        float v10 = grid[(r0 * cols) + c1];
-        float v01 = grid[(r1 * cols) + c0];
-        float v11 = grid[(r1 * cols) + c1];
-
-        if (!float.IsFinite(v00) || !float.IsFinite(v10) || !float.IsFinite(v01) || !float.IsFinite(v11))
-        {
-            elevation = double.NaN;
-            return false;
-        }
-
-        double fc = colF - c0;
-        double fr = rowF - r0;
-        double top = v00 + (fc * (v10 - v00));
-        double bottom = v01 + (fc * (v11 - v01));
-        elevation = top + (fr * (bottom - top));
-        return true;
-    }
-
     private static double NormalizeAzimuth(double azimuthDeg)
     {
         double az = azimuthDeg % 360.0;
@@ -282,12 +275,14 @@ public sealed class LolaHorizonService : IHorizonService
 
     private static void ValidateOptions(HorizonOptions opts)
     {
-        if (opts.AzimuthStepDeg is <= 0.0 or > 90.0)
+        if (!double.IsFinite(opts.AzimuthStepDeg) || opts.AzimuthStepDeg is < 0.1 or > 90.0)
             throw new ArgumentOutOfRangeException(nameof(opts.AzimuthStepDeg), "AzimuthStepDeg must be in (0, 90].");
-        if (opts.MaxRangeMeters <= 0.0)
+        if (!double.IsFinite(opts.MaxRangeMeters) || opts.MaxRangeMeters is <= 0.0 or > 60_000.0)
             throw new ArgumentOutOfRangeException(nameof(opts.MaxRangeMeters), "MaxRangeMeters must be positive.");
-        if (opts.RayStepMeters <= 0.0)
-            throw new ArgumentOutOfRangeException(nameof(opts.RayStepMeters), "RayStepMeters must be positive.");
+        if (!double.IsFinite(opts.RayStepMeters) || opts.RayStepMeters < 1.0)
+            throw new ArgumentOutOfRangeException(nameof(opts.RayStepMeters), "Ray step must be finite and at least 1 m.");
+        if (!double.IsFinite(opts.ObserverHeightOffsetMeters) || opts.ObserverHeightOffsetMeters < 0)
+            throw new ArgumentOutOfRangeException(nameof(opts.ObserverHeightOffsetMeters));
     }
 
     private string BuildCacheKey(TerrainLocation loc, HorizonOptions opts) =>

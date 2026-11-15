@@ -29,6 +29,12 @@ public sealed class AnalysisService(
             height = new TerrainHeightResult(null, null, null, null, false, ["Terrain height provider is unavailable."]);
         }
         warnings.AddRange(height.Warnings);
+        // Horizons' DE421 mean-Earth orientation is not valid for arbitrary future UTC epochs.
+        if (height.DatumAlignmentVerified && (request.Period.StartUtc.Year < 1962 || request.Period.EndUtc.Year >= 2650))
+        {
+            height = height with { DatumAlignmentVerified = false };
+            warnings.Add("Reviewed lunar datum applicability is restricted to 1962-01-01 <= UTC < 2650-01-01; terrain alignment is unknown for this period.");
+        }
         var altitude = _altitudeResolver.Resolve(height);
         if (altitude.Warning is not null) warnings.Add(altitude.Warning);
         HorizonProfileResult? profile = null;
@@ -44,8 +50,12 @@ public sealed class AnalysisService(
             warnings.Add("Azimuth is singular at the exact pole; terrain visibility requires a reviewed meridian convention.");
         if (profile is not null) warnings.AddRange(profile.Warnings);
         var points = profile?.Points?.OrderBy(point => point.AzimuthDeg).ToArray() ?? [];
-        var terrainApplied = altitude.TerrainDatumVerified && ValidProfile(profile, height, points);
-        if (!terrainApplied)
+        var regionalApplied = altitude.TerrainDatumVerified && ValidProfile(profile, height, points);
+        var regionalOnly = regionalApplied && profile!.IsRegionalOnly;
+        var terrainApplied = regionalApplied && !regionalOnly;
+        if (regionalOnly)
+            warnings.Add("Reviewed DEM regional horizon and regional clearance are provided, but global skyline completeness is unproven. All visibility and summary metrics remain unknown; quality.terrainApplied=false denotes no complete visibility solution, not absence of DEM sampling.");
+        if (!regionalApplied)
             warnings.Add("Terrain visibility is indeterminate; visible, clearance and summary metrics are unknown.");
         var observations = await _ephemeris.GetAsync(request.Location, altitude.Kilometers, request.Period, cancellationToken);
         ValidateObservations(observations, RequestValidation.SampleTimes(request.Period));
@@ -68,18 +78,20 @@ public sealed class AnalysisService(
             new AnalysisLocation(location.Latitude, location.Longitude,
                 height.ElevationM is { } elevation && double.IsFinite(elevation) ? elevation : null),
             request.Period, summary, samples, new AnalysisIntervals(sun, earth),
-            terrainApplied && options.IncludeHorizon ? new HorizonResponse(points) : null,
+            regionalApplied && options.IncludeHorizon ? new HorizonResponse(points) : null,
             new AnalysisQuality("JPL Horizons", height.TerrainSource, terrainApplied,
                 height.ResolutionMeters is > 0 && double.IsFinite(height.ResolutionMeters.Value) ? height.ResolutionMeters : null,
-                "center-of-disk airless apparent; cyclic terrain interpolation; linear clearance crossings",
+                regionalOnly
+                    ? "center-of-disk airless apparent; finite-range regional DEM skyline; global visibility unknown"
+                    : "center-of-disk airless apparent; cyclic terrain interpolation; linear clearance crossings",
                 warnings.Distinct(StringComparer.Ordinal).ToArray()));
 
         BodyPosition Position(double azimuth, double elevation)
         {
-            if (!terrainApplied) return new BodyPosition(azimuth, elevation, null, null, null);
+            if (!regionalApplied) return new BodyPosition(azimuth, elevation, null, null, null);
             var horizon = VisibilityCalculator.InterpolateHorizon(points, azimuth);
             var clearance = elevation - horizon;
-            return new BodyPosition(azimuth, elevation, horizon, clearance, clearance > 0);
+            return new BodyPosition(azimuth, elevation, horizon, clearance, regionalOnly ? null : clearance > 0);
         }
     }
 

@@ -20,6 +20,8 @@ public sealed record LolaDemMetadata
     public double MinY { get; init; } = -304000.0;
     public double MaxY { get; init; } = 304000.0;
 
+    public bool RasterPixelIsArea { get; init; }
+
     public double PixelScaleMeters { get; init; } = 80.0;
     public float NoDataValue { get; init; } = float.NaN;
 

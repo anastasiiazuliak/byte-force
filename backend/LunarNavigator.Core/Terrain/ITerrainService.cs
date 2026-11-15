@@ -22,7 +22,12 @@ public sealed record TerrainWindowResult(
     double? MinElevationM,
     double? MaxElevationM,
     bool ContainsNoData,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings)
+{
+    // Projected coordinates of grid sample [0,0], when snapped to a source raster.
+    public double? OriginX { get; init; }
+    public double? OriginY { get; init; }
+}
 
 /// <summary>
 /// Core contract for querying digital elevation data from lunar terrain models (DATA-01).
