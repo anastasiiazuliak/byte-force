@@ -155,6 +155,79 @@ it('defaults to catalog overview and returning to it preserves both scenario dra
   } finally { loader.mockRestore(); }
 });
 
+it('prepares date comparison without overwriting either UTC draft or submitting', async () => {
+  render(<Application />); await fillA();
+  fireEvent.click(screen.getByRole('button', { name: /^Compare$/ }));
+  fireEvent.change(screen.getByLabelText('Start UTC B'), { target: { value: '2026-12-15T00:00' } });
+  fireEvent.change(screen.getByLabelText('End UTC B'), { target: { value: '2026-12-15T01:00' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Compare dates at Site A' }));
+  expect((screen.getByLabelText('Latitude B') as HTMLInputElement).value).toBe('-89.5');
+  expect((screen.getByLabelText('Longitude B') as HTMLInputElement).value).toBe('0');
+  expect((screen.getByLabelText('Start UTC B') as HTMLInputElement).value).toBe('2026-12-15T00:00');
+  expect((screen.getByLabelText('Start UTC A') as HTMLInputElement).value).toBe('2026-11-15T00:00');
+  expect(api.compare).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText('Longitude B'), { target: { value: '45' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Same period · Use same UTC period' }));
+  expect((screen.getByLabelText('Longitude B') as HTMLInputElement).value).toBe('45');
+  expect((screen.getByLabelText('Start UTC B') as HTMLInputElement).value).toBe('2026-11-15T00:00');
+  fireEvent.click(screen.getByRole('button', { name: '12 h draft B' }));
+  expect((screen.getByLabelText('End UTC B') as HTMLInputElement).value).toBe('2026-11-15T12:00');
+  expect(api.compare).not.toHaveBeenCalled();
+});
+
+it('sends different periods through the existing compare pipeline and aligns exact cached B samples', async () => {
+  const makeAnalysis = (day: string) => ({ ...fixture,
+    period: { startUtc: `${day}T00:00:00Z`, endUtc: `${day}T01:00:00Z`, stepMinutes: 60 },
+    samples: [0, 1].map(hour => ({ ...fixture.samples[0], timeUtc: `${day}T0${hour}:00:00Z` })) });
+  api.compare.mockResolvedValue({ scenarios: [{ id: 'B', analysis: makeAnalysis('2026-12-15') }, { id: 'A', analysis: makeAnalysis('2026-11-15') }], differences: { sunVisibleHours: null, earthVisibleHours: null, bothVisibleHours: null } });
+  render(<Application />); await fillA();
+  fireEvent.click(screen.getByRole('button', { name: 'Compare dates at Site A' }));
+  fireEvent.change(screen.getByLabelText('Start UTC B'), { target: { value: '2026-12-15T00:00' } });
+  fireEvent.change(screen.getByLabelText('End UTC B'), { target: { value: '2026-12-15T01:00' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Compare scenarios' }));
+  await screen.findByTestId('comparison-differences');
+  const [a, b] = api.compare.mock.calls[0][0].scenarios;
+  expect(a.location).toEqual({ latitude: -89.5, longitude: 0 });
+  expect(b.location).toEqual(a.location);
+  expect(a.period.startUtc).toBe('2026-11-15T00:00:00.000Z');
+  expect(b.period.startUtc).toBe('2026-12-15T00:00:00.000Z');
+  fireEvent.change(screen.getByLabelText('Selected UTC sample'), { target: { value: '1' } });
+  expect(screen.getByTestId('selected-utc').textContent).toBe('2026-11-15T01:00:00Z');
+  expect(screen.getByText(/Scenario B own UTC:/).textContent).toContain('2026-12-15T01:00:00.000Z');
+  const bTargets = screen.getByLabelText('Slot B exact chart samples');
+  expect(bTargets.querySelectorAll('[aria-current="true"]')).toHaveLength(1);
+  expect(bTargets.querySelector('[aria-current="true"]')?.textContent).toBe('2');
+  expect(screen.getByRole('region', { name: 'Cached comparison insights' }).textContent).toContain('finite coverage 0/2');
+  expect(api.compare).toHaveBeenCalledOnce();
+  expect(api.analyze).not.toHaveBeenCalled();
+});
+
+it('validates both independent compare periods against server maxSamples before requesting', async () => {
+  api.config.mockResolvedValue({ analysis: { minStepMinutes: 10, maxStepMinutes: 1440, maxSamples: 2 }, features: { moonFixedEphemeris: false } });
+  render(<Application />); await fillA();
+  await waitFor(() => expect(api.config).toHaveBeenCalledOnce());
+  fireEvent.click(screen.getByRole('button', { name: 'Compare dates at Site A' }));
+  fireEvent.click(screen.getByRole('button', { name: '12 h draft B' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Compare scenarios' }));
+  expect((await screen.findByTestId('analysis-error')).textContent).toContain('Period exceeds 2 samples');
+  expect(api.compare).not.toHaveBeenCalled();
+  expect(api.ephemeris).not.toHaveBeenCalled();
+});
+
+it('date preparation aborts a pending compare and ignores its late result', async () => {
+  let finish!: (value: unknown) => void;
+  api.compare.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  render(<Application />); await fillA();
+  fireEvent.click(screen.getByRole('button', { name: 'Compare dates at Site A' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Compare scenarios' }));
+  await waitFor(() => expect(api.compare).toHaveBeenCalledOnce());
+  const signal = api.compare.mock.calls[0][1] as AbortSignal;
+  fireEvent.click(screen.getByRole('button', { name: 'Compare dates at Site A' }));
+  expect(signal.aborted).toBe(true);
+  await act(async () => finish({ scenarios: [{ id: 'A', analysis: fixture }, { id: 'B', analysis: fixture }], differences: {} }));
+  expect(screen.queryByTestId('comparison-differences')).toBeNull();
+});
+
 it('defaults to fail-closed Globe and preserves results and inputs across representation switches', async () => {
   render(<Application />); await fillA();
   expect(screen.getByRole('button', { name: 'Globe View' }).getAttribute('aria-pressed')).toBe('true');

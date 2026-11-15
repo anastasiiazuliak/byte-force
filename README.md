@@ -57,6 +57,7 @@ On Windows replace `.venv/bin/python` with `.venv\Scripts\python.exe`. Offline r
 
 ## Documentation
 
+- [Challenge workflow, readiness and validation](docs/CHALLENGE_READINESS.md)
 - [Architecture and implemented scope](docs/ARCHITECTURE.md)
 - [Development, verification and deployment boundaries](docs/DEVELOPMENT.md)
 - [Data, attribution and scientific limits](docs/DATA_AND_SCIENCE.md)

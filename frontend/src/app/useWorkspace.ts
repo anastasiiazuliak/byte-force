@@ -182,6 +182,14 @@ export function useWorkspace() {
     setCurrentSite(first.id);
     if (first.metadata) setMetadata(first.metadata);
   }
+  function prepareDates() {
+    invalidate();
+    setViewState('compare');
+    setB((draft) => ({ ...draft, latitude: a.latitude, longitude: a.longitude }));
+  }
+  function samePeriod() {
+    change('B', { ...b, start: a.start, end: a.end, step: a.step });
+  }
   function quickCompare() {
     const first = patches[0],
       second = patches[1];
@@ -304,6 +312,8 @@ export function useWorkspace() {
     currentSite,
     selectPatch,
     prepareCompare,
+    prepareDates,
+    samePeriod,
     quickCompare,
     cancel: invalidate,
     client,

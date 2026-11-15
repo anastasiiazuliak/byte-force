@@ -1,4 +1,5 @@
 import { RegionalSummary } from './RegionalSummary';
+import { HorizonProfileChart } from './HorizonProfileChart';
 import { useMemo, useState } from 'react';
 import type { AnalysisResponse } from '../../api/types';
 import { compassPoint, humanWarning, metric, plotGeometry, utcLabel, visibility, type PlotMode } from './analysisHelpers';
@@ -15,16 +16,7 @@ export function AnalysisPanel({ analysis, timeUtc, slot = 'A' }: { analysis?: An
     [analysis, selectedTimeMs],
   );
   const plot = useMemo(() => (analysis ? plotGeometry(analysis, mode) : null), [analysis, mode]);
-  const sortedHorizonPoints = useMemo(
-    () =>
-      analysis?.horizon
-        ? [...analysis.horizon.points]
-            .sort((a, b) => a.azimuthDeg - b.azimuthDeg)
-            .map(p => `${p.azimuthDeg},${90 - p.elevationDeg}`)
-            .join(' ')
-        : '',
-    [analysis],
-  );
+
 
   if (!analysis || !plot) return <p role="status">Waiting for analysis.</p>;
   const regional = Boolean(analysis.horizon?.points.length);
@@ -37,6 +29,7 @@ export function AnalysisPanel({ analysis, timeUtc, slot = 'A' }: { analysis?: An
     <p className="analysis-time"><time dateTime={timeUtc}>{utcLabel(timeUtc)}</time> · shared selected UTC · exact samples only</p>
     <RegionalSummary analysis={analysis} />
     <section><h3>1. Astronomical Position</h3><p className="muted">Local sky directions, not a global 3D vector. North 0° · East 90°.</p>
+      <HorizonProfileChart profile={analysis.horizon} sample={sample} timeUtc={timeUtc}/>
       {!sample && <p>No exact sample at the selected UTC. Positions are not interpolated.</p>}
       <svg className="sky-compass" viewBox="0 0 140 140" role="img" aria-label={`Local sky compass for slot ${slot}: north 0 degrees, east 90 degrees`}>
         <circle cx="70" cy="70" r="43" fill="none" stroke="currentColor"/><path d="M70 22V118M22 70H118" className="plot-grid"/>
@@ -74,6 +67,6 @@ export function AnalysisPanel({ analysis, timeUtc, slot = 'A' }: { analysis?: An
       <p>Ephemeris: {analysis.quality.ephemerisSource} · Terrain: {analysis.quality.terrainSource ?? 'Unavailable'}</p><p>Method: {analysis.quality.visibilityMethod} · DEM resolution: {metric(analysis.quality.terrainResolutionMeters, ' m')} · Step: {analysis.period.stepMinutes} min</p>
       {analysis.quality.warnings.map((warning, i) => <p key={i}>{humanWarning(warning)}</p>)}
     </details>
-    <details open={tableOpen} onToggle={e => setTableOpen(e.currentTarget.open)}><summary>Samples & horizon (degrees, UTC)</summary><div className="table-scroll"><table><thead><tr><th>UTC</th><th>Sun altitude °</th><th>Earth altitude °</th><th>Sun clearance °</th><th>Earth clearance °</th></tr></thead><tbody>{tableOpen && analysis.samples.map((s, i) => <tr key={i} aria-current={s === sample ? 'true' : undefined}><td><time dateTime={s.timeUtc}>{utcLabel(s.timeUtc)}</time></td><td>{metric(s.sun.elevationDeg)}</td><td>{metric(s.earth.elevationDeg)}</td><td>{metric(s.sun.clearanceDeg)}</td><td>{metric(s.earth.clearanceDeg)}</td></tr>)}</tbody></table></div><p>{analysis.horizon ? `${analysis.horizon.points.length} horizon points` : 'Horizon unavailable'}</p>{analysis.horizon && <svg viewBox="0 0 360 180" role="img" aria-label="Terrain horizon profile: azimuth 0 to 360 degrees"><polyline fill="none" stroke="currentColor" points={sortedHorizonPoints}/></svg>}</details>
+    <details open={tableOpen} onToggle={e => setTableOpen(e.currentTarget.open)}><summary>Samples & horizon (degrees, UTC)</summary><div className="table-scroll"><table><thead><tr><th>UTC</th><th>Sun altitude °</th><th>Earth altitude °</th><th>Sun clearance °</th><th>Earth clearance °</th></tr></thead><tbody>{tableOpen && analysis.samples.map((s, i) => <tr key={i} aria-current={s === sample ? 'true' : undefined}><td><time dateTime={s.timeUtc}>{utcLabel(s.timeUtc)}</time></td><td>{metric(s.sun.elevationDeg)}</td><td>{metric(s.earth.elevationDeg)}</td><td>{metric(s.sun.clearanceDeg)}</td><td>{metric(s.earth.clearanceDeg)}</td></tr>)}</tbody></table></div><p>{analysis.horizon ? `${analysis.horizon.points.length} horizon points` : 'Horizon unavailable'}</p></details>
   </article>;
 }
