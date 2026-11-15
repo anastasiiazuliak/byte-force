@@ -1,6 +1,6 @@
 # NASA JPL Horizons — C#
 
-Бібліотека `backend/LunarNavigator.Horizons` для .NET 8 не потребує сторонніх пакетів або API-ключа.
+Бібліотека `backend/LunarNavigator.Horizons` для .NET 10 не потребує сторонніх пакетів або API-ключа.
 Вона отримує положення центрів Сонця та Землі для точки на Місяці в один момент часу.
 
 ## Де лежить код
@@ -16,7 +16,7 @@ docs/horizons.md                   ← документація
 backend/LunarNavigator.sln         ← єдине рішення для дев'яти C#-проєктів
 ```
 
-LOLA/Terrain/Horizon реалізується окремо у `backend/LunarNavigator.Core/{Terrain,Horizon}/` за [frozen contract](../PARALLEL_CONTRACT.md). Усі namespaces мають префікс `LunarNavigator`; алгоритми Horizons не змінювалися. Усі проєкти використовують `net8.0` і входять до одного `backend/LunarNavigator.sln`.
+LOLA/Terrain/Horizon реалізується окремо у `backend/LunarNavigator.Core/{Terrain,Horizon}/` за [frozen contract](../PARALLEL_CONTRACT.md). Усі namespaces мають префікс `LunarNavigator`; алгоритми Horizons не змінювалися. Усі проєкти використовують `net10.0` і входять до одного `backend/LunarNavigator.sln`.
 
 ## Використання
 

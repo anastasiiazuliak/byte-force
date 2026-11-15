@@ -1,5 +1,5 @@
-import React, { useRef, useCallback, useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import React, { useRef, useCallback, useMemo, useState } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Lighting } from './Lighting';
 import { TerrainMesh } from './TerrainMesh';
@@ -8,8 +8,11 @@ import { SiteMarkers } from './SiteMarkers';
 import { DEFAULT_CAMERA_PRESET } from '../scene/camera';
 import type { CameraAnimationState } from '../scene/camera';
 import type { CameraPreset, SceneStatus, SceneSelectedSite, SiteSlot } from '../types';
-import { sceneToGeographic, geographicToScene } from '../scene/projection';
+import { sampleTerrainSurface, type TerrainSurface } from '../scene/surface';
 import { validateLunarCoordinates } from '../selection/selectionManager';
+import { canUseGeographicTerrain } from '../scene/metadata';
+import { verifiedTerrainPick } from '../selection/verifiedPick';
+import { AdaptiveDpr } from '@react-three/drei';
 import { DragDetector } from '../selection/dragDetector';
 import type { MapMetadataResponse, Coordinates, IsoUtc } from '../../../api/types';
 
@@ -19,12 +22,15 @@ export interface SceneCanvasProps {
   selectedB?: Coordinates | null;
   activeSlot?: SiteSlot;
   timeUtc?: IsoUtc | null;
+  sunDirectionScene?: [number, number, number] | null;
   sunDirectionMoonFixed?: [number, number, number] | null;
+  onSurfaceReady?: (surface: TerrainSurface | null) => void;
   onStatus?: (status: SceneStatus) => void;
   onSelectSite?: (site: SceneSelectedSite) => void;
   onOutOfBounds?: (message: string) => void;
   onPresetChange?: (preset: CameraPreset) => void;
   enableKeyboard?: boolean;
+  onFitCamera?: (topDown?: boolean) => void;
   animationStateRef: React.MutableRefObject<CameraAnimationState | null>;
   controlsRef: React.MutableRefObject<any>;
 }
@@ -35,15 +41,27 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
   selectedB,
   activeSlot = 'A',
   timeUtc: _timeUtc,
-  sunDirectionMoonFixed,
+  sunDirectionScene,
   onStatus,
+  onSurfaceReady,
   onSelectSite,
   onOutOfBounds,
   onPresetChange,
   enableKeyboard = true,
+  onFitCamera,
   animationStateRef,
   controlsRef,
 }) => {
+  const [surface, setSurface] = useState<TerrainSurface | null>(null);
+  const handleSurface = useCallback((group: THREE.Group | null, key: string | null) => {
+    const next = group && key ? { group, key } : null;
+    setSurface(next); onSurfaceReady?.(next);
+  }, [onSurfaceReady]);
+  const positionA = useMemo(() => selectedA ? sampleTerrainSurface(metadata, surface, selectedA) : null, [metadata, surface, selectedA]);
+  const positionB = useMemo(() => selectedB ? sampleTerrainSurface(metadata, surface, selectedB) : null, [metadata, surface, selectedB]);
+  const [meshStatus, setMeshStatus] = useState<SceneStatus>('loading');
+  const geographicReady = meshStatus === 'ready' && canUseGeographicTerrain(metadata);
+  const handleStatus = useCallback((status: SceneStatus) => { setMeshStatus(status); onStatus?.(status); }, [onStatus]);
   const dragDetector = useMemo(() => new DragDetector({ maxMoveDistancePixels: 6 }), []);
   const isPointerDownValidClick = useRef(true);
 
@@ -63,21 +81,15 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
   );
 
   const handleMeshClick = useCallback(
-    (intersection: THREE.Intersection) => {
+    (intersection: THREE.Intersection, loadedAssetKey: string | null) => {
       if (!isPointerDownValidClick.current) return;
+      if (!geographicReady) { onOutOfBounds?.('Geographic picking unavailable: mesh or coordinate metadata is unverified. Enter coordinates manually.'); return; }
 
       const point = intersection.point;
       if (!point || !onSelectSite) return;
 
-      const origin = metadata?.render?.sceneTransform
-        ? {
-            originEastingM: metadata.render.sceneTransform.originEastingM,
-            originNorthingM: metadata.render.sceneTransform.originNorthingM,
-            verticalOriginM: metadata.render.sceneTransform.verticalOriginM,
-          }
-        : undefined;
-
-      const geo = sceneToGeographic({ x: point.x, y: point.y, z: point.z }, origin);
+      const geo = verifiedTerrainPick(metadata, loadedAssetKey, point);
+      if (!geo) { onOutOfBounds?.('Pick unavailable: stale asset, unverified mapping, or outside terrain bounds.'); return; }
 
       const validation = validateLunarCoordinates(geo.latitude, geo.longitude);
       if (!validation.valid) {
@@ -101,7 +113,7 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
         elevationM: geo.elevationM != null ? Math.round(geo.elevationM) : null,
       });
     },
-    [metadata, onSelectSite, onOutOfBounds, activeSlot]
+    [metadata, geographicReady, onSelectSite, onOutOfBounds, activeSlot]
   );
 
   return (
@@ -109,11 +121,11 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
       shadows
       camera={{
         fov: DEFAULT_CAMERA_PRESET.fov || 48,
-        near: 10,
+        near: 2,
         far: 600000,
         position: DEFAULT_CAMERA_PRESET.position,
       }}
-      dpr={[1, 2]}
+      dpr={[0.75, typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches ? 1.25 : 1.75]}
       gl={{
         antialias: true,
         powerPreference: 'high-performance',
@@ -126,20 +138,25 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
     >
       <color attach="background" args={['#040608']} />
 
-      <Lighting sunDirectionMoonFixed={sunDirectionMoonFixed} />
+      <AdaptiveDpr pixelated />
+      <Lighting sunDirectionScene={sunDirectionScene} />
 
-      <TerrainMesh
+      <FittedTerrain animationStateRef={animationStateRef} controlsRef={controlsRef}
         metadata={metadata}
-        onStatus={onStatus}
+        onStatus={handleStatus}
         onMeshClick={handleMeshClick}
+        onSurfaceReady={handleSurface}
       />
 
-      <SiteMarkers
+      {geographicReady && <SiteMarkers
+        positionA={positionA}
+        positionB={positionB}
         selectedA={selectedA}
         selectedB={selectedB}
         activeSlot={activeSlot}
         onMarkerClick={(_slot, coords) => {
-          const targetPt = geographicToScene(coords, 0);
+          const targetPt = sampleTerrainSurface(metadata, surface, coords);
+          if (!targetPt) return;
           const controls = controlsRef.current;
           if (controls) {
             animationStateRef.current = {
@@ -154,9 +171,10 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
             };
           }
         }}
-      />
+      />}
 
       <SceneControls
+        onFitCamera={onFitCamera}
         enableKeyboard={enableKeyboard}
         onPresetChange={onPresetChange}
         animationStateRef={animationStateRef}
@@ -165,3 +183,31 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
     </Canvas>
   );
 };
+
+function FittedTerrain({ controlsRef, animationStateRef, ...props }: React.ComponentProps<typeof TerrainMesh> & { controlsRef: React.MutableRefObject<any>; animationStateRef: React.MutableRefObject<CameraAnimationState | null> }) {
+  const { camera, size } = useThree();
+  const fit = useCallback((box: THREE.Box3) => {
+    if (box.isEmpty() || !(camera instanceof THREE.PerspectiveCamera)) return;
+    const center = box.getCenter(new THREE.Vector3());
+    const extent = box.getSize(new THREE.Vector3());
+    // The overview is a disc; a square bounding-box diagonal wastes 41% of its radius.
+    const radius = props.metadata?.assets.demoMeshUrl?.endsWith('/overview/terrain.glb')
+      ? Math.hypot(Math.max(extent.x, extent.z), extent.y) / 2 : extent.length() / 2;
+    const angle = Math.min(camera.fov * Math.PI / 360, Math.atan(Math.tan(camera.fov * Math.PI / 360) * size.width / size.height));
+    const distance = radius / Math.sin(angle) * 1.1;
+    const targetPosition = center.clone().add(new THREE.Vector3(0, 0.6, 0.8).multiplyScalar(distance));
+    animationStateRef.current = { isAnimating: true, startPosition: camera.position.clone(), targetPosition,
+      startLookAt: controlsRef.current?.target.clone() ?? center.clone(), targetLookAt: center.clone(),
+      progress: 0, durationMs: 1100, startTime: performance.now() };
+    camera.near = Math.max(1, radius / 2000);
+    camera.far = Math.max(100000, distance + radius * 10);
+    camera.updateProjectionMatrix();
+    if (controlsRef.current) {
+      controlsRef.current.terrainBounds = box.clone();
+      controlsRef.current.minDistance = Math.max(50, radius / 50);
+      controlsRef.current.maxDistance = radius * 5;
+      controlsRef.current.update();
+    }
+  }, [camera, size.width, size.height, controlsRef, animationStateRef, props.metadata?.assets.demoMeshUrl]);
+  return <TerrainMesh {...props} onLoadedBounds={fit} />;
+}

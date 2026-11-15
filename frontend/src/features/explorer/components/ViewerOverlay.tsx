@@ -5,6 +5,7 @@ import styles from '../styles/explorer.module.css';
 export interface ViewerOverlayProps {
   status: SceneStatus;
   currentPreset?: CameraPreset;
+  sunlightLabel?: string;
   isHorizonsLighting?: boolean;
   onReset: () => void;
   onTopDown: () => void;
@@ -16,6 +17,7 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
   status,
   currentPreset,
   isHorizonsLighting = false,
+  sunlightLabel,
   onReset,
   onTopDown,
   onFitRegion,
@@ -27,16 +29,16 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
     switch (status) {
       case 'ready':
         return (
-          <span className={`${styles.statusBadge} ${styles.statusReady}`} title="Verified DEM mesh loaded">
+          <span className={`${styles.statusBadge} ${styles.statusReady}`} title="GLB asset loaded; coordinate verification depends on runtime metadata">
             <span className={styles.statusDot} />
             Terrain: Ready (GLB)
           </span>
         );
       case 'demo-only':
         return (
-          <span className={`${styles.statusBadge} ${styles.statusDemo}`} title="Dev-only 3D polar relief diorama (DATA-03 pending)">
+          <span className={`${styles.statusBadge} ${styles.statusDemo}`} title="Requested asset unavailable. Previous mesh is retained when present; otherwise synthetic relief. Geographic picking is disabled.">
             <span className={styles.statusDot} />
-            3D Diorama (LOLA Polar)
+            Terrain unavailable · retained view / fallback
           </span>
         );
       case 'loading':
@@ -67,11 +69,11 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
             }`}
             title={
               isHorizonsLighting
-                ? 'Solar vector driven by verified JPL Horizons ephemeris'
+                ? 'Local solar direction at Scenario A from cached azimuth/elevation and the local projection Jacobian. Approximate across the map, especially whole-pole overview; not globally accurate illumination or scientific terrain visibility.'
                 : 'Preview lighting (Polar low grazing angle ~2.5°); not an official eclipse calculation'
             }
           >
-            {isHorizonsLighting ? '☀ Sun: Horizons Vector' : '☀ Sun: Preview Grazing (2.5°)'}
+            {isHorizonsLighting ? (sunlightLabel || '☀ Local solar direction · graphical shadows only') : '☀ Artistic lighting · not ephemeris'}
           </span>
         </div>
 
@@ -108,7 +110,7 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
             <li><kbd>R</kbd>: Reset to South Pole oblique view</li>
             <li><kbd>T</kbd>: Top-down nadir view</li>
             <li><kbd>F</kbd>: Fit region to view</li>
-            <li><kbd>1</kbd> / <kbd>2</kbd>: Camera presets (South Pole / Shackleton)</li>
+            <li><kbd>1</kbd> / <kbd>2</kbd>: Camera presets (overview / close-up)</li>
           </ul>
         </div>
       )}
@@ -119,9 +121,9 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
             type="button"
             className={`${styles.controlButton} ${currentPreset?.id === 'oblique' ? styles.activeButton : ''}`}
             onClick={onReset}
-            title="Reset to oblique South Pole perspective (Shortcut: R)"
+            title="Reset camera to loaded terrain (Shortcut: R)"
           >
-            Reset (R)
+            Reset Camera (R)
           </button>
 
           <button
@@ -137,9 +139,9 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
             type="button"
             className={`${styles.controlButton} ${currentPreset?.id === 'fitRegion' ? styles.activeButton : ''}`}
             onClick={onFitRegion}
-            title="Fit entire 80°S-90°S region (Shortcut: F)"
+            title="Fit loaded terrain (Shortcut: F)"
           >
-            Fit Region (F)
+            Fit Terrain (F)
           </button>
 
           <div className={styles.divider} />
@@ -148,9 +150,9 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
             type="button"
             className={`${styles.controlButton} ${currentPreset?.id === 'shackleton' ? styles.activeButton : ''}`}
             onClick={() => onSelectPreset('shackleton')}
-            title="Close-up inspection of Shackleton crater rim (Shortcut: 2)"
+            title="Illustrative close-up camera preset (Shortcut: 2)"
           >
-            Shackleton Rim (2)
+            Close-up (2)
           </button>
         </div>
       </div>

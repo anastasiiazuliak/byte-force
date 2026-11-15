@@ -7,6 +7,7 @@ using LunarNavigator.Core.Analysis;
 using LunarNavigator.Core.Comparison;
 using LunarNavigator.Core.Ephemeris;
 using LunarNavigator.Core.Map;
+using LunarNavigator.Core.Horizon;
 using LunarNavigator.Core.Terrain;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -30,15 +31,19 @@ builder.Services.AddSingleton<IMapMetadataService, FileMapMetadataService>();
 builder.Services.AddSingleton<IFoundationConfig, FoundationConfig>();
 builder.Services.AddSingleton<ILandingSiteCatalog, JsonLandingSiteCatalog>();
 builder.Services.Configure<TerrainIntegrationSettings>(builder.Configuration.GetSection("Terrain"));
-builder.Services.TryAddSingleton<ITerrainHeightProvider>(services =>
+builder.Services.TryAddSingleton<ITerrainService>(services =>
 {
     var settings = services.GetRequiredService<IOptions<TerrainIntegrationSettings>>().Value;
-    if (string.IsNullOrWhiteSpace(settings.DemPath)) return new UnavailableTerrainHeightProvider();
     var environment = services.GetRequiredService<IWebHostEnvironment>();
-    var path = Path.GetFullPath(Path.Combine(environment.ContentRootPath, settings.DemPath));
-    return new ConfiguredTerrainHeightProvider(TerrainFactory.CreateService(path));
+    var path = string.IsNullOrWhiteSpace(settings.DemPath) ? null
+        : Path.GetFullPath(Path.Combine(environment.ContentRootPath, settings.DemPath));
+    return TerrainFactory.CreateService(path);
 });
-builder.Services.TryAddSingleton<IHorizonProfileProvider, UnavailableHorizonProfileProvider>();
+builder.Services.TryAddSingleton<ITerrainHeightProvider, ConfiguredTerrainHeightProvider>();
+builder.Services.TryAddSingleton<IHorizonService>(services =>
+    TerrainFactory.CreateHorizonService(services.GetRequiredService<ITerrainService>(),
+        new HorizonOptions { ObserverHeightOffsetMeters = 0 }));
+builder.Services.TryAddSingleton<IHorizonProfileProvider>(services => services.GetRequiredService<IHorizonService>());
 builder.Services.AddSingleton<IObserverAltitudeResolver, ObserverAltitudeResolver>();
 builder.Services.AddSingleton<IAnalysisService, AnalysisService>();
 builder.Services.AddSingleton<IComparisonService, ComparisonService>();
@@ -82,7 +87,11 @@ app.Use(async (context, next) =>
             BadHttpRequestException => (400, "VALIDATION_ERROR", "The request is invalid."),
             _ => (500, "INTERNAL_ERROR", "An unexpected server error occurred.")
         };
-        app.Logger.LogWarning("Request failed with {ErrorCode} ({FailureType}).", code, exception.GetType().Name);
+        if (status == 500)
+            app.Logger.LogError(exception, "Unhandled request failure {Method} {Path} ({TraceId}).",
+                context.Request.Method, context.Request.Path, context.TraceIdentifier);
+        else
+            app.Logger.LogWarning("Request failed with {ErrorCode} ({FailureType}).", code, exception.GetType().Name);
         context.Response.Clear();
         context.Response.StatusCode = status;
         await context.Response.WriteAsJsonAsync(new ErrorResponse(new ErrorDetail(code, message)), originalToken);

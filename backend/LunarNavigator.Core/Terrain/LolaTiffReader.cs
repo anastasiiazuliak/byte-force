@@ -1,6 +1,9 @@
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.IO.Compression;
+using System.Globalization;
+using System.Text;
+using System.Security.Cryptography;
 using Microsoft.Win32.SafeHandles;
 
 namespace LunarNavigator.Core.Terrain;
@@ -12,6 +15,11 @@ namespace LunarNavigator.Core.Terrain;
 /// </summary>
 public sealed class LolaTiffReader : IDisposable
 {
+    // Bound every allocation derived from untrusted TIFF metadata before renting/allocating.
+    private const int MaxTiles = 1_000_000;
+    private const int MaxTileBytes = 16 * 1024 * 1024;
+    private const int MaxWindowPixels = 4_000_000;
+    private readonly object decodeLock = new();
     private readonly SafeFileHandle fileHandle;
     private readonly LolaDemMetadata metadata;
     private readonly long[] tileOffsets;
@@ -23,6 +31,9 @@ public sealed class LolaTiffReader : IDisposable
     private bool disposed;
 
     public LolaDemMetadata Metadata => metadata;
+    public bool HasReviewedDatumAlignment { get; }
+    public const string ReviewedDemSha256 = "82030dcbdd7c4bb0c7d858e9b4b293b9f2cda5a543ba31ec0f42784bd6beee5a";
+    public const string DatumReviewId = "PR15-BARKER2023-LDEM80S80-2026-11-15";
 
     private LolaTiffReader(
         SafeFileHandle handle,
@@ -30,14 +41,16 @@ public sealed class LolaTiffReader : IDisposable
         long[] tileOffsets,
         int[] tileByteCounts,
         int predictor = 3,
-        int maxCachedTiles = 64)
+        int maxCachedTiles = 64,
+        bool reviewedDatumAlignment = false)
     {
+        HasReviewedDatumAlignment = reviewedDatumAlignment;
         this.fileHandle = handle;
         this.metadata = metadata;
         this.tileOffsets = tileOffsets;
         this.tileByteCounts = tileByteCounts;
         this.predictor = predictor;
-        this.maxCachedTiles = maxCachedTiles;
+        this.maxCachedTiles = Math.Min(maxCachedTiles, 64 * 1024 * 1024 / checked(metadata.TileWidth * metadata.TileHeight * 4));
     }
 
     /// <summary>
@@ -45,6 +58,7 @@ public sealed class LolaTiffReader : IDisposable
     /// </summary>
     public static LolaTiffReader Open(string filePath, int maxCachedTiles = 64)
     {
+        if (maxCachedTiles is < 1 or > 64) throw new ArgumentOutOfRangeException(nameof(maxCachedTiles));
         if (!File.Exists(filePath))
         {
             throw new FileNotFoundException($"GeoTIFF file not found at: {filePath}", filePath);
@@ -55,7 +69,7 @@ public sealed class LolaTiffReader : IDisposable
         {
             // Read first 16 bytes for TIFF/BigTIFF magic
             Span<byte> header = stackalloc byte[16];
-            RandomAccess.Read(handle, header, 0);
+            ReadExactly(handle, header, 0);
 
             bool isLittleEndian = header[0] == 0x49 && header[1] == 0x49; // 'II'
             if (!isLittleEndian)
@@ -72,6 +86,8 @@ public sealed class LolaTiffReader : IDisposable
             long ifdOffset;
             if (magic == 43)
             {
+                if (BitConverter.ToUInt16(header[4..6]) != 8 || BitConverter.ToUInt16(header[6..8]) != 0)
+                    throw new InvalidDataException("Invalid BigTIFF offset size or reserved field.");
                 // BigTIFF header: bytes 8..16 is 64-bit IFD offset
                 ifdOffset = BitConverter.ToInt64(header[8..16]);
             }
@@ -91,34 +107,104 @@ public sealed class LolaTiffReader : IDisposable
         }
     }
 
+    private static void ReadExactly(SafeFileHandle handle, Span<byte> buffer, long offset)
+    {
+        if (offset < 0 || offset > RandomAccess.GetLength(handle) - buffer.Length)
+            throw new InvalidDataException("DEM read exceeds the available file; download may be incomplete.");
+        int total = 0;
+        while (total < buffer.Length)
+        {
+            int read = RandomAccess.Read(handle, buffer[total..], offset + total);
+            if (read == 0) throw new EndOfStreamException("DEM file ended before the requested data was read.");
+            total += read;
+        }
+    }
+
     private static LolaTiffReader ParseIfd(SafeFileHandle handle, long ifdOffset, bool isBigTiff, int maxCachedTiles)
     {
-        int width = 7600;
-        int height = 7600;
-        int tileWidth = 512;
-        int tileHeight = 512;
-        int predictor = 3;
+        int width = 0;
+        int height = 0;
+        int tileWidth = 0;
+        int tileHeight = 0;
+        int predictor = 1;
+        float noData = float.NaN;
+        bool pixelIsArea = false;
+        int? bits = null, compression = null, samples = null, sampleFormat = null, planar = null;
+        var geotags = new Dictionary<ushort, byte[]>();
+        var seenTags = new HashSet<ushort>();
         long[]? tileOffsets = null;
         int[]? tileByteCounts = null;
 
         if (isBigTiff)
         {
             Span<byte> countBuf = stackalloc byte[8];
-            RandomAccess.Read(handle, countBuf, ifdOffset);
+            ReadExactly(handle, countBuf, ifdOffset);
             ulong numEntries = BitConverter.ToUInt64(countBuf);
+            if (numEntries > 4096 || numEntries > (ulong)((RandomAccess.GetLength(handle) - ifdOffset - 8) / 20))
+                throw new InvalidDataException("DEM IFD entry count exceeds supported limits or file bounds.");
             long entryOffset = ifdOffset + 8;
 
             Span<byte> entryBuf = stackalloc byte[20]; // BigTIFF tag is 20 bytes
             for (ulong i = 0; i < numEntries; i++)
             {
-                RandomAccess.Read(handle, entryBuf, entryOffset);
+                ReadExactly(handle, entryBuf, entryOffset);
                 ushort tag = BitConverter.ToUInt16(entryBuf[0..2]);
                 ushort type = BitConverter.ToUInt16(entryBuf[2..4]);
                 ulong count = BitConverter.ToUInt64(entryBuf[4..12]);
                 long valOrOffset = BitConverter.ToInt64(entryBuf[12..20]);
 
+                if (!seenTags.Add(tag)) throw new InvalidDataException("Duplicate DEM TIFF tag.");
+                if (tag is 33550 or 33922 or 34735 or 34736 or 34737)
+                {
+                    int size = type switch { 2 => 1, 3 => 2, 12 => 8, _ => 0 };
+                    if (size == 0 || count > 16384) throw new InvalidDataException("Unsupported DEM geotag encoding.");
+                    var raw = new byte[checked((int)count * size)];
+                    if (raw.Length <= 8) entryBuf[12..(12 + raw.Length)].CopyTo(raw);
+                    else ReadExactly(handle, raw, valOrOffset);
+                    geotags.Add(tag, raw);
+                }
+                if (count > MaxTiles) throw new InvalidDataException("DEM tag count exceeds supported limits.");
+                if (tag is 256 or 257 or 258 or 259 or 277 or 284 or 317 or 322 or 323 or 339 && (count != 1 || valOrOffset < 0 || valOrOffset > int.MaxValue))
+                    throw new InvalidDataException("Invalid DEM scalar tag.");
                 switch (tag)
                 {
+                    case 42113:
+                        if (type != 2 || count is < 1 or > 128)
+                            throw new InvalidDataException("Invalid DEM NoData tag.");
+                        var noDataBytes = new byte[(int)count];
+                        if (count <= 8) BitConverter.GetBytes(valOrOffset).AsSpan(0, (int)count).CopyTo(noDataBytes);
+                        else ReadExactly(handle, noDataBytes, valOrOffset);
+                        string noDataText = Encoding.ASCII.GetString(noDataBytes).TrimEnd('\0');
+                        if (noDataText.Equals("nan", StringComparison.OrdinalIgnoreCase)) noData = float.NaN;
+                        else if (!float.TryParse(noDataText, NumberStyles.Float, CultureInfo.InvariantCulture, out noData) || !float.IsFinite(noData))
+                            throw new InvalidDataException("Unsupported DEM NoData value.");
+                        break;
+                    case 34735:
+                        if (type != 3 || count < 4 || count > 16384)
+                            throw new InvalidDataException("Invalid DEM GeoKey directory.");
+                        var keys = new byte[(int)count * 2];
+                        ReadExactly(handle, keys, valOrOffset);
+                        int keyCount = BitConverter.ToUInt16(keys, 6);
+                        if (4L + keyCount * 4L != (long)count)
+                            throw new InvalidDataException("Inconsistent DEM GeoKey directory.");
+                        for (int k = 0; k < keyCount; k++)
+                        {
+                            int key = 8 + k * 8;
+                            if (BitConverter.ToUInt16(keys, key) == 1025)
+                            {
+                                if (BitConverter.ToUInt16(keys, key + 2) != 0 || BitConverter.ToUInt16(keys, key + 4) != 1)
+                                    throw new InvalidDataException("Invalid DEM raster type GeoKey.");
+                                int rasterType = BitConverter.ToUInt16(keys, key + 6);
+                                if (rasterType is not (1 or 2)) throw new InvalidDataException("Unsupported DEM raster type.");
+                                pixelIsArea = rasterType == 1;
+                            }
+                        }
+                        break;
+                    case 258: bits = (int)valOrOffset; break;
+                    case 259: compression = (int)valOrOffset; break;
+                    case 277: samples = (int)valOrOffset; break;
+                    case 284: planar = (int)valOrOffset; break;
+                    case 339: sampleFormat = (int)valOrOffset; break;
                     case 256: // ImageWidth
                         width = (int)valOrOffset;
                         break;
@@ -149,31 +235,97 @@ public sealed class LolaTiffReader : IDisposable
             }
         }
 
+        if (!isBigTiff) throw new NotSupportedException("Only tiled BigTIFF DEM files are supported.");
+        if (width <= 0 || height <= 0 || tileWidth <= 0 || tileHeight <= 0)
+            throw new InvalidDataException("Invalid DEM raster dimensions.");
+        if ((long)tileWidth * tileHeight * 4 > MaxTileBytes || width > 1_000_000 || height > 1_000_000)
+            throw new InvalidDataException("DEM raster or tile dimensions exceed supported limits.");
+        if (bits != 32 || compression is not (8 or 32946) || samples is not (null or 1) || sampleFormat != 3 || planar is not (null or 1))
+            throw new InvalidDataException("DEM must contain single-band Float32 Deflate samples with contiguous planar layout.");
+        if (predictor is not (1 or 3)) throw new InvalidDataException("Unsupported DEM predictor.");
+
         int tilesAcross = (width + tileWidth - 1) / tileWidth;
         int tilesDown = (height + tileHeight - 1) / tileHeight;
-        int totalTiles = tilesAcross * tilesDown;
+        long tileCount = (long)tilesAcross * tilesDown;
+        if (tileCount > MaxTiles) throw new InvalidDataException("DEM tile count exceeds supported limits.");
+        int totalTiles = (int)tileCount;
 
-        tileOffsets ??= new long[totalTiles];
-        tileByteCounts ??= new int[totalTiles];
+        if (tileOffsets is null || tileByteCounts is null ||
+            tileOffsets.Length != totalTiles || tileByteCounts.Length != totalTiles)
+            throw new InvalidDataException("DEM tile index is missing or inconsistent.");
+        long fileLength = RandomAccess.GetLength(handle);
+        for (int i = 0; i < totalTiles; i++)
+        {
+            // TIFF sparse tiles have both offset and byte count zero.
+            if (tileOffsets[i] == 0 && tileByteCounts[i] == 0) continue;
+            if (tileOffsets[i] <= 0 || tileByteCounts[i] <= 0 || tileByteCounts[i] > MaxTileBytes ||
+                tileOffsets[i] > fileLength - tileByteCounts[i])
+                throw new InvalidDataException("DEM tile data extends beyond the available file; download may be incomplete.");
+        }
 
         var meta = LolaDemMetadata.Default with
         {
+            NoDataValue = noData,
+            RasterPixelIsArea = pixelIsArea,
             RasterWidth = width,
             RasterHeight = height,
             TileWidth = tileWidth,
             TileHeight = tileHeight
         };
 
-        return new LolaTiffReader(handle, meta, tileOffsets, tileByteCounts, predictor, maxCachedTiles);
+        bool reviewed = width == 7600 && height == 7600 && tileWidth == 512 && tileHeight == 512 &&
+            predictor == 3 && pixelIsArea && float.IsNaN(noData) &&
+            ReviewedGeotagsMatch(geotags) && ReviewedIdentityMatches(handle);
+        return new LolaTiffReader(handle, meta, tileOffsets, tileByteCounts, predictor, maxCachedTiles, reviewed);
+    }
+
+    private static bool ReviewedGeotagsMatch(IReadOnlyDictionary<ushort, byte[]> tags)
+    {
+        // Exact native geotags of the reviewed product, not defaults inferred from a filename.
+        bool Doubles(ushort tag, double[] expected) => tags.TryGetValue(tag, out var raw) &&
+            raw.Length == expected.Length * 8 && expected.Select((v, i) => BitConverter.ToDouble(raw, i * 8) == v).All(v => v);
+        ushort[] keys = [1,1,0,20,1024,0,1,1,1025,0,1,1,1026,34737,46,0,2048,0,1,32767,
+            2049,34737,134,46,2050,0,1,32767,2054,0,1,9102,2056,0,1,32767,2057,34736,1,5,
+            2058,34736,1,6,2061,34736,1,7,3072,0,1,32767,3074,0,1,32767,3075,0,1,15,
+            3076,0,1,9001,3081,34736,1,0,3082,34736,1,3,3083,34736,1,4,3092,34736,1,2,3095,34736,1,1];
+        return Doubles(33550, [80,80,0]) && Doubles(33922, [0,0,0,-304000,304000,0]) &&
+            Doubles(34736, [-90,0,1,0,0,1737400,1737400,0]) &&
+            tags.TryGetValue(34735, out var directory) && directory.Length == keys.Length * 2 &&
+            keys.Select((v,i) => BitConverter.ToUInt16(directory, i * 2) == v).All(v => v) &&
+            tags.TryGetValue(34737, out var text) && Encoding.ASCII.GetString(text).TrimEnd('\0') ==
+            "Moon (2015) - Sphere / Ocentric / South Polar|GCS Name = Moon (2015) - Sphere / Ocentric|Datum = Moon (2015) - Sphere|Ellipsoid = Moon (2015) - Sphere|Primem = Reference Meridian||";
+    }
+
+    private static bool ReviewedIdentityMatches(SafeFileHandle handle)
+    {
+        const long length = 189158392;
+        if (RandomAccess.GetLength(handle) != length) return false;
+        // Hash the SAME opened handle that supplies pixels, not a separately reopened pathname.
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(128 * 1024);
+        try
+        {
+            for (long offset = 0; offset < length;)
+            {
+                int count = (int)Math.Min(buffer.Length, length - offset);
+                ReadExactly(handle, buffer.AsSpan(0, count), offset);
+                hash.AppendData(buffer, 0, count);
+                offset += count;
+            }
+            return Convert.ToHexString(hash.GetHashAndReset()).Equals(ReviewedDemSha256, StringComparison.OrdinalIgnoreCase);
+        }
+        finally { ArrayPool<byte>.Shared.Return(buffer); }
     }
 
     private static long[] ReadOffsetsArray(SafeFileHandle handle, long offset, int count, int type)
     {
+        if (count < 1 || count > MaxTiles || type is not (16 or 4))
+            throw new InvalidDataException("Invalid DEM tile offset array.");
         var result = new long[count];
         if (type == 16) // TIFF_LONG8 (8 bytes)
         {
             byte[] buf = new byte[count * 8];
-            RandomAccess.Read(handle, buf, offset);
+            ReadExactly(handle, buf, offset);
             for (int i = 0; i < count; i++)
             {
                 result[i] = BitConverter.ToInt64(buf, i * 8);
@@ -182,7 +334,7 @@ public sealed class LolaTiffReader : IDisposable
         else if (type == 4) // TIFF_LONG (4 bytes)
         {
             byte[] buf = new byte[count * 4];
-            RandomAccess.Read(handle, buf, offset);
+            ReadExactly(handle, buf, offset);
             for (int i = 0; i < count; i++)
             {
                 result[i] = BitConverter.ToUInt32(buf, i * 4);
@@ -193,12 +345,14 @@ public sealed class LolaTiffReader : IDisposable
 
     private static int[] ReadCountsArray(SafeFileHandle handle, long offset, int count, int type)
     {
+        if (count < 1 || count > MaxTiles || type is not (4 or 3))
+            throw new InvalidDataException("Invalid DEM tile byte count array.");
         var result = new int[count];
         if (type == 4 || type == 3) // TIFF_LONG or SHORT
         {
             int size = type == 4 ? 4 : 2;
             byte[] buf = new byte[count * size];
-            RandomAccess.Read(handle, buf, offset);
+            ReadExactly(handle, buf, offset);
             for (int i = 0; i < count; i++)
             {
                 result[i] = size == 4 ? BitConverter.ToInt32(buf, i * 4) : BitConverter.ToUInt16(buf, i * 2);
@@ -234,6 +388,8 @@ public sealed class LolaTiffReader : IDisposable
     /// </summary>
     public float[,] ReadWindow(int startCol, int startRow, int windowWidth, int windowHeight)
     {
+        if (windowWidth <= 0 || windowHeight <= 0 || (long)windowWidth * windowHeight > MaxWindowPixels)
+            throw new ArgumentOutOfRangeException(nameof(windowWidth), "DEM window exceeds supported limits.");
         float[,] result = new float[windowHeight, windowWidth];
         for (int r = 0; r < windowHeight; r++)
         {
@@ -262,19 +418,23 @@ public sealed class LolaTiffReader : IDisposable
             return cached;
         }
 
-        float[] decoded = DecodeTile(tileIndex);
-
-        // Add to LRU cache
-        if (tileCache.TryAdd(tileIndex, decoded))
+        lock (decodeLock)
         {
-            cacheEvictionQueue.Enqueue(tileIndex);
-            if (tileCache.Count > maxCachedTiles && cacheEvictionQueue.TryDequeue(out int evictId))
-            {
-                tileCache.TryRemove(evictId, out _);
-            }
-        }
+            if (tileCache.TryGetValue(tileIndex, out cached)) return cached;
+            float[] decoded = DecodeTile(tileIndex);
 
-        return decoded;
+            // Add to LRU cache
+            if (tileCache.TryAdd(tileIndex, decoded))
+            {
+                cacheEvictionQueue.Enqueue(tileIndex);
+                if (tileCache.Count > maxCachedTiles && cacheEvictionQueue.TryDequeue(out int evictId))
+                {
+                    tileCache.TryRemove(evictId, out _);
+                }
+            }
+
+            return decoded;
+        }
     }
 
     private float[] DecodeTile(int tileIndex)
@@ -293,7 +453,7 @@ public sealed class LolaTiffReader : IDisposable
         byte[] compressed = ArrayPool<byte>.Shared.Rent(byteCount);
         try
         {
-            RandomAccess.Read(fileHandle, compressed.AsSpan(0, byteCount), offset);
+            ReadExactly(fileHandle, compressed.AsSpan(0, byteCount), offset);
 
             // Decompress ZLib / Deflate
             int uncompressedSize = metadata.TileWidth * metadata.TileHeight * 4;
@@ -303,18 +463,15 @@ public sealed class LolaTiffReader : IDisposable
                 using (var memStream = new MemoryStream(compressed, 0, byteCount, false))
                 using (var zlib = new ZLibStream(memStream, CompressionMode.Decompress))
                 {
-                    int totalRead = 0;
-                    while (totalRead < uncompressedSize)
-                    {
-                        int read = zlib.Read(uncompressed, totalRead, uncompressedSize - totalRead);
-                        if (read == 0) break;
-                        totalRead += read;
-                    }
+                    zlib.ReadExactly(uncompressed.AsSpan(0, uncompressedSize));
+                    if (zlib.ReadByte() != -1) throw new InvalidDataException("DEM tile exceeds declared dimensions.");
                 }
 
                 // Decode samples using TIFF Predictor
                 var floats = new float[metadata.TileWidth * metadata.TileHeight];
                 DecodeSamples(uncompressed, floats, metadata.TileWidth, metadata.TileHeight, predictor);
+                for (int i = 0; i < floats.Length; i++)
+                    if (!float.IsFinite(floats[i]) || floats[i] == metadata.NoDataValue) floats[i] = float.NaN;
                 return floats;
             }
             finally

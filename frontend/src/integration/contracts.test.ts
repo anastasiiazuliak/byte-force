@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { parse } from 'yaml';
@@ -24,6 +24,19 @@ function validate(name: string, value: unknown) {
 const request: AnalysisRequest = { location: { latitude: -89.5, longitude: 25 }, period: { startUtc: '2026-11-14T00:00:00Z', endUtc: '2026-11-15T00:00:00Z', stepMinutes: 60 } };
 
 describe('frozen contracts', () => {
+  it('parses all team JSON fixtures and validates the contributed map metadata envelope', () => {
+    const directory = resolve('../contracts/fixtures');
+    const visit = (dir: string) => {
+      for (const item of readdirSync(dir, { withFileTypes: true })) {
+        const path = join(dir, item.name);
+        if (item.isDirectory()) visit(path);
+        else if (item.name.endsWith('.json')) expect(() => JSON.parse(readFileSync(path, 'utf8')), path).not.toThrow();
+      }
+    };
+    visit(directory);
+    validate('MapMetadataResponse', JSON.parse(readFileSync(join(directory, 'map-metadata-real.json'), 'utf8')).metadata);
+  });
+
   it('is valid OpenAPI 3.1 and contains all seven agreed API operations', async () => {
     await SwaggerParser.validate(contractPath);
     expect(Object.keys(document.paths).sort()).toEqual(['/health','/config','/landing-sites','/map/metadata','/analyze','/compare','/ephemeris'].sort());
