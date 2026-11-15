@@ -26,3 +26,5 @@ export * from './tiles/tileProvider';
 export * from './hooks/useTileLoader';
 export * from './lighting/solarEphemeris';
 export * from './performance/performanceMonitor';
+
+export { solarSceneDirection } from './lighting/solarSceneDirection';

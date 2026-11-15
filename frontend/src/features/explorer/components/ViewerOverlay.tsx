@@ -5,6 +5,7 @@ import styles from '../styles/explorer.module.css';
 export interface ViewerOverlayProps {
   status: SceneStatus;
   currentPreset?: CameraPreset;
+  sunlightLabel?: string;
   isHorizonsLighting?: boolean;
   onReset: () => void;
   onTopDown: () => void;
@@ -16,6 +17,7 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
   status,
   currentPreset,
   isHorizonsLighting = false,
+  sunlightLabel,
   onReset,
   onTopDown,
   onFitRegion,
@@ -67,11 +69,11 @@ export const ViewerOverlay: React.FC<ViewerOverlayProps> = ({
             }`}
             title={
               isHorizonsLighting
-                ? 'Supplied Moon-fixed vector; graphical lighting remains illustrative'
+                ? 'Local solar direction from site azimuth/elevation; graphical shadows are not terrain visibility'
                 : 'Preview lighting (Polar low grazing angle ~2.5°); not an official eclipse calculation'
             }
           >
-            {isHorizonsLighting ? '☀ Supplied solar vector · illustrative' : '☀ Artistic lighting · not ephemeris'}
+            {isHorizonsLighting ? (sunlightLabel || '☀ Local solar direction · graphical shadows only') : '☀ Artistic lighting · not ephemeris'}
           </span>
         </div>
 

@@ -24,6 +24,13 @@ export const SceneControls: React.FC<SceneControlsProps> = ({
   controlsRef,
 }) => {
   const { camera } = useThree();
+  const reducedMotion = useRef(false);
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => { reducedMotion.current = query.matches; };
+    update(); query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
   const keysPressed = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -105,7 +112,7 @@ export const SceneControls: React.FC<SceneControlsProps> = ({
     const anim = animationStateRef.current;
     if (anim && anim.isAnimating) {
       const elapsed = performance.now() - anim.startTime;
-      const linearProgress = Math.min(1.0, elapsed / anim.durationMs);
+      const linearProgress = reducedMotion.current ? 1 : Math.min(1.0, elapsed / anim.durationMs);
       const easedT = easeInOutCubic(linearProgress);
 
       camera.position.lerpVectors(anim.startPosition, anim.targetPosition, easedT);
@@ -152,7 +159,7 @@ export const SceneControls: React.FC<SceneControlsProps> = ({
       enableDamping
       dampingFactor={0.08}
       minDistance={400}
-      maxDistance={450000}
+      maxDistance={80000}
       maxPolarAngle={Math.PI / 2 - 0.02}
       screenSpacePanning={false}
       enablePan
