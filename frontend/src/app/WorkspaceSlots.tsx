@@ -7,6 +7,8 @@ import type { TerrainSceneProps } from '../../../contracts/scene/scene-types';
 import { ScenarioFields } from '../features/scenario-form/ScenarioForm';
 import { AnalysisPanel, metric } from '../features/analysis/AnalysisPanel';
 import { MissionTimeline } from '../features/timeline/MissionTimeline';
+import { ComparisonInsights } from '../features/compare/ComparisonInsights';
+import { comparisonTime, differentPeriods } from '../features/compare/comparisonInsights';
 
 const LunarTerrainViewer = lazy(() =>
   import('../features/explorer').then((module) => ({
@@ -62,6 +64,9 @@ function FormSlot() {
         <button type="button" onClick={w.prepareCompare}>
           Prepare patch comparison
         </button>
+        <button type="button" onClick={w.prepareDates}>
+          Compare dates at Site A
+        </button>
         <button type="button" onClick={w.quickCompare} disabled={!w.client}>
           Quick compare · 2 samples/site
         </button>
@@ -76,8 +81,15 @@ function FormSlot() {
         sites={w.sites}
         onChange={(draft) => w.change('A', draft)}
       />
+      <PeriodPresets id="A" />
       {w.view === 'compare' && (
         <>
+          <fieldset>
+            <legend>Compare mode presets · draft only</legend>
+            <button type="button" onClick={w.samePeriod}>Same period · Use same UTC period</button>
+            <button type="button" onClick={w.prepareDates}>Compare dates · Copy A coordinates to B</button>
+            <p>Compare dates retains each scenario’s UTC period; edit B dates explicitly. Same period copies only A’s period and step to B, preserving B coordinates. Neither submits.</p>
+          </fieldset>
           <button type="button" onClick={() => w.change('B', { ...w.a })}>
             Copy A to B
           </button>
@@ -97,6 +109,7 @@ function FormSlot() {
             sites={w.sites}
             onChange={(draft) => w.change('B', draft)}
           />
+          <PeriodPresets id="B" />
         </>
       )}
       <button className="primary-button" type="submit" disabled={!w.client}>
@@ -120,6 +133,18 @@ function FormSlot() {
     </form>
   );
 }
+function PeriodPresets({ id }: { id: 'A' | 'B' }) {
+  const w = useData();
+  const draft = id === 'A' ? w.a : w.b;
+  const start = Date.parse(draft.start + ':00Z');
+  return <div role="group" aria-label={`Draft period ${id}`}>
+    {([12, 24] as const).map(hours => <button key={hours} type="button" disabled={!Number.isFinite(start)}
+      onClick={() => w.change(id, { ...draft, end: new Date(start + hours * 3600000).toISOString().slice(0, 16) })}>
+      {hours} h draft {id}
+    </button>)}
+    <small>Changes end UTC only; step and configured sample limits still apply on explicit submission.</small>
+  </div>;
+}
 function AnalysisSlot() {
   const w = useData();
   return <AnalysisPanel analysis={w.analyses[0]} timeUtc={w.timeUtc} />;
@@ -130,9 +155,11 @@ function CompareSlot({ site }: { site: 1 | 2 }) {
     <>
       <AnalysisPanel
         analysis={w.analyses[site - 1]}
-        timeUtc={w.timeUtc}
+        timeUtc={site === 2 ? comparisonTime(w.timeUtc, w.analyses[0], w.analyses[1]) : w.timeUtc}
         slot={site === 1 ? 'A' : 'B'}
       />
+      {differentPeriods(w.analyses[0], w.analyses[1]) && <p>Equal elapsed time, dates differ · Scenario {site === 1 ? 'A' : 'B'} own UTC: {site === 1 ? w.timeUtc : comparisonTime(w.timeUtc, w.analyses[0], w.analyses[1])}. Exact cached samples only; no interpolation.</p>}
+      {site === 2 && <ComparisonInsights analyses={w.analyses} />}
       {site === 2 && w.comparison && (
         <div data-testid="comparison-differences">
           <h3>Difference B − A</h3>
@@ -149,12 +176,16 @@ function CompareSlot({ site }: { site: 1 | 2 }) {
 }
 function TimelineSlot() {
   const w = useData();
+  const relative = differentPeriods(w.analyses[0], w.analyses[1]);
   return (
-    <MissionTimeline
-      analyses={w.analyses}
-      timeUtc={w.timeUtc}
-      onTime={w.setTime}
-    />
+    <>
+      {relative && <p>Equal elapsed time, dates differ. Timeline UTC is Scenario A; B uses its own UTC at the same elapsed offset. A missing exact B sample remains unknown.</p>}
+      <MissionTimeline
+        analyses={relative ? w.analyses.slice(0, 1) : w.analyses}
+        timeUtc={w.timeUtc}
+        onTime={w.setTime}
+      />
+    </>
   );
 }
 function SceneSlot(props: TerrainSceneProps) {
@@ -175,8 +206,9 @@ function SceneSlot(props: TerrainSceneProps) {
   const enabled = w.representation === 'terrain' && Boolean(direction);
   const effectiveSkySlot = w.analyses.length === 2 ? skySlot : 'A';
   const skyAnalysis = w.analyses[effectiveSkySlot === 'A' ? 0 : 1];
-  const skyDirections = useMemo(() => globe ? measuredSkyDirections(sceneMetadata, skyAnalysis, w.timeUtc, effectiveSkySlot) : null,
-    [globe, sceneMetadata, skyAnalysis, w.timeUtc, effectiveSkySlot]);
+  const skyTime = effectiveSkySlot === 'B' ? comparisonTime(w.timeUtc, w.analyses[0], w.analyses[1]) : w.timeUtc;
+  const skyDirections = useMemo(() => globe ? measuredSkyDirections(sceneMetadata, skyAnalysis, skyTime, effectiveSkySlot) : null,
+    [globe, sceneMetadata, skyAnalysis, skyTime, effectiveSkySlot]);
   const lightingLabel =
     w.representation === 'globe'
       ? 'Cartographic relief · fixed map light'
@@ -232,7 +264,7 @@ function SceneSlot(props: TerrainSceneProps) {
           {lightingLabel}
         </span>
         {globe && <span className="sky-registration-status" role="status">{skyDirections
-          ? `Sky directions at Site ${effectiveSkySlot} · symbols not to scale; may be outside this view`
+          ? `Sky directions at Site ${effectiveSkySlot} · own UTC ${skyTime} · symbols not to scale; may be outside this view`
           : skyAnalysis ? 'Registered sky directions unavailable for this exact sample; check analysis data quality.' : 'Analyze a site to place Sun/Earth directions. No screen-fixed decorations.'}</span>}
         {globe && w.analyses.length === 2 && <label className="lighting-toggle">Sky reference<select aria-label="Sky reference" value={skySlot} onChange={e => setSkySlot(e.target.value as 'A' | 'B')}><option value="A">Site A</option><option value="B">Site B</option></select></label>}
       </div>

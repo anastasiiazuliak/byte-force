@@ -74,11 +74,15 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 
     await warnings.locator('summary').click();
     await result.getByText('Samples & horizon (degrees, UTC)', { exact: true }).click();
     await expect(result.getByRole('img')).toHaveCount(3);
-    for (const chart of await result.getByRole('img').all()) {
+    // Measure the horizon's outer SVG, not its inner role=img group.
+        const horizon = result.getByRole('group', { name: 'Terrain horizon and exact astronomical positions', exact: true });
+        await expect(horizon).toBeVisible();
+        for (const chart of [horizon, ...await result.locator('svg[role="img"]').all()]) {
       const fits = await chart.evaluate(svg => {
         const rect = svg.getBoundingClientRect();
         const parent = svg.parentElement!.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0 && rect.height <= 230 && rect.left >= parent.left - 1 && rect.right <= parent.right + 1;
+        const maxHeight = svg.getAttribute('role') === 'group' ? 400 : 230;
+                return rect.width > 0 && rect.height > 0 && rect.height <= maxHeight && rect.left >= parent.left - 1 && rect.right <= parent.right + 1;
       });
       expect(fits).toBe(true);
     }
