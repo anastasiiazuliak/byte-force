@@ -13,6 +13,10 @@ for (const width of [390, 1440]) {
     page.on('request', request => { if (request.url().endsWith('/api/v1/analyze')) analyses++; });
     // Date comparison does not require the deployment's reviewed-map metadata gate.
     await page.route('**/api/v1/map/metadata', route => route.fulfill({ json: mapMetadata }));
+    // CI has no reviewed static catalog; use the app's built-in exploratory sites.
+    await page.route('**/static/metadata/explorer-sites.json', route => route.fulfill({
+      json: { schemaVersion: 1, sites: [] },
+    }));
     await page.route('**/api/v1/compare', route => {
       comparisons++;
       const input = route.request().postDataJSON();
