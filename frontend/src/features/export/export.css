@@ -19,6 +19,12 @@
 
 @media print {
   body:has(.export-report[open]) { background: #fff; color-scheme: light; }
+  .mission-app:has(.export-report[open]) {
+    > :not(.mission-workspace),
+    .mission-workspace > :not(.result-tools),
+    .result-tools > :not(.export-report) { display: none; }
+    .mission-workspace, .result-tools { display: block; padding: 0; min-height: 0; }
+  }
   .app-shell:has(.export-report[open]) > :not(.workspace-notice),
   .workspace-notice:has(.export-report[open]) > :not(.export-report) { display: none; }
   .app-shell:has(.export-report[open]),
