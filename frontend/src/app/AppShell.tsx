@@ -71,7 +71,13 @@ export function AppShell({ slots, dataMode, scene = emptyScene, state = 'ready',
         <section className="scene" id="terrain-scene-slot" aria-label="Lunar terrain">
           <TerrainViewer {...scene} />
         </section>
-        <Panel id="site-time" title="Site & Time" collapsible><ScenarioForm view={view} /></Panel>
+        <Panel id="site-time" title="Site & Time" collapsible>
+          <ScenarioForm view={view} />
+          {state === 'loading' && <div className="analysis-progress">
+            <p id="analysis-progress-label" role="status">{view === 'compare' ? 'Comparing scenarios…' : 'Calculating analysis…'}</p>
+            <div className="analysis-progress-track" role="progressbar" aria-labelledby="analysis-progress-label" />
+          </div>}
+        </Panel>
         <Panel id="analysis" title={view === 'compare' ? 'Site 1 · Analysis' : 'Analysis'} collapsible>
           <PanelState state={state} onRetry={onRetry}>{view === 'compare' ? <ComparePanel site={1} /> : <AnalysisPanel />}</PanelState>
         </Panel>

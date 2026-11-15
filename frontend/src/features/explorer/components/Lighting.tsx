@@ -6,6 +6,19 @@ export interface LightingProps {
   /** Compatibility only; unknown global frame is deliberately ignored. */
   sunDirectionMoonFixed?: [number, number, number] | null;
 }
+
+// The globe is a shallow south-polar cap with an upward normal at its center.
+// A low Sun angle puts the terminator inside the cap instead of lighting it evenly.
+const GLOBE_SUN_POSITION: [number, number, number] = [-90_000, 4_500, 10_000];
+const GLOBE_SUN_INTENSITY = 4;
+
+export function GlobeSunlight() {
+  return <>
+    <directionalLight position={GLOBE_SUN_POSITION} intensity={GLOBE_SUN_INTENSITY} color="#fffaf3" />
+    <ambientLight intensity={0.006} color="#ffffff" />
+  </>;
+}
+
 export const Lighting: React.FC<LightingProps> = ({ sunDirectionScene }) => {
   const light = useRef<THREE.DirectionalLight>(null);
   const reduced = useRef(false);

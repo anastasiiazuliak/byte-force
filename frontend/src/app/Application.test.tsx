@@ -21,6 +21,18 @@ async function fillA() {
   fireEvent.change(screen.getByLabelText('Longitude A'), { target: { value: '0' } });
 }
 describe('live workspace composition', () => {
+  it('shows indeterminate progress until the analysis finishes', async () => {
+    let finish!: (value: typeof fixture) => void;
+    api.analyze.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    render(<Application />); await fillA();
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze site' }));
+    const progress = screen.getByRole('progressbar', { name: 'Calculating analysis…' });
+    expect(progress.hasAttribute('aria-valuenow')).toBe(false);
+    await act(async () => finish(fixture));
+    await screen.findByTestId('analysis-result');
+    expect(screen.queryByRole('progressbar')).toBeNull();
+  });
   it('submits UTC, renders partial/unknown honestly and exposes ephemeris 503', async () => {
     render(<Application />); await fillA();
     fireEvent.click(screen.getByRole('button', { name: 'Analyze site' }));
@@ -71,9 +83,11 @@ it('renders regional data even when global visibility is unverified, and cancels
   api.analyze.mockImplementation(() => new Promise(() => {}));
   fireEvent.click(screen.getByRole('button', { name: 'Analyze site' }));
   await screen.findByRole('button', { name: 'Cancel analysis' });
+  expect(screen.getByRole('progressbar')).toBeTruthy();
   const signal = api.analyze.mock.calls[1][1] as AbortSignal;
   fireEvent.click(screen.getByRole('button', { name: 'Cancel analysis' }));
   expect(signal.aborted).toBe(true);
+  expect(screen.queryByRole('progressbar')).toBeNull();
   expect(screen.queryByTestId('analysis-result')).toBeNull();
 });
 

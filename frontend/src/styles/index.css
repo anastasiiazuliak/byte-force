@@ -150,6 +150,38 @@ button { padding: 0 14px; background: transparent; }
   border-radius: 50%;
   animation: spin 700ms linear infinite;
 }
+
+.analysis-progress {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.analysis-progress-track {
+  height: 8px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--track);
+}
+.analysis-progress-track::before {
+  content: "";
+  display: block;
+  width: 35%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--earth);
+  animation: analysis-progress-sweep 1.4s ease-in-out infinite alternate;
+}
+@keyframes analysis-progress-sweep {
+  from { transform: translateX(-25%); }
+  to { transform: translateX(210%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .analysis-progress-track::before {
+    margin-inline: auto;
+    animation: none;
+  }
+}
 @keyframes spin { to { transform: rotate(1turn); } }
 
 @media (max-width: 800px) {
