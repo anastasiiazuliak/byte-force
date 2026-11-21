@@ -1,5 +1,5 @@
 import type { AnalysisResponse } from '../../api/types';
-import { clearanceStats } from './comparisonInsights';
+import { clearanceStats } from './comparisonInsightsUtils';
 
 const degrees = (value: number | null) => value === null ? 'Unknown' : `${value.toFixed(2)}°`;
 

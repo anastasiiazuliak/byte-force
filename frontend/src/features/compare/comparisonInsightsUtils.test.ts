@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AnalysisResponse } from '../../api/types';
 import fixture from '../../../../contracts/fixtures/analyze-partial.json';
-import { clearanceStats, comparisonTime, differentPeriods } from './comparisonInsights';
+import { clearanceStats, comparisonTime, differentPeriods } from './comparisonInsightsUtils';
 
 const a = fixture as AnalysisResponse;
 const b = { ...a, period: { ...a.period, startUtc: '2026-12-14T00:00:00Z', endUtc: '2026-12-15T00:00:00Z' } };

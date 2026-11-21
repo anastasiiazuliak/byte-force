@@ -8,7 +8,7 @@ import { ScenarioFields } from '../features/scenario-form/ScenarioForm';
 import { AnalysisPanel, metric } from '../features/analysis/AnalysisPanel';
 import { MissionTimeline } from '../features/timeline/MissionTimeline';
 import { ComparisonInsights } from '../features/compare/ComparisonInsights';
-import { comparisonTime, differentPeriods } from '../features/compare/comparisonInsights';
+import { comparisonTime, differentPeriods } from '../features/compare/comparisonInsightsUtils';
 
 const LunarTerrainViewer = lazy(() =>
   import('../features/explorer').then((module) => ({
